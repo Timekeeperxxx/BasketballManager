@@ -227,6 +227,8 @@ namespace BasketballManager.UI.Screens
             layout.padding = new RectOffset(10, 10, 10, 10);
             layout.childForceExpandWidth = true;
             layout.childForceExpandHeight = false;
+            layout.childControlHeight = true;
+            layout.childControlWidth = true;
             content.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
             // Score Summary

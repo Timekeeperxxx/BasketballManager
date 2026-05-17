@@ -80,7 +80,7 @@ namespace BasketballManager.UI.Core
             var layout = content.gameObject.AddComponent<VerticalLayoutGroup>();
             layout.spacing = 8f;
             layout.childControlWidth = true;
-            layout.childControlHeight = false;
+            layout.childControlHeight = true;
             layout.childForceExpandWidth = true;
             layout.childForceExpandHeight = false;
             content.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
