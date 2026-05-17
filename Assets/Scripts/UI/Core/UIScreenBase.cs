@@ -323,5 +323,99 @@ namespace BasketballManager.UI.Core
                 Destroy(parent.GetChild(i).gameObject);
             }
         }
+
+        protected static string FormatPercent(int made, int attempted)
+        {
+            if (attempted == 0) return "0.0%";
+            return $"{(float)made / attempted * 100f:F1}%";
+        }
+
+        protected static Text CreateSectionTitle(RectTransform parent, string text)
+        {
+            var label = CreateHeader(parent, text, 22);
+            label.color = new Color(0.85f, 0.85f, 0.90f);
+            return label;
+        }
+
+        protected static Button CreateSmallButton(RectTransform parent, string text, Action onClick)
+        {
+            var button = CreateButton(parent, text, onClick);
+            var layout = button.gameObject.GetComponent<LayoutElement>();
+            layout.minHeight = 36f; // Smaller height
+            var labelText = button.gameObject.GetComponentInChildren<Text>();
+            if (labelText != null) labelText.fontSize = 16;
+            return button;
+        }
+
+        protected static RectTransform CreateStatRow(RectTransform parent, string label, string homeVal, string awayVal)
+        {
+            var row = CreatePanel("Row", parent, Color.clear);
+            var layout = row.gameObject.AddComponent<HorizontalLayoutGroup>();
+            layout.childForceExpandWidth = true;
+            layout.childForceExpandHeight = false;
+            layout.childControlHeight = true;
+            layout.childControlWidth = true;
+            LayoutElementWithHeight(row.gameObject, 28f);
+
+            var homeText = CreateBodyText(row, homeVal);
+            homeText.alignment = TextAnchor.MiddleCenter;
+            homeText.fontSize = 18;
+
+            var labelText = CreateBodyText(row, label);
+            labelText.alignment = TextAnchor.MiddleCenter;
+            labelText.color = new Color(0.6f, 0.6f, 0.6f);
+            labelText.fontSize = 18;
+
+            var awayText = CreateBodyText(row, awayVal);
+            awayText.alignment = TextAnchor.MiddleCenter;
+            awayText.fontSize = 18;
+
+            return row;
+        }
+
+        protected static RectTransform CreateTableHeaderRow(RectTransform parent, IReadOnlyList<(string title, float width)> columns)
+        {
+            var headerRow = CreatePanel("Header", parent, new Color(0.15f, 0.16f, 0.20f));
+            var hLayout = headerRow.gameObject.AddComponent<HorizontalLayoutGroup>();
+            hLayout.padding = new RectOffset(8, 8, 4, 4);
+            hLayout.spacing = 8f;
+            hLayout.childForceExpandHeight = false;
+            hLayout.childForceExpandWidth = false;
+            hLayout.childControlHeight = true;
+            hLayout.childControlWidth = true;
+            LayoutElementWithHeight(headerRow.gameObject, 32f);
+
+            foreach (var col in columns)
+            {
+                var text = CreateBodyText(headerRow, col.title);
+                text.color = new Color(0.7f, 0.7f, 0.75f);
+                text.fontSize = 16;
+                LayoutElementWithWidth(text.gameObject, col.width);
+            }
+
+            return headerRow;
+        }
+
+        protected static RectTransform CreateTableDataRow(RectTransform parent, IReadOnlyList<(string value, float width)> columns)
+        {
+            var row = CreatePanel("DataRow", parent, Color.clear);
+            var rLayout = row.gameObject.AddComponent<HorizontalLayoutGroup>();
+            rLayout.padding = new RectOffset(8, 8, 4, 4);
+            rLayout.spacing = 8f;
+            rLayout.childForceExpandHeight = false;
+            rLayout.childForceExpandWidth = false;
+            rLayout.childControlHeight = true;
+            rLayout.childControlWidth = true;
+            LayoutElementWithHeight(row.gameObject, 32f);
+
+            foreach (var col in columns)
+            {
+                var text = CreateBodyText(row, col.value);
+                text.fontSize = 16;
+                LayoutElementWithWidth(text.gameObject, col.width);
+            }
+
+            return row;
+        }
     }
 }

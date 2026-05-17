@@ -132,27 +132,52 @@ namespace BasketballManager.UI.Screens
 
             CreateSection(parent, "\u80fd\u529b\u5c5e\u6027", section =>
             {
-                AddField(CreateIntBinding(section, "\u4e24\u5206", p => p.Attributes.TwoPoint, (p, value) => p.Attributes.TwoPoint = value));
-                AddField(CreateIntBinding(section, "\u4e09\u5206", p => p.Attributes.ThreePoint, (p, value) => p.Attributes.ThreePoint = value));
-                AddField(CreateIntBinding(section, "\u4e0a\u7bee", p => p.Attributes.Layup, (p, value) => p.Attributes.Layup = value));
-                AddField(CreateIntBinding(section, "\u8fd1\u6295", p => p.Attributes.CloseShot, (p, value) => p.Attributes.CloseShot = value));
-                AddField(CreateIntBinding(section, "\u80cc\u8eab\u5f97\u5206", p => p.Attributes.PostScoring, (p, value) => p.Attributes.PostScoring = value));
-                AddField(CreateIntBinding(section, "\u7f5a\u7403", p => p.Attributes.FreeThrow, (p, value) => p.Attributes.FreeThrow = value));
-                AddField(CreateIntBinding(section, "\u4f20\u7403", p => p.Attributes.Passing, (p, value) => p.Attributes.Passing = value));
-                AddField(CreateIntBinding(section, "\u63a7\u7403", p => p.Attributes.BallHandle, (p, value) => p.Attributes.BallHandle = value));
-                AddField(CreateIntBinding(section, "\u7a81\u7834", p => p.Attributes.Drive, (p, value) => p.Attributes.Drive = value));
-                AddField(CreateIntBinding(section, "\u9020\u72af\u89c4", p => p.Attributes.DrawFoul, (p, value) => p.Attributes.DrawFoul = value));
-                AddField(CreateIntBinding(section, "\u8fdb\u653b\u7a33\u5b9a\u6027", p => p.Attributes.OffensiveConsistency, (p, value) => p.Attributes.OffensiveConsistency = value));
-                AddField(CreateIntBinding(section, "\u5916\u7ebf\u9632\u5b88", p => p.Attributes.PerimeterDefense, (p, value) => p.Attributes.PerimeterDefense = value));
-                AddField(CreateIntBinding(section, "\u5185\u7ebf\u9632\u5b88", p => p.Attributes.InteriorDefense, (p, value) => p.Attributes.InteriorDefense = value));
-                AddField(CreateIntBinding(section, "\u62a2\u65ad", p => p.Attributes.Steal, (p, value) => p.Attributes.Steal = value));
-                AddField(CreateIntBinding(section, "\u76d6\u5e3d", p => p.Attributes.Block, (p, value) => p.Attributes.Block = value));
-                AddField(CreateIntBinding(section, "\u8fdb\u653b\u7bee\u677f", p => p.Attributes.OffensiveRebound, (p, value) => p.Attributes.OffensiveRebound = value));
-                AddField(CreateIntBinding(section, "\u9632\u5b88\u7bee\u677f", p => p.Attributes.DefensiveRebound, (p, value) => p.Attributes.DefensiveRebound = value));
-                AddField(CreateIntBinding(section, "\u9632\u5b88\u7a33\u5b9a\u6027", p => p.Attributes.DefensiveConsistency, (p, value) => p.Attributes.DefensiveConsistency = value));
-                AddField(CreateIntBinding(section, "\u901f\u5ea6", p => p.Attributes.Speed, (p, value) => p.Attributes.Speed = value));
-                AddField(CreateIntBinding(section, "\u529b\u91cf", p => p.Attributes.Strength, (p, value) => p.Attributes.Strength = value));
-                AddField(CreateIntBinding(section, "\u4f53\u80fd", p => p.Attributes.Stamina, (p, value) => p.Attributes.Stamina = value));
+                var row = CreatePanel("Row", section, Color.clear);
+                var rowLayout = row.gameObject.AddComponent<HorizontalLayoutGroup>();
+                rowLayout.spacing = 16f;
+                rowLayout.childForceExpandWidth = true;
+                rowLayout.childForceExpandHeight = false;
+                rowLayout.childControlHeight = true;
+                rowLayout.childControlWidth = true;
+
+                var col1 = CreatePanel("Col1", row, Color.clear);
+                var col1Layout = col1.gameObject.AddComponent<VerticalLayoutGroup>();
+                col1Layout.spacing = 8f;
+                col1Layout.childForceExpandWidth = true;
+                col1Layout.childForceExpandHeight = false;
+                col1Layout.childControlHeight = true;
+                col1Layout.childControlWidth = true;
+
+                var col2 = CreatePanel("Col2", row, Color.clear);
+                var col2Layout = col2.gameObject.AddComponent<VerticalLayoutGroup>();
+                col2Layout.spacing = 8f;
+                col2Layout.childForceExpandWidth = true;
+                col2Layout.childForceExpandHeight = false;
+                col2Layout.childControlHeight = true;
+                col2Layout.childControlWidth = true;
+
+                AddField(CreateIntBinding(col1, "\u4e24\u5206", p => p.Attributes.TwoPoint, (p, value) => p.Attributes.TwoPoint = value));
+                AddField(CreateIntBinding(col1, "\u4e09\u5206", p => p.Attributes.ThreePoint, (p, value) => p.Attributes.ThreePoint = value));
+                AddField(CreateIntBinding(col1, "\u4e0a\u7bee", p => p.Attributes.Layup, (p, value) => p.Attributes.Layup = value));
+                AddField(CreateIntBinding(col1, "\u8fd1\u6295", p => p.Attributes.CloseShot, (p, value) => p.Attributes.CloseShot = value));
+                AddField(CreateIntBinding(col1, "\u80cc\u8eab\u5f97\u5206", p => p.Attributes.PostScoring, (p, value) => p.Attributes.PostScoring = value));
+                AddField(CreateIntBinding(col1, "\u7f5a\u7403", p => p.Attributes.FreeThrow, (p, value) => p.Attributes.FreeThrow = value));
+                AddField(CreateIntBinding(col1, "\u4f20\u7403", p => p.Attributes.Passing, (p, value) => p.Attributes.Passing = value));
+                AddField(CreateIntBinding(col1, "\u63a7\u7403", p => p.Attributes.BallHandle, (p, value) => p.Attributes.BallHandle = value));
+                AddField(CreateIntBinding(col1, "\u7a81\u7834", p => p.Attributes.Drive, (p, value) => p.Attributes.Drive = value));
+                AddField(CreateIntBinding(col1, "\u9020\u72af\u89c4", p => p.Attributes.DrawFoul, (p, value) => p.Attributes.DrawFoul = value));
+                AddField(CreateIntBinding(col1, "\u8fdb\u653b\u7a33\u5b9a\u6027", p => p.Attributes.OffensiveConsistency, (p, value) => p.Attributes.OffensiveConsistency = value));
+
+                AddField(CreateIntBinding(col2, "\u5916\u7ebf\u9632\u5b88", p => p.Attributes.PerimeterDefense, (p, value) => p.Attributes.PerimeterDefense = value));
+                AddField(CreateIntBinding(col2, "\u5185\u7ebf\u9632\u5b88", p => p.Attributes.InteriorDefense, (p, value) => p.Attributes.InteriorDefense = value));
+                AddField(CreateIntBinding(col2, "\u62a2\u65ad", p => p.Attributes.Steal, (p, value) => p.Attributes.Steal = value));
+                AddField(CreateIntBinding(col2, "\u76d6\u5e3d", p => p.Attributes.Block, (p, value) => p.Attributes.Block = value));
+                AddField(CreateIntBinding(col2, "\u8fdb\u653b\u7bee\u677f", p => p.Attributes.OffensiveRebound, (p, value) => p.Attributes.OffensiveRebound = value));
+                AddField(CreateIntBinding(col2, "\u9632\u5b88\u7bee\u677f", p => p.Attributes.DefensiveRebound, (p, value) => p.Attributes.DefensiveRebound = value));
+                AddField(CreateIntBinding(col2, "\u9632\u5b88\u7a33\u5b9a\u6027", p => p.Attributes.DefensiveConsistency, (p, value) => p.Attributes.DefensiveConsistency = value));
+                AddField(CreateIntBinding(col2, "\u901f\u5ea6", p => p.Attributes.Speed, (p, value) => p.Attributes.Speed = value));
+                AddField(CreateIntBinding(col2, "\u529b\u91cf", p => p.Attributes.Strength, (p, value) => p.Attributes.Strength = value));
+                AddField(CreateIntBinding(col2, "\u4f53\u80fd", p => p.Attributes.Stamina, (p, value) => p.Attributes.Stamina = value));
             });
 
             CreateSection(parent, "\u8fdb\u653b\u503e\u5411", section =>
@@ -220,7 +245,7 @@ namespace BasketballManager.UI.Screens
                 var players = _playerRepository.GetPlayersByTeamId(team.Id);
                 foreach (var player in players)
                 {
-                    var label = $"#{player.JerseyNumber} {player.GetDisplayName()} ({player.Position}) \u603b\u8bc4 {player.Overall}";
+                    var label = $"#{player.JerseyNumber} {player.GetDisplayName()} | {player.Position} | OVR {player.Overall}";
                     CreateListButton(_rosterListContent, label, () => SelectPlayer(player.Id));
                 }
 
@@ -323,7 +348,7 @@ namespace BasketballManager.UI.Screens
             layout.childForceExpandHeight = false;
             section.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-            CreateHeader(section, title, 24);
+            CreateSectionTitle(section, title);
             addFields(section);
         }
 
@@ -334,12 +359,13 @@ namespace BasketballManager.UI.Screens
 
         private static string GetTeamTitle(Team team)
         {
+            var shortName = team.Name.Contains(" ") ? team.Name.Substring(team.Name.LastIndexOf(' ') + 1) : team.Name;
             if (team.Era > 0)
             {
-                return $"{team.Era} {team.Name}";
+                return $"{team.Era} {shortName}";
             }
 
-            return string.IsNullOrWhiteSpace(team.City) ? team.Name : $"{team.City} {team.Name}";
+            return shortName;
         }
 
         private IFieldBinding CreateTextBinding(RectTransform parent, string label, Func<Player, string> getter, Action<Player, string> setter)

@@ -109,8 +109,10 @@ namespace BasketballManager.UI.Screens
             foreach (var team in _teams)
             {
                 var t = team;
-                var btn = CreateButton(homeGroup, t.Name, () => SelectHomeTeam(t));
-                LayoutElementWithWidth(btn.gameObject, 120f);
+                var shortName = t.Name.Contains(" ") ? t.Name.Substring(t.Name.LastIndexOf(' ') + 1) : t.Name;
+                var label = t.Era > 0 ? $"{t.Era} {shortName}" : shortName;
+                var btn = CreateButton(homeGroup, label, () => SelectHomeTeam(t));
+                LayoutElementWithWidth(btn.gameObject, 180f);
                 _homeTeamButtons.Add(btn.GetComponent<Image>());
             }
 
@@ -131,8 +133,10 @@ namespace BasketballManager.UI.Screens
             foreach (var team in _teams)
             {
                 var t = team;
-                var btn = CreateButton(awayGroup, t.Name, () => SelectAwayTeam(t));
-                LayoutElementWithWidth(btn.gameObject, 120f);
+                var shortName = t.Name.Contains(" ") ? t.Name.Substring(t.Name.LastIndexOf(' ') + 1) : t.Name;
+                var label = t.Era > 0 ? $"{t.Era} {shortName}" : shortName;
+                var btn = CreateButton(awayGroup, label, () => SelectAwayTeam(t));
+                LayoutElementWithWidth(btn.gameObject, 180f);
                 _awayTeamButtons.Add(btn.GetComponent<Image>());
             }
 
@@ -241,10 +245,14 @@ namespace BasketballManager.UI.Screens
             var titleText = CreateHeader(scorePanel, $"{result.HomeTeamName} {result.HomeScore} - {result.AwayScore} {result.AwayTeamName}", 32);
             titleText.alignment = TextAnchor.MiddleCenter;
             
-            var quartersText = CreateBodyText(scorePanel, $"Q1: {result.HomeQuarterScores[0]}-{result.AwayQuarterScores[0]} | " +
-                                                          $"Q2: {result.HomeQuarterScores[1]}-{result.AwayQuarterScores[1]} | " +
-                                                          $"Q3: {result.HomeQuarterScores[2]}-{result.AwayQuarterScores[2]} | " +
-                                                          $"Q4: {result.HomeQuarterScores[3]}-{result.AwayQuarterScores[3]}");
+            var quartersBuilder = new System.Text.StringBuilder();
+            for (int i = 0; i < result.HomeQuarterScores.Count; i++)
+            {
+                var qName = i < 4 ? $"Q{i + 1}" : $"OT{i - 3}";
+                quartersBuilder.Append($"{qName}: {result.HomeQuarterScores[i]}-{result.AwayQuarterScores[i]}");
+                if (i < result.HomeQuarterScores.Count - 1) quartersBuilder.Append(" | ");
+            }
+            var quartersText = CreateBodyText(scorePanel, quartersBuilder.ToString());
             quartersText.alignment = TextAnchor.MiddleCenter;
             quartersText.color = new Color(0.7f, 0.7f, 0.7f);
 
@@ -253,12 +261,19 @@ namespace BasketballManager.UI.Screens
             var statsLayout = statsPanel.gameObject.AddComponent<VerticalLayoutGroup>();
             statsLayout.padding = new RectOffset(16, 16, 16, 16);
             statsLayout.spacing = 8f;
+            statsLayout.childForceExpandWidth = true;
+            statsLayout.childForceExpandHeight = false;
+            statsLayout.childControlHeight = true;
+            statsLayout.childControlWidth = true;
             CreateHeader(statsPanel, "\u7403\u961f\u7edf\u8ba1", 20); // 球队统计
 
             AddTeamStatRow(statsPanel, "PTS", result.HomeTeamStats.Points.ToString(), result.AwayTeamStats.Points.ToString());
             AddTeamStatRow(statsPanel, "FG", $"{result.HomeTeamStats.FieldGoalsMade}/{result.HomeTeamStats.FieldGoalsAttempted}", $"{result.AwayTeamStats.FieldGoalsMade}/{result.AwayTeamStats.FieldGoalsAttempted}");
+            AddTeamStatRow(statsPanel, "FG%", FormatPercent(result.HomeTeamStats.FieldGoalsMade, result.HomeTeamStats.FieldGoalsAttempted), FormatPercent(result.AwayTeamStats.FieldGoalsMade, result.AwayTeamStats.FieldGoalsAttempted));
             AddTeamStatRow(statsPanel, "3PT", $"{result.HomeTeamStats.ThreePointersMade}/{result.HomeTeamStats.ThreePointersAttempted}", $"{result.AwayTeamStats.ThreePointersMade}/{result.AwayTeamStats.ThreePointersAttempted}");
+            AddTeamStatRow(statsPanel, "3P%", FormatPercent(result.HomeTeamStats.ThreePointersMade, result.HomeTeamStats.ThreePointersAttempted), FormatPercent(result.AwayTeamStats.ThreePointersMade, result.AwayTeamStats.ThreePointersAttempted));
             AddTeamStatRow(statsPanel, "FT", $"{result.HomeTeamStats.FreeThrowsMade}/{result.HomeTeamStats.FreeThrowsAttempted}", $"{result.AwayTeamStats.FreeThrowsMade}/{result.AwayTeamStats.FreeThrowsAttempted}");
+            AddTeamStatRow(statsPanel, "FT%", FormatPercent(result.HomeTeamStats.FreeThrowsMade, result.HomeTeamStats.FreeThrowsAttempted), FormatPercent(result.AwayTeamStats.FreeThrowsMade, result.AwayTeamStats.FreeThrowsAttempted));
             AddTeamStatRow(statsPanel, "REB", result.HomeTeamStats.Rebounds.ToString(), result.AwayTeamStats.Rebounds.ToString());
             AddTeamStatRow(statsPanel, "AST", result.HomeTeamStats.Assists.ToString(), result.AwayTeamStats.Assists.ToString());
             AddTeamStatRow(statsPanel, "STL", result.HomeTeamStats.Steals.ToString(), result.AwayTeamStats.Steals.ToString());
@@ -268,68 +283,69 @@ namespace BasketballManager.UI.Screens
 
             // Player Stats
             var playerStatsRow = CreatePanel("PlayerStatsRow", content, Color.clear);
-            var psLayout = playerStatsRow.gameObject.AddComponent<HorizontalLayoutGroup>();
-            psLayout.spacing = 16f;
+            var psLayout = playerStatsRow.gameObject.AddComponent<VerticalLayoutGroup>();
+            psLayout.spacing = 30f;
             psLayout.childForceExpandWidth = true;
+            psLayout.childForceExpandHeight = false;
+            psLayout.childControlHeight = true;
+            psLayout.childControlWidth = true;
 
-            var homePSPanel = CreateColumnPanel(playerStatsRow, 0f);
+            var homePSPanel = CreatePanel("HomePSPanel", playerStatsRow, Color.clear);
+            var homePSLayout = homePSPanel.gameObject.AddComponent<VerticalLayoutGroup>();
+            homePSLayout.spacing = 8f;
+            homePSLayout.childForceExpandWidth = true;
+            homePSLayout.childForceExpandHeight = false;
+            homePSLayout.childControlHeight = true;
+            homePSLayout.childControlWidth = true;
             CreateHeader(homePSPanel, result.HomeTeamName, 20);
             RenderPlayerStatsTable(homePSPanel, result.HomePlayerStats);
 
-            var awayPSPanel = CreateColumnPanel(playerStatsRow, 0f);
+            var awayPSPanel = CreatePanel("AwayPSPanel", playerStatsRow, Color.clear);
+            var awayPSLayout = awayPSPanel.gameObject.AddComponent<VerticalLayoutGroup>();
+            awayPSLayout.spacing = 8f;
+            awayPSLayout.childForceExpandWidth = true;
+            awayPSLayout.childForceExpandHeight = false;
+            awayPSLayout.childControlHeight = true;
+            awayPSLayout.childControlWidth = true;
             CreateHeader(awayPSPanel, result.AwayTeamName, 20);
             RenderPlayerStatsTable(awayPSPanel, result.AwayPlayerStats);
         }
 
         private void AddTeamStatRow(RectTransform parent, string label, string homeVal, string awayVal)
         {
-            var row = CreatePanel("Row", parent, Color.clear);
-            var layout = row.gameObject.AddComponent<HorizontalLayoutGroup>();
-            layout.childForceExpandWidth = true;
-            LayoutElementWithHeight(row.gameObject, 24f);
-
-            var homeText = CreateBodyText(row, homeVal);
-            homeText.alignment = TextAnchor.MiddleCenter;
-
-            var labelText = CreateBodyText(row, label);
-            labelText.alignment = TextAnchor.MiddleCenter;
-            labelText.color = new Color(0.6f, 0.6f, 0.6f);
-
-            var awayText = CreateBodyText(row, awayVal);
-            awayText.alignment = TextAnchor.MiddleCenter;
+            CreateStatRow(parent, label, homeVal, awayVal);
         }
 
         private void RenderPlayerStatsTable(RectTransform parent, List<PlayerBoxScore> players)
         {
-            var headerRow = CreatePanel("Header", parent, new Color(0.15f, 0.16f, 0.20f));
-            var hLayout = headerRow.gameObject.AddComponent<HorizontalLayoutGroup>();
-            hLayout.padding = new RectOffset(8, 8, 4, 4);
-            LayoutElementWithHeight(headerRow.gameObject, 30f);
-
-            CreateTextWithWidth(headerRow, "Name", 120f);
-            CreateTextWithWidth(headerRow, "MIN", 40f);
-            CreateTextWithWidth(headerRow, "PTS", 40f);
-            CreateTextWithWidth(headerRow, "REB", 40f);
-            CreateTextWithWidth(headerRow, "AST", 40f);
-            CreateTextWithWidth(headerRow, "FG", 60f);
-            CreateTextWithWidth(headerRow, "3PT", 60f);
-            CreateTextWithWidth(headerRow, "FT", 60f);
-
-            foreach (var p in players.OrderByDescending(x => x.Points))
+            var columns = new List<(string, float)>
             {
-                var row = CreatePanel("Row", parent, Color.clear);
-                var rLayout = row.gameObject.AddComponent<HorizontalLayoutGroup>();
-                rLayout.padding = new RectOffset(8, 8, 4, 4);
-                LayoutElementWithHeight(row.gameObject, 28f);
+                ("Name", 200f),
+                ("MIN", 60f),
+                ("PTS", 60f),
+                ("REB", 60f),
+                ("AST", 60f),
+                ("FG", 80f),
+                ("3PT", 80f),
+                ("FT", 80f)
+            };
 
-                CreateTextWithWidth(row, p.PlayerName, 120f).fontSize = 16;
-                CreateTextWithWidth(row, p.Minutes.ToString(), 40f).fontSize = 16;
-                CreateTextWithWidth(row, p.Points.ToString(), 40f).fontSize = 16;
-                CreateTextWithWidth(row, p.Rebounds.ToString(), 40f).fontSize = 16;
-                CreateTextWithWidth(row, p.Assists.ToString(), 40f).fontSize = 16;
-                CreateTextWithWidth(row, $"{p.FieldGoalsMade}/{p.FieldGoalsAttempted}", 60f).fontSize = 16;
-                CreateTextWithWidth(row, $"{p.ThreePointersMade}/{p.ThreePointersAttempted}", 60f).fontSize = 16;
-                CreateTextWithWidth(row, $"{p.FreeThrowsMade}/{p.FreeThrowsAttempted}", 60f).fontSize = 16;
+            CreateTableHeaderRow(parent, columns);
+
+            foreach (var p in players.Where(x => x.Minutes > 0).OrderByDescending(x => x.Points))
+            {
+                var rowData = new List<(string, float)>
+                {
+                    (p.PlayerName, 200f),
+                    (p.Minutes.ToString(), 60f),
+                    (p.Points.ToString(), 60f),
+                    (p.Rebounds.ToString(), 60f),
+                    (p.Assists.ToString(), 60f),
+                    ($"{p.FieldGoalsMade}/{p.FieldGoalsAttempted}", 80f),
+                    ($"{p.ThreePointersMade}/{p.ThreePointersAttempted}", 80f),
+                    ($"{p.FreeThrowsMade}/{p.FreeThrowsAttempted}", 80f)
+                };
+                CreateTableDataRow(parent, rowData);
             }
         }
 
