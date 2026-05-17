@@ -217,7 +217,7 @@ LEFT JOIN player_tendencies t ON t.player_id = p.id
 
         private static Player MapPlayer(SqliteDataReader reader)
         {
-            return new Player
+            var player = new Player
             {
                 Id = ReadInt(reader["id"]),
                 TeamId = reader["team_id"].ToString() ?? string.Empty,
@@ -275,6 +275,9 @@ LEFT JOIN player_tendencies t ON t.player_id = p.id
                     DefensiveReboundTendency = ReadInt(reader["defensive_rebound_tendency"])
                 }
             };
+
+            player.Overall = RatingCalculator.CalculateOverall(player);
+            return player;
         }
 
         private static void AddPlayerParameters(SqliteCommand command, Player player)

@@ -11,6 +11,8 @@ namespace BasketballManager.Core.Services
         private const int DefaultMinOverall = 40;
         private const int DefaultMaxOverall = 99;
         private const string FormulaFileName = "rating_formula.json";
+        private const float EliteThreePointThreshold = 87f;
+        private const float EliteThreePointExtraMultiplier = 1.5f;
 
         private static readonly string[] FeatureNames =
         {
@@ -139,7 +141,15 @@ namespace BasketballManager.Core.Services
                     continue;
                 }
 
-                score += GetAttributeValue(attributes, weightEntry.feature) * weightEntry.value;
+                var attributeValue = GetAttributeValue(attributes, weightEntry.feature);
+                score += attributeValue * weightEntry.value;
+
+                if (string.Equals(weightEntry.feature, "three_point", StringComparison.OrdinalIgnoreCase)
+                    && attributeValue > EliteThreePointThreshold)
+                {
+                    var eliteRange = attributeValue - EliteThreePointThreshold;
+                    score += eliteRange * weightEntry.value * EliteThreePointExtraMultiplier;
+                }
             }
 
             return score;
