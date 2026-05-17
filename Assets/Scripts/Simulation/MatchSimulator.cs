@@ -264,7 +264,7 @@ namespace BasketballManager.Simulation
                 }
 
                 // 14. Assists
-                ResolveAssist(offense, initiator, finisher, shotType, true);
+                ResolveAssist(offense, attacker, finisher, shotType, true);
             }
             else
             {
