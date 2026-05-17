@@ -376,22 +376,51 @@ namespace BasketballManager.Simulation
 
         private ShotType SelectShotType(Player player)
         {
-            var t = player.Tendencies;
-            float total = t.ThreeTendency + t.TwoPointTendency + t.DriveTendency + t.PostTendency + t.CloseShotTendency;
+            float threeWeight = player.Tendencies.ThreeTendency * 1.65f + player.Attributes.ThreePoint * 0.65f;
+            float twoPointWeight = player.Tendencies.TwoPointTendency * 0.95f + player.Attributes.TwoPoint * 0.35f;
+            float driveWeight = player.Tendencies.DriveTendency * 1.00f + player.Attributes.Drive * 0.45f + player.Attributes.Layup * 0.25f;
+            float closeWeight = player.Tendencies.CloseShotTendency * 0.85f + player.Attributes.CloseShot * 0.35f;
+            float postWeight = player.Tendencies.PostTendency * 0.95f + player.Attributes.PostScoring * 0.45f + player.Attributes.Strength * 0.25f;
+
+            if (player.Tendencies.ThreeTendency >= 85)
+            {
+                threeWeight *= 1.35f;
+            }
+            else if (player.Tendencies.ThreeTendency >= 75)
+            {
+                threeWeight *= 1.20f;
+            }
+
+            if (player.Attributes.ThreePoint < 60)
+            {
+                threeWeight *= 0.65f;
+            }
+
+            if (player.Position == BasketballManager.Core.Enums.Position.C && player.Attributes.ThreePoint < 70)
+            {
+                threeWeight *= 0.45f;
+            }
+
+            if (player.Position == BasketballManager.Core.Enums.Position.PF && player.Attributes.ThreePoint < 65)
+            {
+                threeWeight *= 0.70f;
+            }
+
+            float total = threeWeight + twoPointWeight + driveWeight + closeWeight + postWeight;
             if (total == 0) return ShotType.TwoPoint;
 
             float roll = _random.Range(0f, total);
             
-            roll -= t.ThreeTendency;
+            roll -= threeWeight;
             if (roll <= 0) return ShotType.ThreePoint;
             
-            roll -= t.TwoPointTendency;
+            roll -= twoPointWeight;
             if (roll <= 0) return ShotType.TwoPoint;
             
-            roll -= t.DriveTendency;
+            roll -= driveWeight;
             if (roll <= 0) return ShotType.Layup;
             
-            roll -= t.PostTendency;
+            roll -= postWeight;
             if (roll <= 0) return ShotType.Post;
             
             return ShotType.CloseShot;
@@ -435,6 +464,18 @@ namespace BasketballManager.Simulation
                            defender.Attributes.DefensiveConsistency / 100f * 0.05f;
 
             chance = Mathf.Clamp(chance, 0.02f, 0.40f);
+
+            chance *= 0.72f;
+
+            if (shotType == ShotType.ThreePoint) chance *= 0.35f;
+            else if (shotType == ShotType.TwoPoint) chance *= 0.65f;
+            else if (shotType == ShotType.Layup) chance *= 0.90f;
+            else if (shotType == ShotType.CloseShot) chance *= 0.95f;
+            else if (shotType == ShotType.Post) chance *= 0.85f;
+
+            float drawFoulScore = attacker.Attributes.DrawFoul * 0.55f + attacker.Tendencies.DrawFoulTendency * 0.45f;
+            if (drawFoulScore < 70) chance *= 0.75f;
+            if (drawFoulScore >= 88) chance *= 1.10f;
 
             if (_random.Chance(chance))
             {
