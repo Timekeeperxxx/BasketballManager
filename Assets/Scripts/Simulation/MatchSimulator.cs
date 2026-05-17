@@ -668,6 +668,20 @@ namespace BasketballManager.Simulation
             };
         }
 
+        private float GetEliteRebounderBoost(Player player, bool defensive)
+        {
+            float reboundAttribute = defensive ? player.Attributes.DefensiveRebound : player.Attributes.OffensiveRebound;
+            float reboundTendency = defensive ? player.Tendencies.DefensiveReboundTendency : player.Tendencies.OffensiveReboundTendency;
+            float heightScore = Mathf.Clamp((player.HeightCm - 180f) / 50f * 100f, 0f, 100f);
+
+            float reboundCore = reboundAttribute * 0.55f + reboundTendency * 0.30f + player.Attributes.Strength * 0.10f + heightScore * 0.05f;
+
+            if (reboundCore >= 88f) return 1.35f;
+            if (reboundCore >= 82f) return 1.20f;
+            if (reboundCore >= 76f) return 1.10f;
+            return 1.0f;
+        }
+
         private void ResolveRebound(MatchTeamSnapshot offense, MatchTeamSnapshot defense)
         {
             float teamOffWeight = 0;
@@ -678,13 +692,15 @@ namespace BasketballManager.Simulation
             {
                 var p = offense.RotationPlayers[i];
                 int mins = offense.PlayerStatsById[p.Id].Minutes;
-                float w = p.Attributes.OffensiveRebound * 1.2f + p.Tendencies.OffensiveReboundTendency * 0.9f + p.Attributes.Strength * 0.45f + p.HeightCm * 0.20f + mins * 0.35f;
+                float w = p.Attributes.OffensiveRebound * 1.65f + p.Tendencies.OffensiveReboundTendency * 1.25f + p.Attributes.Strength * 0.35f + p.HeightCm * 0.16f + mins * 0.25f;
 
-                if (p.Position == BasketballManager.Core.Enums.Position.PG) w *= 0.65f;
-                else if (p.Position == BasketballManager.Core.Enums.Position.SG) w *= 0.75f;
-                else if (p.Position == BasketballManager.Core.Enums.Position.SF) w *= 0.95f;
-                else if (p.Position == BasketballManager.Core.Enums.Position.PF) w *= 1.15f;
-                else if (p.Position == BasketballManager.Core.Enums.Position.C) w *= 1.25f;
+                if (p.Position == BasketballManager.Core.Enums.Position.PG) w *= 0.55f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.SG) w *= 0.65f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.SF) w *= 0.90f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.PF) w *= 1.20f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.C) w *= 1.40f;
+
+                w *= GetEliteRebounderBoost(p, false);
 
                 offWeights[i] = w;
                 teamOffWeight += w;
@@ -695,13 +711,15 @@ namespace BasketballManager.Simulation
             {
                 var p = defense.RotationPlayers[i];
                 int mins = defense.PlayerStatsById[p.Id].Minutes;
-                float w = p.Attributes.DefensiveRebound * 1.2f + p.Tendencies.DefensiveReboundTendency * 0.9f + p.Attributes.Strength * 0.45f + p.HeightCm * 0.20f + mins * 0.35f;
+                float w = p.Attributes.DefensiveRebound * 1.65f + p.Tendencies.DefensiveReboundTendency * 1.25f + p.Attributes.Strength * 0.35f + p.HeightCm * 0.16f + mins * 0.25f;
 
-                if (p.Position == BasketballManager.Core.Enums.Position.PG) w *= 0.65f;
-                else if (p.Position == BasketballManager.Core.Enums.Position.SG) w *= 0.75f;
-                else if (p.Position == BasketballManager.Core.Enums.Position.SF) w *= 0.95f;
-                else if (p.Position == BasketballManager.Core.Enums.Position.PF) w *= 1.15f;
-                else if (p.Position == BasketballManager.Core.Enums.Position.C) w *= 1.25f;
+                if (p.Position == BasketballManager.Core.Enums.Position.PG) w *= 0.55f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.SG) w *= 0.65f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.SF) w *= 0.90f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.PF) w *= 1.20f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.C) w *= 1.40f;
+
+                w *= GetEliteRebounderBoost(p, true);
 
                 defWeights[i] = w;
                 teamDefWeight += w;
