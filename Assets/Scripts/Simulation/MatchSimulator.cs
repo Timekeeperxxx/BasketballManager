@@ -160,7 +160,7 @@ namespace BasketballManager.Simulation
         private void SimulatePossession(MatchTeamSnapshot offense, MatchTeamSnapshot defense)
         {
             var attacker = SelectInitiator(offense);
-            var defender = SelectRandomDefender(defense);
+            var defender = SelectMatchedDefender(defense, attacker, null);
 
             var offStats = offense.PlayerStatsById[attacker.Id];
             var defStats = defense.PlayerStatsById[defender.Id];
@@ -183,10 +183,11 @@ namespace BasketballManager.Simulation
             // Select Finisher (could be the same as initiator)
             var finisher = SelectFinisher(offense);
             var finStats = offense.PlayerStatsById[finisher.Id];
-            var finDefender = SelectRandomDefender(defense);
-            var finDefStats = defense.PlayerStatsById[finDefender.Id];
             
             var shotType = SelectShotType(finisher);
+
+            var finDefender = SelectMatchedDefender(defense, finisher, shotType);
+            var finDefStats = defense.PlayerStatsById[finDefender.Id];
 
             // 16. Blocks
             float blockChance = CalculateBlockChance(shotType, finDefender);
@@ -427,10 +428,76 @@ namespace BasketballManager.Simulation
             return candidates.Last();
         }
 
-        private Player SelectRandomDefender(MatchTeamSnapshot defense)
+        private Player SelectMatchedDefender(MatchTeamSnapshot defense, Player attacker, ShotType? shotType = null)
         {
             var rotation = defense.RotationPlayers;
-            return rotation[_random.Range(0, rotation.Count)];
+            
+            var primary = new List<BasketballManager.Core.Enums.Position>();
+            var secondary = new List<BasketballManager.Core.Enums.Position>();
+
+            switch (attacker.Position)
+            {
+                case BasketballManager.Core.Enums.Position.PG:
+                    primary.Add(BasketballManager.Core.Enums.Position.PG); primary.Add(BasketballManager.Core.Enums.Position.SG);
+                    secondary.Add(BasketballManager.Core.Enums.Position.SF);
+                    break;
+                case BasketballManager.Core.Enums.Position.SG:
+                    primary.Add(BasketballManager.Core.Enums.Position.SG); primary.Add(BasketballManager.Core.Enums.Position.PG); primary.Add(BasketballManager.Core.Enums.Position.SF);
+                    secondary.Add(BasketballManager.Core.Enums.Position.SF);
+                    break;
+                case BasketballManager.Core.Enums.Position.SF:
+                    primary.Add(BasketballManager.Core.Enums.Position.SF); primary.Add(BasketballManager.Core.Enums.Position.SG); primary.Add(BasketballManager.Core.Enums.Position.PF);
+                    secondary.Add(BasketballManager.Core.Enums.Position.PG); secondary.Add(BasketballManager.Core.Enums.Position.C);
+                    break;
+                case BasketballManager.Core.Enums.Position.PF:
+                    primary.Add(BasketballManager.Core.Enums.Position.PF); primary.Add(BasketballManager.Core.Enums.Position.C); primary.Add(BasketballManager.Core.Enums.Position.SF);
+                    secondary.Add(BasketballManager.Core.Enums.Position.SG);
+                    break;
+                case BasketballManager.Core.Enums.Position.C:
+                    primary.Add(BasketballManager.Core.Enums.Position.C); primary.Add(BasketballManager.Core.Enums.Position.PF);
+                    secondary.Add(BasketballManager.Core.Enums.Position.SF);
+                    break;
+            }
+
+            var candidates = rotation.Where(p => primary.Contains(p.Position)).ToList();
+            if (candidates.Count == 0) candidates = rotation.Where(p => secondary.Contains(p.Position)).ToList();
+            if (candidates.Count == 0) candidates = rotation;
+
+            var weights = new float[candidates.Count];
+            float totalWeight = 0;
+
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                var p = candidates[i];
+                int mins = defense.PlayerStatsById[p.Id].Minutes;
+                float w = 0;
+
+                if (shotType == ShotType.ThreePoint || shotType == ShotType.TwoPoint)
+                {
+                    w = mins * 0.5f + p.Attributes.PerimeterDefense * 1.2f + p.Attributes.DefensiveConsistency * 0.6f + p.Attributes.Steal * 0.3f;
+                }
+                else if (shotType == ShotType.Layup || shotType == ShotType.CloseShot || shotType == ShotType.Post)
+                {
+                    w = mins * 0.5f + p.Attributes.InteriorDefense * 1.1f + p.Attributes.Block * 0.8f + p.Attributes.Strength * 0.4f + p.Attributes.DefensiveConsistency * 0.6f;
+                }
+                else
+                {
+                    w = mins * 0.5f + p.Attributes.PerimeterDefense * 0.8f + p.Attributes.Steal * 0.8f + p.Attributes.DefensiveConsistency * 0.5f;
+                }
+
+                weights[i] = w;
+                totalWeight += w;
+            }
+
+            if (totalWeight <= 0) return candidates.First();
+
+            float roll = _random.Range(0f, totalWeight);
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                roll -= weights[i];
+                if (roll <= 0) return candidates[i];
+            }
+            return candidates.Last();
         }
 
         private ShotType SelectShotType(Player player)
@@ -603,25 +670,81 @@ namespace BasketballManager.Simulation
 
         private void ResolveRebound(MatchTeamSnapshot offense, MatchTeamSnapshot defense)
         {
-            var offRebounder = SelectRandomDefender(offense); // just pick a random from floor
-            var defRebounder = SelectRandomDefender(defense);
+            float teamOffWeight = 0;
+            float teamDefWeight = 0;
 
-            float offWeight = offRebounder.Attributes.OffensiveRebound + offRebounder.Tendencies.OffensiveReboundTendency + offRebounder.Attributes.Strength + offRebounder.HeightCm;
-            float defWeight = defRebounder.Attributes.DefensiveRebound + defRebounder.Tendencies.DefensiveReboundTendency + defRebounder.Attributes.Strength + defRebounder.HeightCm;
-
-            float offTotal = 0.35f * offWeight;
-            float defTotal = 0.65f * defWeight;
-
-            if (_random.Range(0f, offTotal + defTotal) < offTotal)
+            var offWeights = new float[offense.RotationPlayers.Count];
+            for (int i = 0; i < offense.RotationPlayers.Count; i++)
             {
-                // Offensive Rebound
-                offense.PlayerStatsById[offRebounder.Id].OffensiveRebounds++;
+                var p = offense.RotationPlayers[i];
+                int mins = offense.PlayerStatsById[p.Id].Minutes;
+                float w = p.Attributes.OffensiveRebound * 1.2f + p.Tendencies.OffensiveReboundTendency * 0.9f + p.Attributes.Strength * 0.45f + p.HeightCm * 0.20f + mins * 0.35f;
+
+                if (p.Position == BasketballManager.Core.Enums.Position.PG) w *= 0.65f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.SG) w *= 0.75f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.SF) w *= 0.95f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.PF) w *= 1.15f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.C) w *= 1.25f;
+
+                offWeights[i] = w;
+                teamOffWeight += w;
+            }
+
+            var defWeights = new float[defense.RotationPlayers.Count];
+            for (int i = 0; i < defense.RotationPlayers.Count; i++)
+            {
+                var p = defense.RotationPlayers[i];
+                int mins = defense.PlayerStatsById[p.Id].Minutes;
+                float w = p.Attributes.DefensiveRebound * 1.2f + p.Tendencies.DefensiveReboundTendency * 0.9f + p.Attributes.Strength * 0.45f + p.HeightCm * 0.20f + mins * 0.35f;
+
+                if (p.Position == BasketballManager.Core.Enums.Position.PG) w *= 0.65f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.SG) w *= 0.75f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.SF) w *= 0.95f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.PF) w *= 1.15f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.C) w *= 1.25f;
+
+                defWeights[i] = w;
+                teamDefWeight += w;
+            }
+
+            if (teamOffWeight + teamDefWeight == 0) return;
+
+            float offChance = teamOffWeight / (teamOffWeight + teamDefWeight);
+            offChance *= 0.58f;
+            offChance = Mathf.Clamp(offChance, 0.18f, 0.38f);
+
+            bool isOffensive = _random.Chance(offChance);
+
+            if (isOffensive)
+            {
+                float roll = _random.Range(0f, teamOffWeight);
+                Player rebounder = offense.RotationPlayers.Last();
+                for (int i = 0; i < offense.RotationPlayers.Count; i++)
+                {
+                    roll -= offWeights[i];
+                    if (roll <= 0)
+                    {
+                        rebounder = offense.RotationPlayers[i];
+                        break;
+                    }
+                }
+                offense.PlayerStatsById[rebounder.Id].OffensiveRebounds++;
                 offense.TeamStats.OffensiveRebounds++;
             }
             else
             {
-                // Defensive Rebound
-                defense.PlayerStatsById[defRebounder.Id].DefensiveRebounds++;
+                float roll = _random.Range(0f, teamDefWeight);
+                Player rebounder = defense.RotationPlayers.Last();
+                for (int i = 0; i < defense.RotationPlayers.Count; i++)
+                {
+                    roll -= defWeights[i];
+                    if (roll <= 0)
+                    {
+                        rebounder = defense.RotationPlayers[i];
+                        break;
+                    }
+                }
+                defense.PlayerStatsById[rebounder.Id].DefensiveRebounds++;
                 defense.TeamStats.DefensiveRebounds++;
             }
         }
