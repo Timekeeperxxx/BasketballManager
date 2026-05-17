@@ -10,5 +10,6 @@ namespace BasketballManager.Core.Models
         public TeamBoxScore TeamStats { get; set; } = new TeamBoxScore();
         public Dictionary<int, PlayerBoxScore> PlayerStatsById { get; set; } = new Dictionary<int, PlayerBoxScore>();
         public Dictionary<int, int> OffensiveRoleRankByPlayerId { get; set; } = new Dictionary<int, int>();
+        public Dictionary<int, int> PlaymakerRoleRankByPlayerId { get; set; } = new Dictionary<int, int>();
     }
 }

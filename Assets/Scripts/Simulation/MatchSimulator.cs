@@ -155,6 +155,22 @@ namespace BasketballManager.Simulation
                     }
                 }
             }
+
+            var playmakerSorted = rotation.OrderByDescending(p =>
+            {
+                int mins = snapshot.PlayerStatsById[p.Id].Minutes;
+                return p.Attributes.Passing * 0.38f +
+                       p.Tendencies.PassTendency * 0.30f +
+                       p.Attributes.BallHandle * 0.14f +
+                       p.Attributes.OffensiveConsistency * 0.08f +
+                       mins * 0.07f +
+                       p.Tendencies.ShotTendency * 0.03f;
+            }).ToList();
+
+            for (int i = 0; i < playmakerSorted.Count; i++)
+            {
+                snapshot.PlaymakerRoleRankByPlayerId[playmakerSorted[i].Id] = i + 1;
+            }
         }
 
         private void SimulatePossession(MatchTeamSnapshot offense, MatchTeamSnapshot defense)
@@ -730,6 +746,17 @@ namespace BasketballManager.Simulation
             return penalty;
         }
 
+        private float GetPlaymakerAssistBoost(Player candidate, MatchTeamSnapshot offense)
+        {
+            int rank = offense.PlaymakerRoleRankByPlayerId.TryGetValue(candidate.Id, out var r) ? r : 99;
+
+            if (rank == 1) return 2.00f;
+            if (rank == 2) return 1.45f;
+            if (rank == 3) return 1.18f;
+
+            return 0.82f;
+        }
+
         private Player SelectAssisterCandidate(MatchTeamSnapshot offense, Player initiator, Player finisher, ShotType shotType)
         {
             var candidates = offense.RotationPlayers.Where(p => p.Id != finisher.Id).ToList();
@@ -743,31 +770,52 @@ namespace BasketballManager.Simulation
                 var candidate = candidates[i];
                 int mins = offense.PlayerStatsById[candidate.Id].Minutes;
 
-                float w = mins * 0.55f +
-                          candidate.Attributes.Passing * 1.65f +
-                          candidate.Tendencies.PassTendency * 1.25f +
-                          candidate.Attributes.BallHandle * 0.35f +
-                          candidate.Attributes.OffensiveConsistency * 0.25f;
+                float w = mins * 0.45f +
+                          candidate.Attributes.Passing * 2.10f +
+                          candidate.Tendencies.PassTendency * 1.70f +
+                          candidate.Attributes.BallHandle * 0.30f +
+                          candidate.Attributes.OffensiveConsistency * 0.20f;
 
-                if (candidate.Id == initiator.Id) w *= 1.35f;
+                w *= GetPlaymakerAssistBoost(candidate, offense);
+
+                if (candidate.Id == initiator.Id)
+                {
+                    w *= 1.75f;
+                    int rank = offense.PlaymakerRoleRankByPlayerId.TryGetValue(candidate.Id, out var r) ? r : 99;
+                    if (rank <= 2) w *= 1.20f;
+                }
+
                 if (candidate.Position == BasketballManager.Core.Enums.Position.PG) w *= 1.10f;
 
                 if (candidate.Position == BasketballManager.Core.Enums.Position.C && 
                     candidate.Attributes.Passing >= 85 && 
+                    candidate.Tendencies.PassTendency >= 80 &&
                     candidate.Attributes.OffensiveConsistency >= 82)
                 {
-                    w *= 1.25f;
+                    w *= 1.45f;
                 }
 
                 if (candidate.Position == BasketballManager.Core.Enums.Position.PF && 
                     candidate.Attributes.Passing >= 78 && 
                     candidate.Tendencies.PassTendency >= 75)
                 {
-                    w *= 1.15f;
+                    w *= 1.25f;
                 }
 
-                if (mins < 12) w *= 0.45f;
-                else if (mins < 18) w *= 0.70f;
+                if (candidate.Id != initiator.Id)
+                {
+                    if (candidate.Attributes.Passing < 65 && candidate.Tendencies.PassTendency < 65 && candidate.Attributes.BallHandle < 70)
+                    {
+                        w *= 0.55f;
+                    }
+                    else if (candidate.Attributes.ThreePoint >= 80 && candidate.Tendencies.ThreeTendency >= 80 && candidate.Tendencies.PassTendency < 65)
+                    {
+                        w *= 0.60f;
+                    }
+                }
+
+                if (mins < 12) w *= 0.35f;
+                else if (mins < 18) w *= 0.65f;
 
                 weights[i] = w;
                 totalWeight += w;
