@@ -143,12 +143,17 @@ namespace BasketballManager.UI.Screens
             var simBtnRow = CreatePanel("SimBtnRow", settingsPanel, Color.clear);
             var simLayout = simBtnRow.gameObject.AddComponent<HorizontalLayoutGroup>();
             simLayout.childAlignment = TextAnchor.MiddleRight;
+            simLayout.spacing = 16f;
             simLayout.childForceExpandWidth = true;
             simLayout.childForceExpandHeight = false;
             simLayout.childControlHeight = true;
             simLayout.childControlWidth = true;
             LayoutElementWithHeight(simBtnRow.gameObject, 50f);
             
+            var batchSimBtn = CreateButton(simBtnRow, "\u25b6 \u6279\u91cf\u6d4b\u8bd5100\u573a", SimulateBatch); // ▶ 批量测试100场
+            batchSimBtn.GetComponent<Image>().color = new Color(0.81f, 0.43f, 0.23f); // Orange
+            LayoutElementWithWidth(batchSimBtn.gameObject, 180f);
+
             var simBtn = CreateButton(simBtnRow, "\u25b6 \u6a21\u62df\u6bd4\u8d5b", SimulateMatch); // ▶ 模拟比赛
             simBtn.GetComponent<Image>().color = new Color(0.81f, 0.23f, 0.23f); // Reddish to stand out
             LayoutElementWithWidth(simBtn.gameObject, 160f);
@@ -201,6 +206,22 @@ namespace BasketballManager.UI.Screens
             {
                 ClearChildren(_resultsPanel);
             }
+        }
+
+        private void SimulateBatch()
+        {
+            if (_homeTeam == null || _awayTeam == null) return;
+            if (_homeTeam.Id == _awayTeam.Id) return;
+
+            ClearResults();
+
+            var homePlayers = _playerRepository.GetPlayersByTeamId(_homeTeam.Id);
+            var awayPlayers = _playerRepository.GetPlayersByTeamId(_awayTeam.Id);
+
+            var runner = new MatchSimulationBatchRunner();
+            var report = runner.Run(_homeTeam, homePlayers, _awayTeam, awayPlayers, 100, 10000);
+
+            RenderBatchReport(report);
         }
 
         private void SimulateMatch()
@@ -354,6 +375,177 @@ namespace BasketballManager.UI.Screens
             var t = CreateBodyText(parent, text);
             LayoutElementWithWidth(t.gameObject, width);
             return t;
+        }
+        private void RenderBatchPlayerStatsTable(RectTransform parent, List<PlayerAverageStatLine> players)
+        {
+            var columns = new List<(string, float)>
+            {
+                ("Name", 200f),
+                ("PTS", 60f),
+                ("REB", 60f),
+                ("AST", 60f),
+                ("FGA", 60f),
+                ("3PA", 60f),
+                ("FTA", 60f)
+            };
+
+            CreateTableHeaderRow(parent, columns);
+
+            foreach (var p in players)
+            {
+                var rowData = new List<(string, float)>
+                {
+                    (p.PlayerName, 200f),
+                    (p.Points.ToString("F1"), 60f),
+                    (p.Rebounds.ToString("F1"), 60f),
+                    (p.Assists.ToString("F1"), 60f),
+                    (p.FieldGoalAttempts.ToString("F1"), 60f),
+                    (p.ThreePointAttempts.ToString("F1"), 60f),
+                    (p.FreeThrowAttempts.ToString("F1"), 60f)
+                };
+                CreateTableDataRow(parent, rowData);
+            }
+        }
+
+        private void RenderBatchReport(MatchSimulationReport report)
+        {
+            var scroll = CreateScrollView(_resultsPanel, out var content);
+            var scrollLayout = scroll.gameObject.AddComponent<LayoutElement>();
+            scrollLayout.flexibleHeight = 1f;
+            scrollLayout.flexibleWidth = 1f;
+
+            var layout = content.gameObject.AddComponent<VerticalLayoutGroup>();
+            layout.spacing = 20f;
+            layout.padding = new RectOffset(10, 10, 10, 10);
+            layout.childForceExpandWidth = true;
+            layout.childForceExpandHeight = false;
+            layout.childControlHeight = true;
+            layout.childControlWidth = true;
+            content.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            var scorePanel = CreatePanel("ScorePanel", content, new Color(0.13f, 0.14f, 0.18f));
+            var scoreLayout = scorePanel.gameObject.AddComponent<VerticalLayoutGroup>();
+            scoreLayout.padding = new RectOffset(20, 20, 20, 20);
+            scoreLayout.spacing = 10f;
+            scoreLayout.childForceExpandWidth = true;
+            scoreLayout.childForceExpandHeight = false;
+            scoreLayout.childControlHeight = true;
+            scoreLayout.childControlWidth = true;
+
+            var titleText = CreateHeader(scorePanel, $"{report.HomeTeamName} vs {report.AwayTeamName}", 28);
+            titleText.alignment = TextAnchor.MiddleCenter;
+            
+            var gamesText = CreateBodyText(scorePanel, $"Games: {report.Games}");
+            gamesText.alignment = TextAnchor.MiddleCenter;
+            gamesText.color = new Color(0.7f, 0.7f, 0.7f);
+
+            var homeWinPct = FormatPercent(report.HomeWins, report.Games);
+            var awayWinPct = FormatPercent(report.AwayWins, report.Games);
+            var winsText = CreateBodyText(scorePanel, $"{report.HomeTeamName}: {report.HomeWins}\u80dc ({homeWinPct}) | {report.AwayTeamName}: {report.AwayWins}\u80dc ({awayWinPct})");
+            winsText.alignment = TextAnchor.MiddleCenter;
+            winsText.fontSize = 24;
+
+            var avgScoreText = CreateBodyText(scorePanel, $"{report.HomeTeamName} {report.AverageHomeScore:F1} - {report.AverageAwayScore:F1} {report.AwayTeamName}");
+            avgScoreText.alignment = TextAnchor.MiddleCenter;
+            avgScoreText.fontSize = 24;
+
+            CheckWarnings(scorePanel, report);
+
+            // Team Stats Summary
+            var statsPanel = CreatePanel("TeamStats", content, new Color(0.11f, 0.12f, 0.16f));
+            var statsLayout = statsPanel.gameObject.AddComponent<VerticalLayoutGroup>();
+            statsLayout.padding = new RectOffset(16, 16, 16, 16);
+            statsLayout.spacing = 8f;
+            statsLayout.childForceExpandWidth = true;
+            statsLayout.childForceExpandHeight = false;
+            statsLayout.childControlHeight = true;
+            statsLayout.childControlWidth = true;
+            CreateHeader(statsPanel, "\u6838\u5fc3\u6548\u7387", 20); // 核心效率
+
+            AddTeamStatRow(statsPanel, "FG%", $"{(report.HomeFieldGoalPercent * 100):F1}%", $"{(report.AwayFieldGoalPercent * 100):F1}%");
+            AddTeamStatRow(statsPanel, "3P%", $"{(report.HomeThreePointPercent * 100):F1}%", $"{(report.AwayThreePointPercent * 100):F1}%");
+            AddTeamStatRow(statsPanel, "FT%", $"{(report.HomeFreeThrowPercent * 100):F1}%", $"{(report.AwayFreeThrowPercent * 100):F1}%");
+            AddTeamStatRow(statsPanel, "3PA", report.HomeThreePointAttempts.ToString("F1"), report.AwayThreePointAttempts.ToString("F1"));
+            AddTeamStatRow(statsPanel, "FTA", report.HomeFreeThrowAttempts.ToString("F1"), report.AwayFreeThrowAttempts.ToString("F1"));
+            AddTeamStatRow(statsPanel, "REB", report.HomeRebounds.ToString("F1"), report.AwayRebounds.ToString("F1"));
+            AddTeamStatRow(statsPanel, "AST", report.HomeAssists.ToString("F1"), report.AwayAssists.ToString("F1"));
+            AddTeamStatRow(statsPanel, "TOV", report.HomeTurnovers.ToString("F1"), report.AwayTurnovers.ToString("F1"));
+            AddTeamStatRow(statsPanel, "PF", report.HomeFouls.ToString("F1"), report.AwayFouls.ToString("F1"));
+
+            // Player Stats
+            var playerStatsRow = CreatePanel("PlayerStatsRow", content, Color.clear);
+            var psLayout = playerStatsRow.gameObject.AddComponent<VerticalLayoutGroup>();
+            psLayout.spacing = 30f;
+            psLayout.childForceExpandWidth = true;
+            psLayout.childForceExpandHeight = false;
+            psLayout.childControlHeight = true;
+            psLayout.childControlWidth = true;
+
+            var homePSPanel = CreatePanel("HomePSPanel", playerStatsRow, Color.clear);
+            var homePSLayout = homePSPanel.gameObject.AddComponent<VerticalLayoutGroup>();
+            homePSLayout.spacing = 8f;
+            homePSLayout.childForceExpandWidth = true;
+            homePSLayout.childForceExpandHeight = false;
+            homePSLayout.childControlHeight = true;
+            homePSLayout.childControlWidth = true;
+            CreateHeader(homePSPanel, $"{report.HomeTeamName} Top Scorers", 20);
+            RenderBatchPlayerStatsTable(homePSPanel, report.TopHomeScorers);
+
+            var awayPSPanel = CreatePanel("AwayPSPanel", playerStatsRow, Color.clear);
+            var awayPSLayout = awayPSPanel.gameObject.AddComponent<VerticalLayoutGroup>();
+            awayPSLayout.spacing = 8f;
+            awayPSLayout.childForceExpandWidth = true;
+            awayPSLayout.childForceExpandHeight = false;
+            awayPSLayout.childControlHeight = true;
+            awayPSLayout.childControlWidth = true;
+            CreateHeader(awayPSPanel, $"{report.AwayTeamName} Top Scorers", 20);
+            RenderBatchPlayerStatsTable(awayPSPanel, report.TopAwayScorers);
+        }
+
+        private void CheckWarnings(RectTransform parent, MatchSimulationReport report)
+        {
+            var warnings = new List<string>();
+
+            if (report.AverageTotalScore < 180 || report.AverageTotalScore > 270)
+                warnings.Add($"[WARN] AverageTotalScore ({report.AverageTotalScore:F1}) \u5f02\u5e38\uff08\u6b63\u5e38180-270\uff09");
+            
+            CheckPercentWarning(warnings, "FG%", report.HomeFieldGoalPercent, report.AwayFieldGoalPercent, 0.38f, 0.58f);
+            CheckPercentWarning(warnings, "3P%", report.HomeThreePointPercent, report.AwayThreePointPercent, 0.25f, 0.48f);
+            CheckPercentWarning(warnings, "FT%", report.HomeFreeThrowPercent, report.AwayFreeThrowPercent, 0.60f, 0.95f);
+            
+            CheckStatWarning(warnings, "TOV", report.HomeTurnovers, report.AwayTurnovers, 5f, 25f);
+            CheckStatWarning(warnings, "FTA", report.HomeFreeThrowAttempts, report.AwayFreeThrowAttempts, 5f, 40f);
+            CheckStatWarning(warnings, "REB", report.HomeRebounds, report.AwayRebounds, 25f, 70f);
+
+            if (warnings.Count > 0)
+            {
+                var warningPanel = CreatePanel("Warnings", parent, new Color(0.35f, 0.1f, 0.1f));
+                var wLayout = warningPanel.gameObject.AddComponent<VerticalLayoutGroup>();
+                wLayout.padding = new RectOffset(10, 10, 10, 10);
+                wLayout.childForceExpandWidth = true;
+                wLayout.childForceExpandHeight = false;
+                wLayout.childControlHeight = true;
+                wLayout.childControlWidth = true;
+
+                foreach (var w in warnings)
+                {
+                    var text = CreateBodyText(warningPanel, w);
+                    text.color = new Color(1f, 0.6f, 0.6f);
+                    text.alignment = TextAnchor.MiddleCenter;
+                }
+            }
+        }
+
+        private void CheckPercentWarning(List<string> warnings, string label, float homePct, float awayPct, float min, float max)
+        {
+            if (homePct < min || homePct > max) warnings.Add($"[WARN] Home {label} ({(homePct*100):F1}%) \u5f02\u5e38\uff08\u6b63\u5e38{(min*100):F0}-{(max*100):F0}%\uff09");
+            if (awayPct < min || awayPct > max) warnings.Add($"[WARN] Away {label} ({(awayPct*100):F1}%) \u5f02\u5e38\uff08\u6b63\u5e38{(min*100):F0}-{(max*100):F0}%\uff09");
+        }
+
+        private void CheckStatWarning(List<string> warnings, string label, float homeStat, float awayStat, float min, float max)
+        {
+            if (homeStat < min || homeStat > max) warnings.Add($"[WARN] Home {label} ({homeStat:F1}) \u5f02\u5e38\uff08\u6b63\u5e38{min:F0}-{max:F0}\uff09");
+            if (awayStat < min || awayStat > max) warnings.Add($"[WARN] Away {label} ({awayStat:F1}) \u5f02\u5e38\uff08\u6b63\u5e38{min:F0}-{max:F0}\uff09");
         }
     }
 }
