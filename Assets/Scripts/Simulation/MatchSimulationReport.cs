@@ -9,8 +9,11 @@ namespace BasketballManager.Simulation
         public float Points { get; set; }
         public float Rebounds { get; set; }
         public float Assists { get; set; }
+        public float FieldGoalsMade { get; set; }
         public float FieldGoalAttempts { get; set; }
+        public float ThreePointersMade { get; set; }
         public float ThreePointAttempts { get; set; }
+        public float FreeThrowsMade { get; set; }
         public float FreeThrowAttempts { get; set; }
     }
 

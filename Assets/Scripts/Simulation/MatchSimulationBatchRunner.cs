@@ -104,8 +104,11 @@ namespace BasketballManager.Simulation
                         statLine.Points += ps.Points;
                         statLine.Rebounds += ps.Rebounds;
                         statLine.Assists += ps.Assists;
+                        statLine.FieldGoalsMade += ps.FieldGoalsMade;
                         statLine.FieldGoalAttempts += ps.FieldGoalsAttempted;
+                        statLine.ThreePointersMade += ps.ThreePointersMade;
                         statLine.ThreePointAttempts += ps.ThreePointersAttempted;
+                        statLine.FreeThrowsMade += ps.FreeThrowsMade;
                         statLine.FreeThrowAttempts += ps.FreeThrowsAttempted;
                     }
                 }
@@ -117,8 +120,11 @@ namespace BasketballManager.Simulation
                         statLine.Points += ps.Points;
                         statLine.Rebounds += ps.Rebounds;
                         statLine.Assists += ps.Assists;
+                        statLine.FieldGoalsMade += ps.FieldGoalsMade;
                         statLine.FieldGoalAttempts += ps.FieldGoalsAttempted;
+                        statLine.ThreePointersMade += ps.ThreePointersMade;
                         statLine.ThreePointAttempts += ps.ThreePointersAttempted;
+                        statLine.FreeThrowsMade += ps.FreeThrowsMade;
                         statLine.FreeThrowAttempts += ps.FreeThrowsAttempted;
                     }
                 }
@@ -154,8 +160,11 @@ namespace BasketballManager.Simulation
                 ps.Points /= games;
                 ps.Rebounds /= games;
                 ps.Assists /= games;
+                ps.FieldGoalsMade /= games;
                 ps.FieldGoalAttempts /= games;
+                ps.ThreePointersMade /= games;
                 ps.ThreePointAttempts /= games;
+                ps.FreeThrowsMade /= games;
                 ps.FreeThrowAttempts /= games;
             }
 
@@ -164,13 +173,16 @@ namespace BasketballManager.Simulation
                 ps.Points /= games;
                 ps.Rebounds /= games;
                 ps.Assists /= games;
+                ps.FieldGoalsMade /= games;
                 ps.FieldGoalAttempts /= games;
+                ps.ThreePointersMade /= games;
                 ps.ThreePointAttempts /= games;
+                ps.FreeThrowsMade /= games;
                 ps.FreeThrowAttempts /= games;
             }
 
-            report.TopHomeScorers = homePlayerStats.Values.OrderByDescending(p => p.Points).Take(5).ToList();
-            report.TopAwayScorers = awayPlayerStats.Values.OrderByDescending(p => p.Points).Take(5).ToList();
+            report.TopHomeScorers = homePlayerStats.Values.Where(p => p.FieldGoalAttempts > 0 || p.Points > 0 || p.Rebounds > 0 || p.Assists > 0).OrderByDescending(p => p.Points).ToList();
+            report.TopAwayScorers = awayPlayerStats.Values.Where(p => p.FieldGoalAttempts > 0 || p.Points > 0 || p.Rebounds > 0 || p.Assists > 0).OrderByDescending(p => p.Points).ToList();
 
             return report;
         }

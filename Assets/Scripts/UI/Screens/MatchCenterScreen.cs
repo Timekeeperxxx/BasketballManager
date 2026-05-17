@@ -380,28 +380,37 @@ namespace BasketballManager.UI.Screens
         {
             var columns = new List<(string, float)>
             {
-                ("Name", 200f),
-                ("PTS", 60f),
-                ("REB", 60f),
-                ("AST", 60f),
-                ("FGA", 60f),
-                ("3PA", 60f),
-                ("FTA", 60f)
+                ("Name", 180f),
+                ("PTS", 50f),
+                ("REB", 50f),
+                ("AST", 50f),
+                ("FG", 130f),
+                ("3PT", 130f),
+                ("FT", 130f)
             };
 
             CreateTableHeaderRow(parent, columns);
 
             foreach (var p in players)
             {
+                string fgPct = p.FieldGoalAttempts > 0 ? (p.FieldGoalsMade / p.FieldGoalAttempts * 100).ToString("F1") + "%" : "-";
+                string fg = $"{p.FieldGoalsMade:F1}/{p.FieldGoalAttempts:F1} ({fgPct})";
+
+                string tpPct = p.ThreePointAttempts > 0 ? (p.ThreePointersMade / p.ThreePointAttempts * 100).ToString("F1") + "%" : "-";
+                string tp = $"{p.ThreePointersMade:F1}/{p.ThreePointAttempts:F1} ({tpPct})";
+
+                string ftPct = p.FreeThrowAttempts > 0 ? (p.FreeThrowsMade / p.FreeThrowAttempts * 100).ToString("F1") + "%" : "-";
+                string ft = $"{p.FreeThrowsMade:F1}/{p.FreeThrowAttempts:F1} ({ftPct})";
+
                 var rowData = new List<(string, float)>
                 {
-                    (p.PlayerName, 200f),
-                    (p.Points.ToString("F1"), 60f),
-                    (p.Rebounds.ToString("F1"), 60f),
-                    (p.Assists.ToString("F1"), 60f),
-                    (p.FieldGoalAttempts.ToString("F1"), 60f),
-                    (p.ThreePointAttempts.ToString("F1"), 60f),
-                    (p.FreeThrowAttempts.ToString("F1"), 60f)
+                    (p.PlayerName, 180f),
+                    (p.Points.ToString("F1"), 50f),
+                    (p.Rebounds.ToString("F1"), 50f),
+                    (p.Assists.ToString("F1"), 50f),
+                    (fg, 130f),
+                    (tp, 130f),
+                    (ft, 130f)
                 };
                 CreateTableDataRow(parent, rowData);
             }
@@ -488,7 +497,7 @@ namespace BasketballManager.UI.Screens
             homePSLayout.childForceExpandHeight = false;
             homePSLayout.childControlHeight = true;
             homePSLayout.childControlWidth = true;
-            CreateHeader(homePSPanel, $"{report.HomeTeamName} Top Scorers", 20);
+            CreateHeader(homePSPanel, $"{report.HomeTeamName} Rotation Players", 20);
             RenderBatchPlayerStatsTable(homePSPanel, report.TopHomeScorers);
 
             var awayPSPanel = CreatePanel("AwayPSPanel", playerStatsRow, Color.clear);
@@ -498,7 +507,7 @@ namespace BasketballManager.UI.Screens
             awayPSLayout.childForceExpandHeight = false;
             awayPSLayout.childControlHeight = true;
             awayPSLayout.childControlWidth = true;
-            CreateHeader(awayPSPanel, $"{report.AwayTeamName} Top Scorers", 20);
+            CreateHeader(awayPSPanel, $"{report.AwayTeamName} Rotation Players", 20);
             RenderBatchPlayerStatsTable(awayPSPanel, report.TopAwayScorers);
         }
 
