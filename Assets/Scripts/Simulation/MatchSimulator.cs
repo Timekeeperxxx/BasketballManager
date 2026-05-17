@@ -81,11 +81,12 @@ namespace BasketballManager.Simulation
             snapshot.RotationPlayers = sortedPlayers.Take(Math.Min(10, sortedPlayers.Count)).ToList();
 
             var roleSorted = snapshot.RotationPlayers.OrderByDescending(p => 
-                p.Tendencies.ShotTendency * 0.45f + 
-                p.Attributes.OffensiveConsistency * 0.25f + 
+                p.Tendencies.ShotTendency * 0.42f + 
+                p.Attributes.OffensiveConsistency * 0.30f + 
                 p.Attributes.BallHandle * 0.10f + 
-                p.Attributes.Drive * 0.10f + 
-                p.Attributes.DrawFoul * 0.10f).ToList();
+                p.Attributes.Drive * 0.08f + 
+                p.Attributes.DrawFoul * 0.07f + 
+                p.Attributes.Passing * 0.03f).ToList();
 
             for (int i = 0; i < roleSorted.Count; i++)
             {
@@ -297,19 +298,22 @@ namespace BasketballManager.Simulation
 
         private float GetOffensiveRoleBoost(Player player, MatchTeamSnapshot team)
         {
-            if (!team.OffensiveRoleRankByPlayerId.TryGetValue(player.Id, out int roleRank)) return 1.0f;
-            int mins = team.PlayerStatsById[player.Id].Minutes;
+            int roleRank = team.OffensiveRoleRankByPlayerId.TryGetValue(player.Id, out var rank) ? rank : 99;
+            int minutes = team.PlayerStatsById[player.Id].Minutes;
 
-            if (roleRank == 1) return 1.0f;
+            if (roleRank == 1)
+            {
+                return 1.05f;
+            }
             if (roleRank == 2)
             {
-                if (player.Tendencies.ShotTendency >= 70 && mins >= 28) return 1.22f;
-                return 1.10f;
+                if (player.Tendencies.ShotTendency >= 70 && minutes >= 28) return 1.15f;
+                return 1.08f;
             }
             if (roleRank == 3)
             {
-                if (player.Tendencies.ShotTendency >= 65 && mins >= 26) return 1.15f;
-                return 1.05f;
+                if (player.Tendencies.ShotTendency >= 65 && minutes >= 26) return 1.08f;
+                return 1.03f;
             }
             return 1.0f;
         }
@@ -394,10 +398,11 @@ namespace BasketballManager.Simulation
 
                 if (p.Position == BasketballManager.Core.Enums.Position.C && 
                     p.Attributes.Passing >= 85 && 
-                    p.Attributes.PostScoring >= 80 && 
-                    p.Tendencies.PostTendency >= 70)
+                    p.Attributes.PostScoring >= 78 && 
+                    p.Attributes.OffensiveConsistency >= 82 &&
+                    expectedMins >= 32)
                 {
-                    w *= 1.10f;
+                    w *= 1.12f;
                 }
 
                 if (expectedMins < 12)
