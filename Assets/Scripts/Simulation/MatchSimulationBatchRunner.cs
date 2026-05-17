@@ -50,13 +50,16 @@ namespace BasketballManager.Simulation
                 awayPlayerStats[p.Id] = new PlayerAverageStatLine { PlayerId = p.Id, PlayerName = p.GetDisplayName() };
             }
 
-            var originalUseFixedSeed = MatchConfig.UseFixedSeed;
-            MatchConfig.UseFixedSeed = true;
+            var config = new MatchConfig
+            {
+                UseFixedSeed = true
+            };
 
             for (int i = 0; i < games; i++)
             {
-                var simulator = new MatchSimulator(homeTeam, homePlayers, awayTeam, awayPlayers, baseSeed + i);
-                var result = simulator.Simulate();
+                config.Seed = baseSeed + i;
+                var simulator = new MatchSimulator();
+                var result = simulator.Simulate(homeTeam, homePlayers, awayTeam, awayPlayers, config);
 
                 if (result.HomeScore > result.AwayScore)
                 {
@@ -120,8 +123,6 @@ namespace BasketballManager.Simulation
                     }
                 }
             }
-
-            MatchConfig.UseFixedSeed = originalUseFixedSeed;
 
             report.AverageHomeScore = homeTotalScore / games;
             report.AverageAwayScore = awayTotalScore / games;
