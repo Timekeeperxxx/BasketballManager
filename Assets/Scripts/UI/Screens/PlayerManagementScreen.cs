@@ -28,6 +28,7 @@ namespace BasketballManager.UI.Screens
         private Text _rosterHeader;
         private Text _editorHeader;
         private Text _statusText;
+        private Text _overallText;
         private bool _built;
 
         public void Initialize(DatabaseManager databaseManager, TeamRepository teamRepository, PlayerRepository playerRepository)
@@ -138,6 +139,8 @@ namespace BasketballManager.UI.Screens
         {
             CreateSection(parent, "\u57fa\u7840\u8d44\u6599", section =>
             {
+                _overallText = CreateBodyText(section, "\u603b\u8bc4\uff1a-\uff08\u7cfb\u7edf\u6839\u636e\u80fd\u529b\u5c5e\u6027\u81ea\u52a8\u8ba1\u7b97\uff09");
+                LayoutElementWithHeight(_overallText.gameObject, 36f);
                 AddField(CreateTextBinding(section, "\u540d", p => p.FirstName, (p, value) => p.FirstName = value));
                 AddField(CreateTextBinding(section, "\u59d3", p => p.LastName, (p, value) => p.LastName = value));
                 AddField(CreateTextBinding(section, "\u663e\u793a\u540d", p => p.DisplayName, (p, value) => p.DisplayName = value));
@@ -149,7 +152,6 @@ namespace BasketballManager.UI.Screens
                 AddField(CreateIntBinding(section, "\u4f53\u91cd(kg)", p => p.WeightKg, (p, value) => p.WeightKg = value));
                 AddField(CreateIntBinding(section, "\u5e74\u9f84", p => p.Age, (p, value) => p.Age = value));
                 AddField(CreateIntBinding(section, "\u7403\u8863\u53f7\u7801", p => p.JerseyNumber, (p, value) => p.JerseyNumber = value));
-                AddField(CreateIntBinding(section, "\u603b\u8bc4", p => p.Overall, (p, value) => p.Overall = value));
             });
 
             CreateSection(parent, "\u80fd\u529b\u5c5e\u6027", section =>
@@ -257,6 +259,7 @@ namespace BasketballManager.UI.Screens
                     _selectedPlayer = null;
                     _editorHeader.text = "\u7403\u5458\u7f16\u8f91";
                     ClearBindings();
+                    RefreshOverallText();
                 }
             }
             catch (Exception exception)
@@ -283,6 +286,7 @@ namespace BasketballManager.UI.Screens
                     binding.Load(_selectedPlayer);
                 }
 
+                RefreshOverallText();
                 _statusText.text = $"\u6b63\u5728\u7f16\u8f91 {_selectedPlayer.GetDisplayName()}\n\u6570\u636e\u5e93: {_databaseManager.PersistentDatabasePath}";
             }
             catch (Exception exception)
@@ -312,6 +316,8 @@ namespace BasketballManager.UI.Screens
             try
             {
                 _playerRepository.UpdatePlayer(_selectedPlayer);
+                _selectedPlayer = _playerRepository.GetPlayerById(_selectedPlayer.Id);
+                RefreshOverallText();
             }
             catch (Exception exception)
             {
@@ -406,6 +412,22 @@ namespace BasketballManager.UI.Screens
             {
                 binding.Clear();
             }
+        }
+
+        private void RefreshOverallText()
+        {
+            if (_overallText == null)
+            {
+                return;
+            }
+
+            if (_selectedPlayer == null)
+            {
+                _overallText.text = "\u603b\u8bc4\uff1a-\uff08\u7cfb\u7edf\u6839\u636e\u80fd\u529b\u5c5e\u6027\u81ea\u52a8\u8ba1\u7b97\uff09";
+                return;
+            }
+
+            _overallText.text = $"\u603b\u8bc4\uff1a{_selectedPlayer.Overall}\uff08\u7cfb\u7edf\u6839\u636e\u80fd\u529b\u5c5e\u6027\u81ea\u52a8\u8ba1\u7b97\uff09";
         }
 
         private static RectTransform CreateColumnPanel(RectTransform parent, float width)

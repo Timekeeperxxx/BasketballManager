@@ -1,0 +1,569 @@
+{
+  "version": 1,
+  "min_overall": 40,
+  "max_overall": 99,
+  "features": [
+    "two_point",
+    "three_point",
+    "layup",
+    "close_shot",
+    "post_scoring",
+    "free_throw",
+    "passing",
+    "ball_handle",
+    "drive",
+    "draw_foul",
+    "offensive_consistency",
+    "perimeter_defense",
+    "interior_defense",
+    "steal",
+    "block",
+    "offensive_rebound",
+    "defensive_rebound",
+    "defensive_consistency",
+    "speed",
+    "strength",
+    "stamina"
+  ],
+  "global": {
+    "bias": 40.881616,
+    "weights": [
+      {
+        "feature": "two_point",
+        "value": 0.031667
+      },
+      {
+        "feature": "three_point",
+        "value": 0.03337
+      },
+      {
+        "feature": "layup",
+        "value": 0.020851
+      },
+      {
+        "feature": "close_shot",
+        "value": 0.022332
+      },
+      {
+        "feature": "post_scoring",
+        "value": 0.045354
+      },
+      {
+        "feature": "free_throw",
+        "value": 0.031852
+      },
+      {
+        "feature": "passing",
+        "value": 0.042179
+      },
+      {
+        "feature": "ball_handle",
+        "value": 0.048297
+      },
+      {
+        "feature": "drive",
+        "value": 0.045543
+      },
+      {
+        "feature": "draw_foul",
+        "value": 0.097493
+      },
+      {
+        "feature": "offensive_consistency",
+        "value": 0.055009
+      },
+      {
+        "feature": "perimeter_defense",
+        "value": 0.003249
+      },
+      {
+        "feature": "interior_defense",
+        "value": 0.003751
+      },
+      {
+        "feature": "steal",
+        "value": 0.018397
+      },
+      {
+        "feature": "block",
+        "value": 0.03278
+      },
+      {
+        "feature": "offensive_rebound",
+        "value": 0.004662
+      },
+      {
+        "feature": "defensive_rebound",
+        "value": 0.027322
+      },
+      {
+        "feature": "defensive_consistency",
+        "value": 0.00618
+      },
+      {
+        "feature": "speed",
+        "value": 0.012923
+      },
+      {
+        "feature": "strength",
+        "value": 0.0
+      },
+      {
+        "feature": "stamina",
+        "value": 0.037414
+      }
+    ]
+  },
+  "positions": [
+    {
+      "position": "PG",
+      "bias": 42.229343,
+      "weights": [
+        {
+          "feature": "two_point",
+          "value": 0.023306
+        },
+        {
+          "feature": "three_point",
+          "value": 0.023256
+        },
+        {
+          "feature": "layup",
+          "value": 0.027354
+        },
+        {
+          "feature": "close_shot",
+          "value": 0.024584
+        },
+        {
+          "feature": "post_scoring",
+          "value": 0.030114
+        },
+        {
+          "feature": "free_throw",
+          "value": 0.011766
+        },
+        {
+          "feature": "passing",
+          "value": 0.036779
+        },
+        {
+          "feature": "ball_handle",
+          "value": 0.039463
+        },
+        {
+          "feature": "drive",
+          "value": 0.043097
+        },
+        {
+          "feature": "draw_foul",
+          "value": 0.129907
+        },
+        {
+          "feature": "offensive_consistency",
+          "value": 0.051941
+        },
+        {
+          "feature": "perimeter_defense",
+          "value": 0.005717
+        },
+        {
+          "feature": "interior_defense",
+          "value": 0.010415
+        },
+        {
+          "feature": "steal",
+          "value": 0.033909
+        },
+        {
+          "feature": "block",
+          "value": 0.039968
+        },
+        {
+          "feature": "offensive_rebound",
+          "value": 0.0238
+        },
+        {
+          "feature": "defensive_rebound",
+          "value": 0.046456
+        },
+        {
+          "feature": "defensive_consistency",
+          "value": 0.002414
+        },
+        {
+          "feature": "speed",
+          "value": 0.011027
+        },
+        {
+          "feature": "strength",
+          "value": 0.0
+        },
+        {
+          "feature": "stamina",
+          "value": 0.030288
+        }
+      ]
+    },
+    {
+      "position": "SG",
+      "bias": 43.850917,
+      "weights": [
+        {
+          "feature": "two_point",
+          "value": 0.040563
+        },
+        {
+          "feature": "three_point",
+          "value": 0.031754
+        },
+        {
+          "feature": "layup",
+          "value": 0.01733
+        },
+        {
+          "feature": "close_shot",
+          "value": 0.022095
+        },
+        {
+          "feature": "post_scoring",
+          "value": 0.072075
+        },
+        {
+          "feature": "free_throw",
+          "value": 0.034066
+        },
+        {
+          "feature": "passing",
+          "value": 0.041405
+        },
+        {
+          "feature": "ball_handle",
+          "value": 0.04006
+        },
+        {
+          "feature": "drive",
+          "value": 0.032135
+        },
+        {
+          "feature": "draw_foul",
+          "value": 0.077056
+        },
+        {
+          "feature": "offensive_consistency",
+          "value": 0.054408
+        },
+        {
+          "feature": "perimeter_defense",
+          "value": 0.001295
+        },
+        {
+          "feature": "interior_defense",
+          "value": 0.012404
+        },
+        {
+          "feature": "steal",
+          "value": 0.005519
+        },
+        {
+          "feature": "block",
+          "value": 0.029808
+        },
+        {
+          "feature": "offensive_rebound",
+          "value": 0.001661
+        },
+        {
+          "feature": "defensive_rebound",
+          "value": 0.028877
+        },
+        {
+          "feature": "defensive_consistency",
+          "value": 0.011297
+        },
+        {
+          "feature": "speed",
+          "value": 0.003877
+        },
+        {
+          "feature": "strength",
+          "value": 0.003637
+        },
+        {
+          "feature": "stamina",
+          "value": 0.02251
+        }
+      ]
+    },
+    {
+      "position": "SF",
+      "bias": 42.279939,
+      "weights": [
+        {
+          "feature": "two_point",
+          "value": 0.029969
+        },
+        {
+          "feature": "three_point",
+          "value": 0.028752
+        },
+        {
+          "feature": "layup",
+          "value": 0.023561
+        },
+        {
+          "feature": "close_shot",
+          "value": 0.018884
+        },
+        {
+          "feature": "post_scoring",
+          "value": 0.051368
+        },
+        {
+          "feature": "free_throw",
+          "value": 0.027898
+        },
+        {
+          "feature": "passing",
+          "value": 0.021201
+        },
+        {
+          "feature": "ball_handle",
+          "value": 0.034349
+        },
+        {
+          "feature": "drive",
+          "value": 0.046894
+        },
+        {
+          "feature": "draw_foul",
+          "value": 0.087292
+        },
+        {
+          "feature": "offensive_consistency",
+          "value": 0.050623
+        },
+        {
+          "feature": "perimeter_defense",
+          "value": 0.000975
+        },
+        {
+          "feature": "interior_defense",
+          "value": 0.003708
+        },
+        {
+          "feature": "steal",
+          "value": 0.005519
+        },
+        {
+          "feature": "block",
+          "value": 0.034935
+        },
+        {
+          "feature": "offensive_rebound",
+          "value": 0.009358
+        },
+        {
+          "feature": "defensive_rebound",
+          "value": 0.029032
+        },
+        {
+          "feature": "defensive_consistency",
+          "value": 0.001854
+        },
+        {
+          "feature": "speed",
+          "value": 0.032736
+        },
+        {
+          "feature": "strength",
+          "value": 0.00192
+        },
+        {
+          "feature": "stamina",
+          "value": 0.054773
+        }
+      ]
+    },
+    {
+      "position": "PF",
+      "bias": 42.694216,
+      "weights": [
+        {
+          "feature": "two_point",
+          "value": 0.021077
+        },
+        {
+          "feature": "three_point",
+          "value": 0.020528
+        },
+        {
+          "feature": "layup",
+          "value": 0.024381
+        },
+        {
+          "feature": "close_shot",
+          "value": 0.014439
+        },
+        {
+          "feature": "post_scoring",
+          "value": 0.025863
+        },
+        {
+          "feature": "free_throw",
+          "value": 0.013303
+        },
+        {
+          "feature": "passing",
+          "value": 0.027165
+        },
+        {
+          "feature": "ball_handle",
+          "value": 0.032802
+        },
+        {
+          "feature": "drive",
+          "value": 0.043122
+        },
+        {
+          "feature": "draw_foul",
+          "value": 0.051906
+        },
+        {
+          "feature": "offensive_consistency",
+          "value": 0.030638
+        },
+        {
+          "feature": "perimeter_defense",
+          "value": 0.028898
+        },
+        {
+          "feature": "interior_defense",
+          "value": 0.017247
+        },
+        {
+          "feature": "steal",
+          "value": 0.026248
+        },
+        {
+          "feature": "block",
+          "value": 0.036892
+        },
+        {
+          "feature": "offensive_rebound",
+          "value": 0.017322
+        },
+        {
+          "feature": "defensive_rebound",
+          "value": 0.024096
+        },
+        {
+          "feature": "defensive_consistency",
+          "value": 0.022801
+        },
+        {
+          "feature": "speed",
+          "value": 0.029528
+        },
+        {
+          "feature": "strength",
+          "value": 0.013557
+        },
+        {
+          "feature": "stamina",
+          "value": 0.035277
+        }
+      ]
+    },
+    {
+      "position": "C",
+      "bias": 44.402605,
+      "weights": [
+        {
+          "feature": "two_point",
+          "value": 0.022481
+        },
+        {
+          "feature": "three_point",
+          "value": 0.052437
+        },
+        {
+          "feature": "layup",
+          "value": 0.011865
+        },
+        {
+          "feature": "close_shot",
+          "value": 0.01901
+        },
+        {
+          "feature": "post_scoring",
+          "value": 0.043495
+        },
+        {
+          "feature": "free_throw",
+          "value": 0.035017
+        },
+        {
+          "feature": "passing",
+          "value": 0.049834
+        },
+        {
+          "feature": "ball_handle",
+          "value": 0.064278
+        },
+        {
+          "feature": "drive",
+          "value": 0.054111
+        },
+        {
+          "feature": "draw_foul",
+          "value": 0.067014
+        },
+        {
+          "feature": "offensive_consistency",
+          "value": 0.038781
+        },
+        {
+          "feature": "perimeter_defense",
+          "value": 0.01805
+        },
+        {
+          "feature": "interior_defense",
+          "value": 0.005107
+        },
+        {
+          "feature": "steal",
+          "value": 0.04387
+        },
+        {
+          "feature": "block",
+          "value": 0.009834
+        },
+        {
+          "feature": "offensive_rebound",
+          "value": 0.010056
+        },
+        {
+          "feature": "defensive_rebound",
+          "value": 0.013349
+        },
+        {
+          "feature": "defensive_consistency",
+          "value": 0.003305
+        },
+        {
+          "feature": "speed",
+          "value": 0.011305
+        },
+        {
+          "feature": "strength",
+          "value": 0.0
+        },
+        {
+          "feature": "stamina",
+          "value": 0.033879
+        }
+      ]
+    }
+  ]
+}

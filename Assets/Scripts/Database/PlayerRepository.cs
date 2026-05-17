@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using BasketballManager.Core.Enums;
 using BasketballManager.Core.Models;
+using BasketballManager.Core.Services;
 using Mono.Data.Sqlite;
 
 namespace BasketballManager.Database
@@ -50,6 +51,8 @@ LIMIT 1;";
 
         public void UpdatePlayer(Player player)
         {
+            player.Overall = RatingCalculator.CalculateOverall(player);
+
             using var connection = _databaseManager.OpenConnection();
             using var transaction = connection.BeginTransaction();
 
