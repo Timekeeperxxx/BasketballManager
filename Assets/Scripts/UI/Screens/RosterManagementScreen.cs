@@ -106,6 +106,9 @@ namespace BasketballManager.UI.Screens
             _statusText.horizontalOverflow = HorizontalWrapMode.Wrap;
             var statusLayout = _statusText.gameObject.AddComponent<LayoutElement>();
             statusLayout.flexibleWidth = 1f;
+
+            RefreshTeams();
+            _built = true;
         }
 
         private void BuildEditor(RectTransform parent)
