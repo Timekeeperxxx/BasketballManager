@@ -63,15 +63,15 @@ namespace BasketballManager.UI.Screens
             layout.childForceExpandHeight = true;
             layout.childForceExpandWidth = false;
 
-            var teamsPanel = CreateColumnPanel(root, 260f);
+            var teamsPanel = CreateColumnPanel(_rootPanel, 260f);
             _teamHeader = CreateHeader(teamsPanel, "\u7403\u961f");
             _teamListContent = CreateScrollList(teamsPanel);
 
-            var rosterPanel = CreateColumnPanel(root, 360f);
+            var rosterPanel = CreateColumnPanel(_rootPanel, 360f);
             _rosterHeader = CreateHeader(rosterPanel, "\u9635\u5bb9");
             _rosterListContent = CreateScrollList(rosterPanel);
 
-            var editorPanel = CreateFlexiblePanel(root);
+            var editorPanel = CreateFlexiblePanel(_rootPanel);
             _editorHeader = CreateHeader(editorPanel, "\u7403\u5458\u7f16\u8f91");
 
             var editorScroll = CreateScrollView(editorPanel, out var editorContent);

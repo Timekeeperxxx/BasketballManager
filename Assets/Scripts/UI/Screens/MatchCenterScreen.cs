@@ -18,7 +18,7 @@ namespace BasketballManager.UI.Screens
         private RectTransform _rootPanel;
         private RectTransform _resultsPanel;
 
-        private List<Team> _teams;
+        private IReadOnlyList<Team> _teams;
         private Team _homeTeam;
         private Team _awayTeam;
 
