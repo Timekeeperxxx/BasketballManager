@@ -694,21 +694,31 @@ namespace BasketballManager.Simulation
                 int mins = offense.PlayerStatsById[p.Id].Minutes;
                 float w = p.Attributes.OffensiveRebound * 1.65f + p.Tendencies.OffensiveReboundTendency * 1.25f + p.Attributes.Strength * 0.35f + p.HeightCm * 0.16f + mins * 0.45f;
 
-                if (p.Position == BasketballManager.Core.Enums.Position.PG) w *= 0.78f;
-                else if (p.Position == BasketballManager.Core.Enums.Position.SG) w *= 0.82f;
-                else if (p.Position == BasketballManager.Core.Enums.Position.SF) w *= 0.95f;
-                else if (p.Position == BasketballManager.Core.Enums.Position.PF) w *= 1.12f;
-                else if (p.Position == BasketballManager.Core.Enums.Position.C) w *= 1.25f;
+                float posMultiplier = 1.0f;
+                if (p.Position == BasketballManager.Core.Enums.Position.PG) posMultiplier = 0.78f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.SG) posMultiplier = 0.82f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.SF) posMultiplier = 0.95f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.PF) posMultiplier = 1.12f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.C) posMultiplier = 1.25f;
 
                 if (shotType == ShotType.ThreePoint)
                 {
-                    if (p.Position == BasketballManager.Core.Enums.Position.PG) w *= 1.25f;
-                    else if (p.Position == BasketballManager.Core.Enums.Position.SG) w *= 1.20f;
-                    else if (p.Position == BasketballManager.Core.Enums.Position.SF) w *= 1.10f;
-                    else if (p.Position == BasketballManager.Core.Enums.Position.PF) w *= 0.95f;
-                    else if (p.Position == BasketballManager.Core.Enums.Position.C) w *= 0.90f;
+                    if (p.Position == BasketballManager.Core.Enums.Position.PG) posMultiplier *= 1.45f;
+                    else if (p.Position == BasketballManager.Core.Enums.Position.SG) posMultiplier *= 1.35f;
+                    else if (p.Position == BasketballManager.Core.Enums.Position.SF) posMultiplier *= 1.20f;
+                    else if (p.Position == BasketballManager.Core.Enums.Position.PF) posMultiplier *= 0.90f;
+                    else if (p.Position == BasketballManager.Core.Enums.Position.C) posMultiplier *= 0.82f;
+                }
+                else if (shotType == ShotType.TwoPoint)
+                {
+                    if (p.Position == BasketballManager.Core.Enums.Position.PG) posMultiplier *= 1.15f;
+                    else if (p.Position == BasketballManager.Core.Enums.Position.SG) posMultiplier *= 1.12f;
+                    else if (p.Position == BasketballManager.Core.Enums.Position.SF) posMultiplier *= 1.08f;
+                    else if (p.Position == BasketballManager.Core.Enums.Position.PF) posMultiplier *= 0.97f;
+                    else if (p.Position == BasketballManager.Core.Enums.Position.C) posMultiplier *= 0.92f;
                 }
 
+                w *= posMultiplier;
                 w *= GetEliteRebounderBoost(p, false);
 
                 offWeights[i] = w;
@@ -722,21 +732,42 @@ namespace BasketballManager.Simulation
                 int mins = defense.PlayerStatsById[p.Id].Minutes;
                 float w = p.Attributes.DefensiveRebound * 1.65f + p.Tendencies.DefensiveReboundTendency * 1.25f + p.Attributes.Strength * 0.35f + p.HeightCm * 0.16f + mins * 0.45f;
 
-                if (p.Position == BasketballManager.Core.Enums.Position.PG) w *= 0.78f;
-                else if (p.Position == BasketballManager.Core.Enums.Position.SG) w *= 0.82f;
-                else if (p.Position == BasketballManager.Core.Enums.Position.SF) w *= 0.95f;
-                else if (p.Position == BasketballManager.Core.Enums.Position.PF) w *= 1.12f;
-                else if (p.Position == BasketballManager.Core.Enums.Position.C) w *= 1.25f;
+                float posMultiplier = 1.0f;
+                if (p.Position == BasketballManager.Core.Enums.Position.PG) posMultiplier = 0.78f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.SG) posMultiplier = 0.82f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.SF) posMultiplier = 0.95f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.PF) posMultiplier = 1.12f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.C) posMultiplier = 1.25f;
 
                 if (shotType == ShotType.ThreePoint)
                 {
-                    if (p.Position == BasketballManager.Core.Enums.Position.PG) w *= 1.25f;
-                    else if (p.Position == BasketballManager.Core.Enums.Position.SG) w *= 1.20f;
-                    else if (p.Position == BasketballManager.Core.Enums.Position.SF) w *= 1.10f;
-                    else if (p.Position == BasketballManager.Core.Enums.Position.PF) w *= 0.95f;
-                    else if (p.Position == BasketballManager.Core.Enums.Position.C) w *= 0.90f;
+                    if (p.Position == BasketballManager.Core.Enums.Position.PG) posMultiplier *= 1.45f;
+                    else if (p.Position == BasketballManager.Core.Enums.Position.SG) posMultiplier *= 1.35f;
+                    else if (p.Position == BasketballManager.Core.Enums.Position.SF) posMultiplier *= 1.20f;
+                    else if (p.Position == BasketballManager.Core.Enums.Position.PF) posMultiplier *= 0.90f;
+                    else if (p.Position == BasketballManager.Core.Enums.Position.C) posMultiplier *= 0.82f;
+                }
+                else if (shotType == ShotType.TwoPoint)
+                {
+                    if (p.Position == BasketballManager.Core.Enums.Position.PG) posMultiplier *= 1.15f;
+                    else if (p.Position == BasketballManager.Core.Enums.Position.SG) posMultiplier *= 1.12f;
+                    else if (p.Position == BasketballManager.Core.Enums.Position.SF) posMultiplier *= 1.08f;
+                    else if (p.Position == BasketballManager.Core.Enums.Position.PF) posMultiplier *= 0.97f;
+                    else if (p.Position == BasketballManager.Core.Enums.Position.C) posMultiplier *= 0.92f;
                 }
 
+                if (p.Position == BasketballManager.Core.Enums.Position.PG || p.Position == BasketballManager.Core.Enums.Position.SG)
+                {
+                    if (p.Attributes.DefensiveRebound >= 65 || p.Tendencies.DefensiveReboundTendency >= 65) posMultiplier = Mathf.Max(posMultiplier, 1.00f);
+                    else if (p.Attributes.DefensiveRebound >= 60 || p.Tendencies.DefensiveReboundTendency >= 60) posMultiplier = Mathf.Max(posMultiplier, 0.92f);
+                }
+                else if (p.Position == BasketballManager.Core.Enums.Position.SF)
+                {
+                    if (p.Attributes.DefensiveRebound >= 70 || p.Tendencies.DefensiveReboundTendency >= 70) posMultiplier = Mathf.Max(posMultiplier, 1.05f);
+                    else if (p.Attributes.DefensiveRebound >= 62 || p.Tendencies.DefensiveReboundTendency >= 62) posMultiplier = Mathf.Max(posMultiplier, 1.00f);
+                }
+
+                w *= posMultiplier;
                 w *= GetEliteRebounderBoost(p, true);
 
                 defWeights[i] = w;
