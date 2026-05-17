@@ -39,6 +39,10 @@ namespace BasketballManager.Simulation
                 AwayTeamName = awayTeam.Name
             };
 
+            // Distribute minutes based on rotation constraints before simulation
+            DistributeMinutes(homeSnapshot, config);
+            DistributeMinutes(awaySnapshot, config);
+
             for (int q = 0; q < config.QuarterCount; q++)
             {
                 SimulateQuarter(homeSnapshot, awaySnapshot, config);
@@ -47,10 +51,6 @@ namespace BasketballManager.Simulation
                 result.HomeScore = homeSnapshot.TeamStats.Points;
                 result.AwayScore = awaySnapshot.TeamStats.Points;
             }
-
-            // Distribute minutes based on rotation constraints
-            DistributeMinutes(homeSnapshot, config);
-            DistributeMinutes(awaySnapshot, config);
 
             result.HomeTeamStats = homeSnapshot.TeamStats;
             result.AwayTeamStats = awaySnapshot.TeamStats;
@@ -112,25 +112,35 @@ namespace BasketballManager.Simulation
             
             if (rotation.Count == 0) return;
 
-            // Simplified minute distribution as requested
+            int[] targetMinutes = { 37, 35, 33, 31, 28, 24, 20, 16, 10, 6 };
             int index = 0;
             foreach (var player in rotation)
             {
-                int min = 0;
-                if (index < 2) min = _random.Range(34, 39);
-                else if (index < 5) min = _random.Range(28, 35);
-                else if (index < 8) min = _random.Range(16, 27);
-                else min = _random.Range(6, 17);
-                
+                int min = index < targetMinutes.Length ? targetMinutes[index] : 0;
                 snapshot.PlayerStatsById[player.Id].Minutes = min;
                 totalMinutes -= min;
                 index++;
             }
             
-            // Adjust if total minutes mismatch (basic fallback)
-            if (totalMinutes > 0 && rotation.Count > 0)
+            if (totalMinutes != 0 && rotation.Count > 0)
             {
-                snapshot.PlayerStatsById[rotation[0].Id].Minutes += totalMinutes;
+                float assignedMins = (config.QuarterCount * config.MinutesPerQuarter * 5) - totalMinutes;
+                if (assignedMins <= 0) assignedMins = 1;
+                float ratio = (float)(config.QuarterCount * config.MinutesPerQuarter * 5) / assignedMins;
+                int newTotal = 0;
+                for (int i = 0; i < rotation.Count; i++)
+                {
+                    var pStats = snapshot.PlayerStatsById[rotation[i].Id];
+                    if (i == rotation.Count - 1)
+                    {
+                        pStats.Minutes = (config.QuarterCount * config.MinutesPerQuarter * 5) - newTotal;
+                    }
+                    else
+                    {
+                        pStats.Minutes = Mathf.RoundToInt(pStats.Minutes * ratio);
+                        newTotal += pStats.Minutes;
+                    }
+                }
             }
         }
 
@@ -257,6 +267,22 @@ namespace BasketballManager.Simulation
             }
         }
 
+        private float GetStarUsageBoost(Player player)
+        {
+            float scoringCore =
+                player.Tendencies.ShotTendency * 0.45f
+              + player.Attributes.OffensiveConsistency * 0.25f
+              + player.Attributes.BallHandle * 0.10f
+              + player.Attributes.Drive * 0.10f
+              + player.Attributes.DrawFoul * 0.10f;
+
+            if (scoringCore >= 90) return 1.75f;
+            if (scoringCore >= 85) return 1.45f;
+            if (scoringCore >= 80) return 1.25f;
+            if (scoringCore >= 75) return 1.10f;
+            return 1.0f;
+        }
+
         private Player SelectInitiator(MatchTeamSnapshot offense)
         {
             var candidates = offense.RotationPlayers;
@@ -266,12 +292,24 @@ namespace BasketballManager.Simulation
             for (int i = 0; i < candidates.Count; i++)
             {
                 var p = candidates[i];
-                // Initiator based on Passing, BallHandle, PassTendency, Minutes
-                int expectedMins = 20; // fallback avg
-                float w = p.Attributes.Passing * 1.0f + 
+                int expectedMins = offense.PlayerStatsById[p.Id].Minutes;
+                
+                float w = expectedMins * 1.5f + 
+                          p.Attributes.Passing * 1.2f + 
                           p.Attributes.BallHandle * 1.0f + 
-                          p.Tendencies.PassTendency * 1.5f + 
-                          expectedMins * 1.0f;
+                          p.Tendencies.PassTendency * 0.9f + 
+                          p.Attributes.OffensiveConsistency * 0.4f;
+
+                if (p.Position == BasketballManager.Core.Enums.PlayerPosition.PG)
+                {
+                    w *= 1.2f;
+                }
+
+                if (expectedMins < 12)
+                {
+                    w *= 0.65f;
+                }
+
                 weights[i] = w;
                 totalWeight += w;
             }
@@ -294,12 +332,29 @@ namespace BasketballManager.Simulation
             for (int i = 0; i < candidates.Count; i++)
             {
                 var p = candidates[i];
-                int expectedMins = 20; 
-                float w = p.Tendencies.ShotTendency * 1.0f +
-                          p.Tendencies.DriveTendency * 0.4f +
-                          p.Tendencies.ThreeTendency * 0.3f +
-                          p.Tendencies.PostTendency * 0.3f +
-                          expectedMins * 1.5f;
+                int expectedMins = offense.PlayerStatsById[p.Id].Minutes;
+                
+                float w = expectedMins * 1.8f +
+                          p.Tendencies.ShotTendency * 2.2f +
+                          p.Tendencies.ThreeTendency * 0.55f +
+                          p.Tendencies.DriveTendency * 0.65f +
+                          p.Tendencies.PostTendency * 0.45f +
+                          p.Tendencies.CloseShotTendency * 0.35f +
+                          p.Attributes.OffensiveConsistency * 0.65f +
+                          p.Attributes.BallHandle * 0.35f +
+                          p.Attributes.DrawFoul * 0.35f;
+
+                w *= GetStarUsageBoost(p);
+
+                if (expectedMins < 12)
+                {
+                    w *= 0.55f;
+                }
+                else if (expectedMins < 18)
+                {
+                    w *= 0.75f;
+                }
+
                 weights[i] = w;
                 totalWeight += w;
             }
