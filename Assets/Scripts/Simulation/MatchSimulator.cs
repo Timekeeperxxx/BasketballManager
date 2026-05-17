@@ -264,15 +264,7 @@ namespace BasketballManager.Simulation
                 }
 
                 // 14. Assists
-                if (attacker.Id != finisher.Id)
-                {
-                    float assistChance = (attacker.Attributes.Passing + attacker.Tendencies.PassTendency) / 200f;
-                    if (_random.Chance(assistChance))
-                    {
-                        offStats.Assists++;
-                        offense.TeamStats.Assists++;
-                    }
-                }
+                ResolveAssist(offense, initiator, finisher, shotType, true);
             }
             else
             {
@@ -666,6 +658,168 @@ namespace BasketballManager.Simulation
                 ShotType.Post => Mathf.Clamp(chance, 0.35f, 0.68f),
                 _ => 0.40f
             };
+        }
+
+        private float GetBaseAssistChance(ShotType shotType)
+        {
+            return shotType switch
+            {
+                ShotType.ThreePoint => 0.78f,
+                ShotType.TwoPoint => 0.52f,
+                ShotType.Layup => 0.55f,
+                ShotType.CloseShot => 0.48f,
+                ShotType.Post => 0.38f,
+                _ => 0.50f
+            };
+        }
+
+        private float GetAssistedFinisherModifier(Player finisher, ShotType shotType)
+        {
+            float modifier = 0f;
+
+            if (shotType == ShotType.ThreePoint)
+            {
+                modifier += 0.06f;
+            }
+
+            if (finisher.Attributes.ThreePoint >= 80 && 
+                finisher.Tendencies.ThreeTendency >= 78 && 
+                finisher.Attributes.BallHandle < 78)
+            {
+                modifier += 0.08f;
+            }
+
+            if (finisher.Tendencies.ThreeTendency >= 85)
+            {
+                modifier += 0.04f;
+            }
+
+            if (shotType == ShotType.Layup && finisher.Tendencies.CloseShotTendency >= 70)
+            {
+                modifier += 0.04f;
+            }
+
+            return modifier;
+        }
+
+        private float GetSelfCreationPenalty(Player finisher, ShotType shotType, Player initiator)
+        {
+            float penalty = 0f;
+
+            float selfCreation =
+                finisher.Attributes.BallHandle * 0.35f +
+                finisher.Attributes.Drive * 0.30f +
+                finisher.Tendencies.DriveTendency * 0.20f +
+                finisher.Tendencies.ShotTendency * 0.15f;
+
+            if (selfCreation >= 85 && (shotType == ShotType.Layup || shotType == ShotType.TwoPoint))
+            {
+                penalty += 0.12f;
+            }
+
+            if (selfCreation >= 80 && shotType == ShotType.Post)
+            {
+                penalty += 0.08f;
+            }
+
+            if (initiator.Id == finisher.Id)
+            {
+                penalty += 0.18f;
+            }
+
+            return penalty;
+        }
+
+        private Player SelectAssisterCandidate(MatchTeamSnapshot offense, Player initiator, Player finisher, ShotType shotType)
+        {
+            var candidates = offense.RotationPlayers.Where(p => p.Id != finisher.Id).ToList();
+            if (candidates.Count == 0) return null;
+
+            var weights = new float[candidates.Count];
+            float totalWeight = 0;
+
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                var candidate = candidates[i];
+                int mins = offense.PlayerStatsById[candidate.Id].Minutes;
+
+                float w = mins * 0.55f +
+                          candidate.Attributes.Passing * 1.65f +
+                          candidate.Tendencies.PassTendency * 1.25f +
+                          candidate.Attributes.BallHandle * 0.35f +
+                          candidate.Attributes.OffensiveConsistency * 0.25f;
+
+                if (candidate.Id == initiator.Id) w *= 1.35f;
+                if (candidate.Position == BasketballManager.Core.Enums.Position.PG) w *= 1.10f;
+
+                if (candidate.Position == BasketballManager.Core.Enums.Position.C && 
+                    candidate.Attributes.Passing >= 85 && 
+                    candidate.Attributes.OffensiveConsistency >= 82)
+                {
+                    w *= 1.25f;
+                }
+
+                if (candidate.Position == BasketballManager.Core.Enums.Position.PF && 
+                    candidate.Attributes.Passing >= 78 && 
+                    candidate.Tendencies.PassTendency >= 75)
+                {
+                    w *= 1.15f;
+                }
+
+                if (mins < 12) w *= 0.45f;
+                else if (mins < 18) w *= 0.70f;
+
+                weights[i] = w;
+                totalWeight += w;
+            }
+
+            if (totalWeight <= 0) return candidates.First();
+
+            float roll = _random.Range(0f, totalWeight);
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                roll -= weights[i];
+                if (roll <= 0) return candidates[i];
+            }
+
+            return candidates.Last();
+        }
+
+        private void ResolveAssist(MatchTeamSnapshot offense, Player initiator, Player finisher, ShotType shotType, bool made)
+        {
+            if (!made || finisher == null) return;
+
+            var assister = SelectAssisterCandidate(offense, initiator, finisher, shotType);
+            if (assister == null || assister.Id == finisher.Id) return;
+
+            float baseAssistChance = GetBaseAssistChance(shotType);
+            float modifier = GetAssistedFinisherModifier(finisher, shotType);
+            float penalty = GetSelfCreationPenalty(finisher, shotType, initiator);
+
+            float passQuality = assister.Attributes.Passing * 0.60f + assister.Tendencies.PassTendency * 0.40f;
+            float passBonus = 0f;
+            
+            if (passQuality >= 90) passBonus = 0.12f;
+            else if (passQuality >= 84) passBonus = 0.09f;
+            else if (passQuality >= 78) passBonus = 0.06f;
+            else if (passQuality >= 70) passBonus = 0.03f;
+
+            if (assister.Position == BasketballManager.Core.Enums.Position.C && assister.Attributes.Passing >= 85)
+            {
+                passBonus += 0.03f;
+            }
+
+            int mins = offense.PlayerStatsById[assister.Id].Minutes;
+            if (mins < 18) passBonus -= 0.04f;
+
+            float assistChance = baseAssistChance + modifier - penalty + passBonus;
+            assistChance = Mathf.Clamp(assistChance, 0.25f, 0.90f);
+
+            if (_random.Chance(assistChance))
+            {
+                offense.PlayerStatsById[assister.Id].Assists++;
+                offense.TeamStats.Assists++;
+            }
         }
 
         private float GetEliteRebounderBoost(Player player, bool defensive)

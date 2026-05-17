@@ -48,6 +48,8 @@ namespace BasketballManager.Simulation
         public float AwayRebounds { get; set; }
         public float HomeAssists { get; set; }
         public float AwayAssists { get; set; }
+        public float HomeAssistRate { get; set; }
+        public float AwayAssistRate { get; set; }
         public float HomeTurnovers { get; set; }
         public float AwayTurnovers { get; set; }
         public float HomeFouls { get; set; }

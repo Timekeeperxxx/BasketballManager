@@ -150,6 +150,8 @@ namespace BasketballManager.Simulation
             report.AwayRebounds = awayReb / games;
             report.HomeAssists = homeAst / games;
             report.AwayAssists = awayAst / games;
+            report.HomeAssistRate = homeFGM > 0 ? homeAst / homeFGM : 0;
+            report.AwayAssistRate = awayFGM > 0 ? awayAst / awayFGM : 0;
             report.HomeTurnovers = homeTov / games;
             report.AwayTurnovers = awayTov / games;
             report.HomeFouls = homePf / games;

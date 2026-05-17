@@ -478,6 +478,7 @@ namespace BasketballManager.UI.Screens
             AddTeamStatRow(statsPanel, "FTA", report.HomeFreeThrowAttempts.ToString("F1"), report.AwayFreeThrowAttempts.ToString("F1"));
             AddTeamStatRow(statsPanel, "REB", report.HomeRebounds.ToString("F1"), report.AwayRebounds.ToString("F1"));
             AddTeamStatRow(statsPanel, "AST", report.HomeAssists.ToString("F1"), report.AwayAssists.ToString("F1"));
+            AddTeamStatRow(statsPanel, "AST/FGM", $"{(report.HomeAssistRate * 100):F1}%", $"{(report.AwayAssistRate * 100):F1}%");
             AddTeamStatRow(statsPanel, "TOV", report.HomeTurnovers.ToString("F1"), report.AwayTurnovers.ToString("F1"));
             AddTeamStatRow(statsPanel, "PF", report.HomeFouls.ToString("F1"), report.AwayFouls.ToString("F1"));
 
