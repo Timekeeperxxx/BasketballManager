@@ -80,6 +80,18 @@ namespace BasketballManager.Simulation
             var sortedPlayers = players.OrderByDescending(p => p.Overall).ToList();
             snapshot.RotationPlayers = sortedPlayers.Take(Math.Min(10, sortedPlayers.Count)).ToList();
 
+            var roleSorted = snapshot.RotationPlayers.OrderByDescending(p => 
+                p.Tendencies.ShotTendency * 0.45f + 
+                p.Attributes.OffensiveConsistency * 0.25f + 
+                p.Attributes.BallHandle * 0.10f + 
+                p.Attributes.Drive * 0.10f + 
+                p.Attributes.DrawFoul * 0.10f).ToList();
+
+            for (int i = 0; i < roleSorted.Count; i++)
+            {
+                snapshot.OffensiveRoleRankByPlayerId[roleSorted[i].Id] = i + 1;
+            }
+
             foreach (var player in players)
             {
                 snapshot.PlayerStatsById[player.Id] = new PlayerBoxScore
@@ -283,6 +295,38 @@ namespace BasketballManager.Simulation
             return 1.0f;
         }
 
+        private float GetOffensiveRoleBoost(Player player, MatchTeamSnapshot team)
+        {
+            if (!team.OffensiveRoleRankByPlayerId.TryGetValue(player.Id, out int roleRank)) return 1.0f;
+            int mins = team.PlayerStatsById[player.Id].Minutes;
+
+            if (roleRank == 1) return 1.0f;
+            if (roleRank == 2)
+            {
+                if (player.Tendencies.ShotTendency >= 70 && mins >= 28) return 1.22f;
+                return 1.10f;
+            }
+            if (roleRank == 3)
+            {
+                if (player.Tendencies.ShotTendency >= 65 && mins >= 26) return 1.15f;
+                return 1.05f;
+            }
+            return 1.0f;
+        }
+
+        private float GetOffBallShooterBoost(Player player)
+        {
+            if (player.Attributes.ThreePoint >= 82 && player.Tendencies.ThreeTendency >= 80 && player.Tendencies.ShotTendency >= 55)
+            {
+                return 1.25f;
+            }
+            if (player.Attributes.ThreePoint >= 76 && player.Tendencies.ThreeTendency >= 75 && player.Tendencies.ShotTendency >= 50)
+            {
+                return 1.12f;
+            }
+            return 1.0f;
+        }
+
         private Player SelectInitiator(MatchTeamSnapshot offense)
         {
             var candidates = offense.RotationPlayers;
@@ -345,6 +389,16 @@ namespace BasketballManager.Simulation
                           p.Attributes.DrawFoul * 0.35f;
 
                 w *= GetStarUsageBoost(p);
+                w *= GetOffensiveRoleBoost(p, offense);
+                w *= GetOffBallShooterBoost(p);
+
+                if (p.Position == BasketballManager.Core.Enums.Position.C && 
+                    p.Attributes.Passing >= 85 && 
+                    p.Attributes.PostScoring >= 80 && 
+                    p.Tendencies.PostTendency >= 70)
+                {
+                    w *= 1.10f;
+                }
 
                 if (expectedMins < 12)
                 {
@@ -390,6 +444,8 @@ namespace BasketballManager.Simulation
             {
                 threeWeight *= 1.20f;
             }
+
+            threeWeight *= GetOffBallShooterBoost(player);
 
             if (player.Attributes.ThreePoint < 60)
             {
