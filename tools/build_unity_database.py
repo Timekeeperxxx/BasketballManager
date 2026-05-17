@@ -750,6 +750,13 @@ def main() -> None:
     print(f"Teams inserted: {team_count}")
     print(f"Players inserted: {player_count}")
     print("Player ID range: 1000 - {0}".format(1000 + player_count - 1))
+    print("\n--- Running Validation ---")
+    
+    try:
+        import validate_unity_database
+        validate_unity_database.validate()
+    except ImportError:
+        print("[WARN] validate_unity_database.py not found. Skipping validation.")
 
 
 if __name__ == "__main__":
