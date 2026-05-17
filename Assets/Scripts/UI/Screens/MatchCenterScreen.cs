@@ -199,6 +199,10 @@ namespace BasketballManager.UI.Screens
         private void RenderResults(MatchResult result)
         {
             var scroll = CreateScrollView(_resultsPanel, out var content);
+            var scrollLayout = scroll.gameObject.AddComponent<LayoutElement>();
+            scrollLayout.flexibleHeight = 1f;
+            scrollLayout.flexibleWidth = 1f;
+
             var layout = content.gameObject.AddComponent<VerticalLayoutGroup>();
             layout.spacing = 20f;
             layout.padding = new RectOffset(10, 10, 10, 10);
