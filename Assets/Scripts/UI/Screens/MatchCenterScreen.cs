@@ -63,6 +63,8 @@ namespace BasketballManager.UI.Screens
             mainLayout.spacing = 16f;
             mainLayout.childForceExpandHeight = false;
             mainLayout.childForceExpandWidth = true;
+            mainLayout.childControlHeight = true;
+            mainLayout.childControlWidth = true;
 
             BuildSettingsArea(_rootPanel);
             
@@ -79,7 +81,9 @@ namespace BasketballManager.UI.Screens
             layout.spacing = 12f;
             layout.childForceExpandWidth = true;
             layout.childForceExpandHeight = false;
-            LayoutElementWithHeight(settingsPanel.gameObject, 180f);
+            layout.childControlHeight = true;
+            layout.childControlWidth = true;
+            settingsPanel.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
             CreateHeader(settingsPanel, "\u6bd4\u8d5b\u8bbe\u7f6e", 24); // 比赛设置
 
@@ -87,12 +91,19 @@ namespace BasketballManager.UI.Screens
             var rowLayout = selectionRow.gameObject.AddComponent<HorizontalLayoutGroup>();
             rowLayout.spacing = 20f;
             rowLayout.childForceExpandWidth = true;
-            LayoutElementWithHeight(selectionRow.gameObject, 60f);
+            rowLayout.childForceExpandHeight = false;
+            rowLayout.childControlHeight = true;
+            rowLayout.childControlWidth = true;
+            LayoutElementWithHeight(selectionRow.gameObject, 50f);
 
             // Home Team Selection
             var homeGroup = CreatePanel("HomeGroup", selectionRow, Color.clear);
             var homeLayout = homeGroup.gameObject.AddComponent<HorizontalLayoutGroup>();
             homeLayout.spacing = 8f;
+            homeLayout.childForceExpandWidth = false;
+            homeLayout.childForceExpandHeight = false;
+            homeLayout.childControlHeight = true;
+            homeLayout.childControlWidth = true;
             CreateBodyText(homeGroup, "\u4e3b\u961f:").color = new Color(0.8f, 0.8f, 0.8f); // 主队:
             
             foreach (var team in _teams)
@@ -111,6 +122,10 @@ namespace BasketballManager.UI.Screens
             var awayGroup = CreatePanel("AwayGroup", selectionRow, Color.clear);
             var awayLayout = awayGroup.gameObject.AddComponent<HorizontalLayoutGroup>();
             awayLayout.spacing = 8f;
+            awayLayout.childForceExpandWidth = false;
+            awayLayout.childForceExpandHeight = false;
+            awayLayout.childControlHeight = true;
+            awayLayout.childControlWidth = true;
             CreateBodyText(awayGroup, "\u5ba2\u961f:").color = new Color(0.8f, 0.8f, 0.8f); // 客队:
             
             foreach (var team in _teams)
@@ -124,6 +139,10 @@ namespace BasketballManager.UI.Screens
             var simBtnRow = CreatePanel("SimBtnRow", settingsPanel, Color.clear);
             var simLayout = simBtnRow.gameObject.AddComponent<HorizontalLayoutGroup>();
             simLayout.childAlignment = TextAnchor.MiddleRight;
+            simLayout.childForceExpandWidth = true;
+            simLayout.childForceExpandHeight = false;
+            simLayout.childControlHeight = true;
+            simLayout.childControlWidth = true;
             LayoutElementWithHeight(simBtnRow.gameObject, 50f);
             
             var simBtn = CreateButton(simBtnRow, "\u25b6 \u6a21\u62df\u6bd4\u8d5b", SimulateMatch); // ▶ 模拟比赛
