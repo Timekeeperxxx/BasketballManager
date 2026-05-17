@@ -15,7 +15,7 @@ namespace BasketballManager.Database
             _databaseManager = databaseManager;
         }
 
-        public IReadOnlyList<Player> GetPlayersByTeamId(int teamId)
+        public IReadOnlyList<Player> GetPlayersByTeamId(string teamId)
         {
             var players = new List<Player>();
 
@@ -217,7 +217,7 @@ LEFT JOIN player_tendencies t ON t.player_id = p.id
             return new Player
             {
                 Id = ReadInt(reader["id"]),
-                TeamId = ReadInt(reader["team_id"]),
+                TeamId = reader["team_id"].ToString() ?? string.Empty,
                 FirstName = reader["first_name"].ToString() ?? string.Empty,
                 LastName = reader["last_name"].ToString() ?? string.Empty,
                 DisplayName = reader["display_name"].ToString() ?? string.Empty,

@@ -203,67 +203,93 @@ namespace BasketballManager.UI.Screens
         private void RefreshTeams()
         {
             ClearChildren(_teamListContent);
-
-            var teams = _teamRepository.GetAllTeams();
-            foreach (var team in teams)
+            try
             {
-                var title = string.IsNullOrWhiteSpace(team.City) ? team.Name : $"{team.City} {team.Name}";
-                CreateListButton(_teamListContent, title, () => SelectTeam(team));
+                var teams = _teamRepository.GetAllTeams();
+                foreach (var team in teams)
+                {
+                    CreateListButton(_teamListContent, GetTeamTitle(team), () => SelectTeam(team));
+                }
+
+                _teamHeader.text = $"\u7403\u961f ({teams.Count})";
+                _statusText.text = $"\u5df2\u52a0\u8f7d {teams.Count} \u652f\u7403\u961f\n\u6570\u636e\u5e93: {_databaseManager.PersistentDatabasePath}";
+
+                if (teams.Count > 0)
+                {
+                    SelectTeam(teams[0]);
+                }
             }
-
-            _teamHeader.text = $"\u7403\u961f ({teams.Count})";
-            _statusText.text = $"\u5df2\u52a0\u8f7d {teams.Count} \u652f\u7403\u961f";
-
-            if (teams.Count > 0)
+            catch (Exception exception)
             {
-                SelectTeam(teams[0]);
+                _teamHeader.text = "\u7403\u961f";
+                _rosterHeader.text = "\u9635\u5bb9";
+                _editorHeader.text = "\u7403\u5458\u7f16\u8f91";
+                _statusText.text = $"{exception.Message}\n\u6570\u636e\u5e93: {_databaseManager.PersistentDatabasePath}";
+                Debug.LogError(exception);
             }
         }
 
         private void SelectTeam(Team team)
         {
             _selectedTeam = team;
-            _teamHeader.text = $"\u7403\u961f ({team.Name})";
-            _rosterHeader.text = $"\u9635\u5bb9 - {team.Name}";
+            var teamTitle = GetTeamTitle(team);
+            _teamHeader.text = $"\u7403\u961f ({teamTitle})";
+            _rosterHeader.text = $"\u9635\u5bb9 - {teamTitle}";
 
             ClearChildren(_rosterListContent);
-            var players = _playerRepository.GetPlayersByTeamId(team.Id);
-            foreach (var player in players)
+            try
             {
-                var label = $"#{player.JerseyNumber} {player.GetDisplayName()} ({player.Position}) \u603b\u8bc4 {player.Overall}";
-                CreateListButton(_rosterListContent, label, () => SelectPlayer(player.Id));
-            }
+                var players = _playerRepository.GetPlayersByTeamId(team.Id);
+                foreach (var player in players)
+                {
+                    var label = $"#{player.JerseyNumber} {player.GetDisplayName()} ({player.Position}) \u603b\u8bc4 {player.Overall}";
+                    CreateListButton(_rosterListContent, label, () => SelectPlayer(player.Id));
+                }
 
-            _statusText.text = $"\u5df2\u52a0\u8f7d {team.Name} \u7684 {players.Count} \u540d\u7403\u5458";
+                _statusText.text = $"\u5df2\u52a0\u8f7d {teamTitle} \u7684 {players.Count} \u540d\u7403\u5458\n\u6570\u636e\u5e93: {_databaseManager.PersistentDatabasePath}";
 
-            if (players.Count > 0)
-            {
-                SelectPlayer(players[0].Id);
+                if (players.Count > 0)
+                {
+                    SelectPlayer(players[0].Id);
+                }
+                else
+                {
+                    _selectedPlayer = null;
+                    _editorHeader.text = "\u7403\u5458\u7f16\u8f91";
+                    ClearBindings();
+                }
             }
-            else
+            catch (Exception exception)
             {
-                _selectedPlayer = null;
-                _editorHeader.text = "\u7403\u5458\u7f16\u8f91";
-                ClearBindings();
+                _statusText.text = $"{exception.Message}\n\u6570\u636e\u5e93: {_databaseManager.PersistentDatabasePath}";
+                Debug.LogError(exception);
             }
         }
 
         private void SelectPlayer(int playerId)
         {
-            _selectedPlayer = _playerRepository.GetPlayerById(playerId);
-            if (_selectedPlayer == null)
+            try
             {
-                _statusText.text = $"\u672a\u627e\u5230\u7403\u5458 {playerId}";
-                return;
-            }
+                _selectedPlayer = _playerRepository.GetPlayerById(playerId);
+                if (_selectedPlayer == null)
+                {
+                    _statusText.text = $"\u672a\u627e\u5230\u7403\u5458 {playerId}\n\u6570\u636e\u5e93: {_databaseManager.PersistentDatabasePath}";
+                    return;
+                }
 
-            _editorHeader.text = $"\u7403\u5458\u7f16\u8f91 - {_selectedPlayer.GetDisplayName()}";
-            foreach (var binding in _bindings)
+                _editorHeader.text = $"\u7403\u5458\u7f16\u8f91 - {_selectedPlayer.GetDisplayName()}";
+                foreach (var binding in _bindings)
+                {
+                    binding.Load(_selectedPlayer);
+                }
+
+                _statusText.text = $"\u6b63\u5728\u7f16\u8f91 {_selectedPlayer.GetDisplayName()}\n\u6570\u636e\u5e93: {_databaseManager.PersistentDatabasePath}";
+            }
+            catch (Exception exception)
             {
-                binding.Load(_selectedPlayer);
+                _statusText.text = $"{exception.Message}\n\u6570\u636e\u5e93: {_databaseManager.PersistentDatabasePath}";
+                Debug.LogError(exception);
             }
-
-            _statusText.text = $"\u6b63\u5728\u7f16\u8f91 {_selectedPlayer.GetDisplayName()}";
         }
 
         private void SaveCurrentPlayer()
@@ -283,8 +309,18 @@ namespace BasketballManager.UI.Screens
                 }
             }
 
-            _playerRepository.UpdatePlayer(_selectedPlayer);
-            _statusText.text = $"\u5df2\u4fdd\u5b58 {_selectedPlayer.GetDisplayName()}";
+            try
+            {
+                _playerRepository.UpdatePlayer(_selectedPlayer);
+            }
+            catch (Exception exception)
+            {
+                _statusText.text = $"{exception.Message}\n\u6570\u636e\u5e93: {_databaseManager.PersistentDatabasePath}";
+                Debug.LogError(exception);
+                return;
+            }
+
+            _statusText.text = $"\u5df2\u4fdd\u5b58 {_selectedPlayer.GetDisplayName()}\n\u6570\u636e\u5e93: {_databaseManager.PersistentDatabasePath}";
 
             if (_selectedTeam != null)
             {
@@ -312,6 +348,16 @@ namespace BasketballManager.UI.Screens
         private void AddField(IFieldBinding binding)
         {
             _bindings.Add(binding);
+        }
+
+        private static string GetTeamTitle(Team team)
+        {
+            if (team.Era > 0)
+            {
+                return $"{team.Era} {team.Name}";
+            }
+
+            return string.IsNullOrWhiteSpace(team.City) ? team.Name : $"{team.City} {team.Name}";
         }
 
         private IFieldBinding CreateTextBinding(RectTransform parent, string label, Func<Player, string> getter, Action<Player, string> setter)

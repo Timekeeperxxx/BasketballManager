@@ -7,7 +7,7 @@ namespace BasketballManager.Core.Models
     public class Player
     {
         public int Id;
-        public int TeamId;
+        public string TeamId = string.Empty;
         public string FirstName = string.Empty;
         public string LastName = string.Empty;
         public string DisplayName = string.Empty;

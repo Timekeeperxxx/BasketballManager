@@ -19,18 +19,25 @@ namespace BasketballManager.Database
             using var connection = _databaseManager.OpenConnection();
             using var command = connection.CreateCommand();
             command.CommandText = @"
-SELECT id, name, COALESCE(city, '') AS city
+SELECT
+    id,
+    name,
+    COALESCE(city, '') AS city,
+    COALESCE(era, 0) AS era,
+    COALESCE(is_current, 0) AS is_current
 FROM teams
-ORDER BY id ASC;";
+ORDER BY era ASC, id ASC;";
 
             using var reader = command.ExecuteReader();
             while (reader.Read())
             {
                 teams.Add(new Team
                 {
-                    Id = ReadInt(reader["id"]),
+                    Id = reader["id"].ToString() ?? string.Empty,
                     Name = reader["name"].ToString() ?? string.Empty,
-                    City = reader["city"].ToString() ?? string.Empty
+                    City = reader["city"].ToString() ?? string.Empty,
+                    Era = ReadInt(reader["era"]),
+                    IsCurrent = ReadInt(reader["is_current"]) != 0
                 });
             }
 
