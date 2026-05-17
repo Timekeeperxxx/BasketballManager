@@ -204,7 +204,7 @@ namespace BasketballManager.Simulation
                     offense.TeamStats.ThreePointersAttempted++;
                 }
                 
-                ResolveRebound(offense, defense);
+                ResolveRebound(offense, defense, shotType);
                 return;
             }
 
@@ -277,7 +277,7 @@ namespace BasketballManager.Simulation
             else
             {
                 // Missed shot -> rebound
-                ResolveRebound(offense, defense);
+                ResolveRebound(offense, defense, shotType);
             }
         }
 
@@ -682,7 +682,7 @@ namespace BasketballManager.Simulation
             return 1.0f;
         }
 
-        private void ResolveRebound(MatchTeamSnapshot offense, MatchTeamSnapshot defense)
+        private void ResolveRebound(MatchTeamSnapshot offense, MatchTeamSnapshot defense, ShotType? shotType)
         {
             float teamOffWeight = 0;
             float teamDefWeight = 0;
@@ -692,13 +692,22 @@ namespace BasketballManager.Simulation
             {
                 var p = offense.RotationPlayers[i];
                 int mins = offense.PlayerStatsById[p.Id].Minutes;
-                float w = p.Attributes.OffensiveRebound * 1.65f + p.Tendencies.OffensiveReboundTendency * 1.25f + p.Attributes.Strength * 0.35f + p.HeightCm * 0.16f + mins * 0.25f;
+                float w = p.Attributes.OffensiveRebound * 1.65f + p.Tendencies.OffensiveReboundTendency * 1.25f + p.Attributes.Strength * 0.35f + p.HeightCm * 0.16f + mins * 0.45f;
 
-                if (p.Position == BasketballManager.Core.Enums.Position.PG) w *= 0.55f;
-                else if (p.Position == BasketballManager.Core.Enums.Position.SG) w *= 0.65f;
-                else if (p.Position == BasketballManager.Core.Enums.Position.SF) w *= 0.90f;
-                else if (p.Position == BasketballManager.Core.Enums.Position.PF) w *= 1.20f;
-                else if (p.Position == BasketballManager.Core.Enums.Position.C) w *= 1.40f;
+                if (p.Position == BasketballManager.Core.Enums.Position.PG) w *= 0.78f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.SG) w *= 0.82f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.SF) w *= 0.95f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.PF) w *= 1.12f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.C) w *= 1.25f;
+
+                if (shotType == ShotType.ThreePoint)
+                {
+                    if (p.Position == BasketballManager.Core.Enums.Position.PG) w *= 1.25f;
+                    else if (p.Position == BasketballManager.Core.Enums.Position.SG) w *= 1.20f;
+                    else if (p.Position == BasketballManager.Core.Enums.Position.SF) w *= 1.10f;
+                    else if (p.Position == BasketballManager.Core.Enums.Position.PF) w *= 0.95f;
+                    else if (p.Position == BasketballManager.Core.Enums.Position.C) w *= 0.90f;
+                }
 
                 w *= GetEliteRebounderBoost(p, false);
 
@@ -711,13 +720,22 @@ namespace BasketballManager.Simulation
             {
                 var p = defense.RotationPlayers[i];
                 int mins = defense.PlayerStatsById[p.Id].Minutes;
-                float w = p.Attributes.DefensiveRebound * 1.65f + p.Tendencies.DefensiveReboundTendency * 1.25f + p.Attributes.Strength * 0.35f + p.HeightCm * 0.16f + mins * 0.25f;
+                float w = p.Attributes.DefensiveRebound * 1.65f + p.Tendencies.DefensiveReboundTendency * 1.25f + p.Attributes.Strength * 0.35f + p.HeightCm * 0.16f + mins * 0.45f;
 
-                if (p.Position == BasketballManager.Core.Enums.Position.PG) w *= 0.55f;
-                else if (p.Position == BasketballManager.Core.Enums.Position.SG) w *= 0.65f;
-                else if (p.Position == BasketballManager.Core.Enums.Position.SF) w *= 0.90f;
-                else if (p.Position == BasketballManager.Core.Enums.Position.PF) w *= 1.20f;
-                else if (p.Position == BasketballManager.Core.Enums.Position.C) w *= 1.40f;
+                if (p.Position == BasketballManager.Core.Enums.Position.PG) w *= 0.78f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.SG) w *= 0.82f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.SF) w *= 0.95f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.PF) w *= 1.12f;
+                else if (p.Position == BasketballManager.Core.Enums.Position.C) w *= 1.25f;
+
+                if (shotType == ShotType.ThreePoint)
+                {
+                    if (p.Position == BasketballManager.Core.Enums.Position.PG) w *= 1.25f;
+                    else if (p.Position == BasketballManager.Core.Enums.Position.SG) w *= 1.20f;
+                    else if (p.Position == BasketballManager.Core.Enums.Position.SF) w *= 1.10f;
+                    else if (p.Position == BasketballManager.Core.Enums.Position.PF) w *= 0.95f;
+                    else if (p.Position == BasketballManager.Core.Enums.Position.C) w *= 0.90f;
+                }
 
                 w *= GetEliteRebounderBoost(p, true);
 
