@@ -300,7 +300,7 @@ namespace BasketballManager.Simulation
                           p.Tendencies.PassTendency * 0.9f + 
                           p.Attributes.OffensiveConsistency * 0.4f;
 
-                if (p.Position == BasketballManager.Core.Enums.PlayerPosition.PG)
+                if (p.Position == BasketballManager.Core.Enums.Position.PG)
                 {
                     w *= 1.2f;
                 }
