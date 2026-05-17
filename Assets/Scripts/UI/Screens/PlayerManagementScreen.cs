@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using BasketballManager.Core.Enums;
 using BasketballManager.Core.Models;
 using BasketballManager.Database;
+using BasketballManager.Simulation;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -127,6 +129,9 @@ namespace BasketballManager.UI.Screens
 
             var saveButton = CreateButton(footer, "\u4fdd\u5b58\u7403\u5458", SaveCurrentPlayer);
             LayoutElementWithWidth(saveButton.gameObject, 180f);
+
+            var simulateButton = CreateButton(footer, "\u6a21\u62df\u524d\u4e24\u652f\u7403\u961f\u6bd4\u8d5b", SimulateFirstTwoTeams);
+            LayoutElementWithWidth(simulateButton.gameObject, 220f);
 
             _statusText = CreateBodyText(footer, $"\u6570\u636e\u5e93: {_databaseManager.PersistentDatabasePath}");
             _statusText.alignment = TextAnchor.MiddleLeft;
@@ -333,6 +338,42 @@ namespace BasketballManager.UI.Screens
                 SelectTeam(_selectedTeam);
                 SelectPlayer(_selectedPlayer.Id);
             }
+        }
+
+        private void SimulateFirstTwoTeams()
+        {
+            var teams = _teamRepository.GetAllTeams();
+            if (teams.Count < 2)
+            {
+                _statusText.text = "球队数量不足以模拟比赛";
+                return;
+            }
+
+            var homeTeam = teams[0];
+            var awayTeam = teams[1];
+
+            var homePlayers = _playerRepository.GetPlayersByTeamId(homeTeam.Id);
+            var awayPlayers = _playerRepository.GetPlayersByTeamId(awayTeam.Id);
+
+            var simulator = new MatchSimulator();
+            var config = new MatchConfig();
+            
+            var result = simulator.Simulate(homeTeam, homePlayers, awayTeam, awayPlayers, config);
+            
+            var text = $"{result.HomeTeamName} {result.HomeScore} - {result.AwayScore} {result.AwayTeamName}\n";
+            text += $"每节: {string.Join("-", result.HomeQuarterScores)} | {string.Join("-", result.AwayQuarterScores)}\n";
+            
+            text += "主队得分前五: ";
+            var homeTop = result.HomePlayerStats.OrderByDescending(p => p.Points).Take(5);
+            text += string.Join(", ", homeTop.Select(p => $"{p.PlayerName}({p.Points})")) + "  ";
+            text += $"({result.HomeTeamStats.FieldGoalsMade}/{result.HomeTeamStats.FieldGoalsAttempted})\n";
+            
+            text += "客队得分前五: ";
+            var awayTop = result.AwayPlayerStats.OrderByDescending(p => p.Points).Take(5);
+            text += string.Join(", ", awayTop.Select(p => $"{p.PlayerName}({p.Points})")) + "  ";
+            text += $"({result.AwayTeamStats.FieldGoalsMade}/{result.AwayTeamStats.FieldGoalsAttempted})";
+
+            _statusText.text = text;
         }
 
         private void CreateSection(RectTransform parent, string title, Action<RectTransform> addFields)
