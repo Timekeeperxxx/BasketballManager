@@ -29,10 +29,10 @@ namespace BasketballManager.App
             var teamRepository = new TeamRepository(databaseManager);
             var playerRepository = new PlayerRepository(databaseManager);
 
-            var screen = GetComponent<PlayerManagementScreen>();
+            var screen = GetComponent<MainScreen>();
             if (screen == null)
             {
-                screen = gameObject.AddComponent<PlayerManagementScreen>();
+                screen = gameObject.AddComponent<MainScreen>();
             }
 
             screen.Initialize(databaseManager, teamRepository, playerRepository);
