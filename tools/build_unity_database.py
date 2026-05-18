@@ -301,6 +301,10 @@ def get_teams() -> list[dict]:
         {"id": "nuggets_2023", "name": "Denver Nuggets", "city": "Denver", "era": 2023, "is_current": 0},
         {"id": "celtics_2024", "name": "Boston Celtics", "city": "Boston", "era": 2024, "is_current": 0},
         {"id": "thunder_2025", "name": "Oklahoma City Thunder", "city": "Oklahoma City", "era": 2025, "is_current": 0},
+        {"id": "warriors_2017", "name": "2017 Golden State Warriors", "city": "Golden State", "era": 2017, "is_current": 0},
+        {"id": "lakers_2020", "name": "2020 Los Angeles Lakers", "city": "Los Angeles", "era": 2020, "is_current": 0},
+        {"id": "bucks_2021", "name": "2021 Milwaukee Bucks", "city": "Milwaukee", "era": 2021, "is_current": 0},
+        {"id": "raptors_2019", "name": "2019 Toronto Raptors", "city": "Toronto", "era": 2019, "is_current": 0},
     ]
 
 
@@ -715,6 +719,8 @@ def get_players() -> list[dict]:
     ]
 
 
+import csv
+
 def seed_data(conn: sqlite3.Connection) -> tuple[int, int]:
     teams = get_teams()
     players = get_players()
@@ -729,13 +735,36 @@ def seed_data(conn: sqlite3.Connection) -> tuple[int, int]:
         insert_player_tendencies(conn, next_player_id, player["tendencies"])
         next_player_id += 1
 
-    return len(teams), len(players)
+    # Insert historical players
+    hist_csv_path = PROJECT_ROOT / "data" / "source" / "historical_champion_player_stats.csv"
+    hist_players_count = 0
+    if hist_csv_path.exists():
+        with open(hist_csv_path, 'r', encoding='utf-8-sig') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                player_id = int(row['player_id'])
+                hp = make_player(
+                    team_id=row['team_id'],
+                    first_name=row['first_name'],
+                    last_name=row['last_name'],
+                    position=row['position'],
+                    height_cm=int(row['height_cm']),
+                    weight_kg=int(row['weight_kg']),
+                    age=int(row['age']),
+                    jersey_number=0,
+                    overall=70,
+                    display_name=row['display_name']
+                )
+                insert_player_base(conn, player_id, hp)
+                insert_player_attributes(conn, player_id, hp["attributes"])
+                insert_player_tendencies(conn, player_id, hp["tendencies"])
+                hist_players_count += 1
+
+    return len(teams), len(players) + hist_players_count
 
 
 def main() -> None:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    if DB_PATH.exists():
-        DB_PATH.unlink()
 
     conn = sqlite3.connect(DB_PATH)
     try:

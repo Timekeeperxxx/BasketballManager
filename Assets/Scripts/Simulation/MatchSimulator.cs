@@ -45,7 +45,7 @@ namespace BasketballManager.Simulation
 
             for (int q = 0; q < config.QuarterCount; q++)
             {
-                SimulateQuarter(homeSnapshot, awaySnapshot, config);
+                SimulateQuarter(homeSnapshot, awaySnapshot, config, q);
                 result.HomeQuarterScores.Add(homeSnapshot.TeamStats.Points - result.HomeScore);
                 result.AwayQuarterScores.Add(awaySnapshot.TeamStats.Points - result.AwayScore);
                 result.HomeScore = homeSnapshot.TeamStats.Points;
@@ -102,19 +102,21 @@ namespace BasketballManager.Simulation
                     PlayerName = player.GetDisplayName(),
                     Position = player.Position.ToString()
                 };
+                
+                snapshot.PlayerGameStates[player.Id] = new PlayerGameState();
             }
 
             return snapshot;
         }
 
-        private void SimulateQuarter(MatchTeamSnapshot home, MatchTeamSnapshot away, MatchConfig config)
+        private void SimulateQuarter(MatchTeamSnapshot home, MatchTeamSnapshot away, MatchConfig config, int quarterIndex)
         {
             int quarterPossessions = _random.Range(config.MinPossessionsPerTeam, config.MaxPossessionsPerTeam) / config.QuarterCount;
             
             for (int i = 0; i < quarterPossessions; i++)
             {
-                SimulatePossession(home, away);
-                SimulatePossession(away, home);
+                SimulatePossession(home, away, quarterIndex);
+                SimulatePossession(away, home, quarterIndex);
             }
         }
 
@@ -173,8 +175,11 @@ namespace BasketballManager.Simulation
             }
         }
 
-        private void SimulatePossession(MatchTeamSnapshot offense, MatchTeamSnapshot defense)
+        private void SimulatePossession(MatchTeamSnapshot offense, MatchTeamSnapshot defense, int quarterIndex)
         {
+            bool isTransition = offense.HasTransitionOpportunity;
+            offense.HasTransitionOpportunity = false;
+
             var attacker = SelectInitiator(offense);
             var defender = SelectMatchedDefender(defense, attacker, null);
 
@@ -182,7 +187,7 @@ namespace BasketballManager.Simulation
             var defStats = defense.PlayerStatsById[defender.Id];
 
             // 15. Turnovers
-            float turnoverChance = CalculateTurnoverChance(attacker, defender);
+            float turnoverChance = CalculateTurnoverChance(attacker, defender, isTransition);
             if (_random.Chance(turnoverChance))
             {
                 offStats.Turnovers++;
@@ -192,100 +197,254 @@ namespace BasketballManager.Simulation
                 {
                     defStats.Steals++;
                     defense.TeamStats.Steals++;
+                    defense.HasTransitionOpportunity = true;
                 }
                 return;
             }
 
             // Select Finisher (could be the same as initiator)
-            var finisher = SelectFinisher(offense);
+            var finisher = SelectFinisher(offense, isTransition);
             var finStats = offense.PlayerStatsById[finisher.Id];
             
-            var shotType = SelectShotType(finisher);
+            var shotType = SelectShotType(finisher, offense, quarterIndex, isTransition);
 
             var finDefender = SelectMatchedDefender(defense, finisher, shotType);
             var finDefStats = defense.PlayerStatsById[finDefender.Id];
 
-            // 16. Blocks
+            // 16. Blocks (priority over Foul/And-1)
             float blockChance = CalculateBlockChance(shotType, finDefender);
             if (_random.Chance(blockChance))
             {
                 finDefStats.Blocks++;
                 defense.TeamStats.Blocks++;
                 
-                finStats.FieldGoalsAttempted++;
-                offense.TeamStats.FieldGoalsAttempted++;
-                if (shotType == ShotType.ThreePoint)
-                {
-                    finStats.ThreePointersAttempted++;
-                    offense.TeamStats.ThreePointersAttempted++;
-                }
+                RecordShotResult(offense, finisher, shotType, false, true);
                 
-                ResolveRebound(offense, defense, shotType);
+                var (rebounder, isOffensive) = ResolveRebound(offense, defense, shotType);
+                if (isOffensive && rebounder != null)
+                {
+                    SimulateSecondChanceAttempt(offense, defense, rebounder, quarterIndex);
+                }
                 return;
             }
 
-            // 12. Fouls
-            bool isFoul = ResolveFoul(finisher, finDefender, shotType, out int freeThrows);
+            // 12. Fouls & And-1
+            bool isFoul = ResolveFoul(finisher, finDefender, shotType, offense, quarterIndex, out int freeThrows);
             if (isFoul)
             {
-                finDefStats.Fouls++;
-                defense.TeamStats.Fouls++;
-                
-                finStats.FreeThrowsAttempted += freeThrows;
-                offense.TeamStats.FreeThrowsAttempted += freeThrows;
-                
-                int ftMade = 0;
-                for (int i = 0; i < freeThrows; i++)
+                float finishQuality = shotType switch
                 {
-                    float ftChance = (finisher.Attributes.FreeThrow / 100f) * 0.85f + 0.05f; // Simplify
-                    if (_random.Chance(ftChance))
-                    {
-                        ftMade++;
-                    }
+                    ShotType.Layup => finisher.Attributes.Layup,
+                    ShotType.CloseShot => finisher.Attributes.CloseShot,
+                    ShotType.Post => finisher.Attributes.PostScoring,
+                    ShotType.TwoPoint => finisher.Attributes.TwoPoint,
+                    ShotType.ThreePoint => finisher.Attributes.ThreePoint,
+                    _ => 50f
+                };
+                
+                float andOneChance = shotType switch
+                {
+                    ShotType.Layup => 0.16f,
+                    ShotType.CloseShot => 0.13f,
+                    ShotType.Post => 0.11f,
+                    ShotType.TwoPoint => 0.07f,
+                    ShotType.ThreePoint => 0.025f,
+                    _ => 0.05f
+                };
+                
+                if (finishQuality >= 88) andOneChance += 0.04f;
+                else if (finishQuality >= 80) andOneChance += 0.025f;
+                
+                if (finDefender.Attributes.InteriorDefense >= 85 || finDefender.Attributes.PerimeterDefense >= 85)
+                    andOneChance -= 0.02f;
+                    
+                andOneChance = Mathf.Clamp(andOneChance, 0.01f, 0.22f);
+                
+                if (_random.Chance(andOneChance))
+                {
+                    // And-1 Success
+                    finDefStats.Fouls++;
+                    defense.TeamStats.Fouls++;
+                    
+                    RecordShotResult(offense, finisher, shotType, true, false);
+                    ResolveAssist(offense, attacker, finisher, shotType, true);
+
+                    // 1 FT
+                    float ftChance = (finisher.Attributes.FreeThrow / 100f) * 0.85f + 0.05f;
+                    RecordFreeThrow(offense, finisher, _random.Chance(ftChance));
+                    
+                    return;
                 }
-                
-                finStats.FreeThrowsMade += ftMade;
-                finStats.Points += ftMade;
-                offense.TeamStats.FreeThrowsMade += ftMade;
-                offense.TeamStats.Points += ftMade;
-                
-                // Possible And-1 if random dictates? Simplified to just FTs for foul.
-                return; 
+                else
+                {
+                    // Regular foul
+                    finDefStats.Fouls++;
+                    defense.TeamStats.Fouls++;
+                    
+                    for (int i = 0; i < freeThrows; i++)
+                    {
+                        float ftChance = (finisher.Attributes.FreeThrow / 100f) * 0.85f + 0.05f; // Simplify
+                        RecordFreeThrow(offense, finisher, _random.Chance(ftChance));
+                    }
+                    return;
+                }
             }
 
             // 11. Shot Success
-            float fgChance = CalculateFgChance(finisher, finDefender, shotType);
+            float fgChance = CalculateFgChance(finisher, finDefender, shotType, isTransition);
             bool isMade = _random.Chance(fgChance);
-
-            finStats.FieldGoalsAttempted++;
-            offense.TeamStats.FieldGoalsAttempted++;
-            if (shotType == ShotType.ThreePoint)
-            {
-                finStats.ThreePointersAttempted++;
-                offense.TeamStats.ThreePointersAttempted++;
-            }
+            
+            RecordShotResult(offense, finisher, shotType, isMade, false);
 
             if (isMade)
             {
-                int pts = shotType == ShotType.ThreePoint ? 3 : 2;
-                finStats.FieldGoalsMade++;
-                finStats.Points += pts;
-                offense.TeamStats.FieldGoalsMade++;
-                offense.TeamStats.Points += pts;
-
-                if (shotType == ShotType.ThreePoint)
-                {
-                    finStats.ThreePointersMade++;
-                    offense.TeamStats.ThreePointersMade++;
-                }
-
                 // 14. Assists
                 ResolveAssist(offense, attacker, finisher, shotType, true);
             }
             else
             {
                 // Missed shot -> rebound
-                ResolveRebound(offense, defense, shotType);
+                var (rebounder, isOffensive) = ResolveRebound(offense, defense, shotType);
+                if (isOffensive && rebounder != null)
+                {
+                    SimulateSecondChanceAttempt(offense, defense, rebounder, quarterIndex);
+                }
+            }
+        }
+
+        private void SimulateSecondChanceAttempt(MatchTeamSnapshot offense, MatchTeamSnapshot defense, Player rebounder, int quarterIndex)
+        {
+            bool isBig = rebounder.Position == BasketballManager.Core.Enums.Position.C || rebounder.Position == BasketballManager.Core.Enums.Position.PF;
+            bool selfFinish = _random.Chance(isBig ? 0.55f : 0.25f);
+            
+            Player finisher = selfFinish ? rebounder : SelectFinisher(offense, false);
+            var finStats = offense.PlayerStatsById[finisher.Id];
+            
+            ShotType shotType;
+            if (selfFinish)
+            {
+                float r = _random.Range(0f, 1f);
+                if (isBig)
+                {
+                    if (r < 0.45f) shotType = ShotType.CloseShot;
+                    else if (r < 0.70f) shotType = ShotType.Layup;
+                    else if (r < 0.85f) shotType = ShotType.Post;
+                    else shotType = _random.Chance(0.5f) ? ShotType.TwoPoint : ShotType.ThreePoint;
+                }
+                else
+                {
+                    if (r < 0.35f) shotType = ShotType.ThreePoint;
+                    else if (r < 0.65f) shotType = ShotType.TwoPoint;
+                    else if (r < 0.85f) shotType = ShotType.Layup;
+                    else shotType = ShotType.CloseShot;
+                }
+            }
+            else
+            {
+                shotType = SelectShotType(finisher, offense, quarterIndex, false);
+            }
+
+            var finDefender = SelectMatchedDefender(defense, finisher, shotType);
+            var finDefStats = defense.PlayerStatsById[finDefender.Id];
+
+            float blockChance = CalculateBlockChance(shotType, finDefender);
+            if (_random.Chance(blockChance))
+            {
+                finDefStats.Blocks++;
+                defense.TeamStats.Blocks++;
+                
+                RecordShotResult(offense, finisher, shotType, false, true);
+                
+                ResolveRebound(offense, defense, shotType); // No recursive second chance
+                return;
+            }
+
+            bool isFoul = ResolveFoul(finisher, finDefender, shotType, offense, quarterIndex, out int freeThrows);
+            if (isFoul)
+            {
+                float finishQuality = shotType switch
+                {
+                    ShotType.Layup => finisher.Attributes.Layup,
+                    ShotType.CloseShot => finisher.Attributes.CloseShot,
+                    ShotType.Post => finisher.Attributes.PostScoring,
+                    ShotType.TwoPoint => finisher.Attributes.TwoPoint,
+                    ShotType.ThreePoint => finisher.Attributes.ThreePoint,
+                    _ => 50f
+                };
+                
+                float andOneChance = shotType switch
+                {
+                    ShotType.Layup => 0.16f,
+                    ShotType.CloseShot => 0.13f,
+                    ShotType.Post => 0.11f,
+                    ShotType.TwoPoint => 0.07f,
+                    ShotType.ThreePoint => 0.025f,
+                    _ => 0.05f
+                };
+                
+                if (finishQuality >= 88) andOneChance += 0.04f;
+                else if (finishQuality >= 80) andOneChance += 0.025f;
+                
+                if (finDefender.Attributes.InteriorDefense >= 85 || finDefender.Attributes.PerimeterDefense >= 85)
+                    andOneChance -= 0.02f;
+                    
+                andOneChance = Mathf.Clamp(andOneChance, 0.01f, 0.22f);
+                
+                if (_random.Chance(andOneChance))
+                {
+                    finDefStats.Fouls++;
+                    defense.TeamStats.Fouls++;
+                    
+                    RecordShotResult(offense, finisher, shotType, true, false);
+                    
+                    if (!selfFinish)
+                        ResolveAssist(offense, rebounder, finisher, shotType, true);
+
+                    float ftChance = (finisher.Attributes.FreeThrow / 100f) * 0.85f + 0.05f;
+                    RecordFreeThrow(offense, finisher, _random.Chance(ftChance));
+                    
+                    return;
+                }
+                else
+                {
+                    finDefStats.Fouls++;
+                    defense.TeamStats.Fouls++;
+                    
+                    for (int i = 0; i < freeThrows; i++)
+                    {
+                        float ftChance = (finisher.Attributes.FreeThrow / 100f) * 0.85f + 0.05f;
+                        RecordFreeThrow(offense, finisher, _random.Chance(ftChance));
+                    }
+                    
+                    return;
+                }
+            }
+
+            float fgChance = CalculateFgChance(finisher, finDefender, shotType, false);
+            
+            float boost = shotType switch
+            {
+                ShotType.CloseShot => 0.04f,
+                ShotType.Layup => 0.04f,
+                ShotType.Post => 0.02f,
+                ShotType.ThreePoint => 0.02f,
+                ShotType.TwoPoint => 0.02f,
+                _ => 0f
+            };
+            fgChance += boost;
+            
+            bool isMade = _random.Chance(fgChance);
+            
+            RecordShotResult(offense, finisher, shotType, isMade, false);
+
+            if (isMade)
+            {
+                if (!selfFinish)
+                    ResolveAssist(offense, rebounder, finisher, shotType, true);
+            }
+            else
+            {
+                ResolveRebound(offense, defense, shotType); // No recursive second chance
             }
         }
 
@@ -380,7 +539,7 @@ namespace BasketballManager.Simulation
             return candidates.Last();
         }
 
-        private Player SelectFinisher(MatchTeamSnapshot offense)
+        private Player SelectFinisher(MatchTeamSnapshot offense, bool isTransition = false)
         {
             var candidates = offense.RotationPlayers;
             float totalWeight = 0;
@@ -404,6 +563,16 @@ namespace BasketballManager.Simulation
                 w *= GetStarUsageBoost(p);
                 w *= GetOffensiveRoleBoost(p, offense);
                 w *= GetOffBallShooterBoost(p);
+                w *= GetInGameFinisherAdjustment(offense, p, null);
+
+                if (isTransition)
+                {
+                    if (p.Position != BasketballManager.Core.Enums.Position.C && p.Position != BasketballManager.Core.Enums.Position.PF)
+                    {
+                        w *= 1.15f * (p.Attributes.Drive / 80f);
+                        w *= 1.08f * (p.Tendencies.ThreeTendency / 80f);
+                    }
+                }
 
                 if (p.Position == BasketballManager.Core.Enums.Position.C && 
                     p.Attributes.Passing >= 85 && 
@@ -508,7 +677,7 @@ namespace BasketballManager.Simulation
             return candidates.Last();
         }
 
-        private ShotType SelectShotType(Player player)
+        private ShotType SelectShotType(Player player, MatchTeamSnapshot offense, int quarterIndex, bool isTransition = false)
         {
             float threeWeight = player.Tendencies.ThreeTendency * 1.65f + player.Attributes.ThreePoint * 0.65f;
             float twoPointWeight = player.Tendencies.TwoPointTendency * 0.95f + player.Attributes.TwoPoint * 0.35f;
@@ -542,14 +711,43 @@ namespace BasketballManager.Simulation
                 threeWeight *= 0.70f;
             }
 
+            threeWeight *= GetTeamThreePointAdjustment(offense);
+
+            float lowScoreAdjustment = GetLowScoreAggressionAdjustment(offense, quarterIndex);
+            driveWeight *= lowScoreAdjustment;
+            closeWeight *= lowScoreAdjustment * 1.04f;
+            threeWeight *= Mathf.Lerp(1.0f, 0.92f, lowScoreAdjustment - 1.0f);
+
+            if (offense.ConsecutiveTeamThreeMisses >= 5)
+            {
+                threeWeight *= 0.65f;
+                driveWeight *= 1.25f;
+                closeWeight *= 1.18f;
+                twoPointWeight *= 1.08f;
+            }
+
+            if (isTransition)
+            {
+                driveWeight *= 1.35f;
+                closeWeight *= 1.15f;
+                threeWeight *= 1.18f;
+                twoPointWeight *= 0.70f;
+                postWeight *= 0.20f;
+            }
+
             float total = threeWeight + twoPointWeight + driveWeight + closeWeight + postWeight;
             if (total == 0) return ShotType.TwoPoint;
 
             float roll = _random.Range(0f, total);
             
             roll -= threeWeight;
-            if (roll <= 0) return ShotType.ThreePoint;
+            if (roll <= 0) 
+            {
+                return ShotType.ThreePoint;
+            }
             
+            offense.ConsecutiveTeamThreeMisses = Mathf.Max(0, offense.ConsecutiveTeamThreeMisses - 2);
+
             roll -= twoPointWeight;
             if (roll <= 0) return ShotType.TwoPoint;
             
@@ -562,14 +760,20 @@ namespace BasketballManager.Simulation
             return ShotType.CloseShot;
         }
 
-        private float CalculateTurnoverChance(Player attacker, Player defender)
+        private float CalculateTurnoverChance(Player attacker, Player defender, bool isTransition = false)
         {
             float off = (attacker.Attributes.BallHandle + attacker.Attributes.Passing + attacker.Attributes.OffensiveConsistency) / 3f;
             float def = (defender.Attributes.Steal + defender.Tendencies.StealTendency + defender.Attributes.PerimeterDefense) / 3f;
             
             float baseChance = 0.12f;
             float delta = (def - off) / 100f * 0.1f; 
-            return Mathf.Clamp(baseChance + delta, 0.05f, 0.25f);
+            float result = Mathf.Clamp(baseChance + delta, 0.05f, 0.25f);
+            
+            if (isTransition)
+            {
+                result *= 0.90f;
+            }
+            return result;
         }
 
         private float CalculateBlockChance(ShotType shotType, Player defender)
@@ -581,7 +785,7 @@ namespace BasketballManager.Simulation
             return Mathf.Clamp(defAbility / 100f * 0.15f, 0.02f, 0.15f);
         }
 
-        private bool ResolveFoul(Player attacker, Player defender, ShotType shotType, out int freeThrows)
+        private bool ResolveFoul(Player attacker, Player defender, ShotType shotType, MatchTeamSnapshot offense, int quarterIndex, out int freeThrows)
         {
             freeThrows = 0;
             float baseChance = shotType switch
@@ -613,6 +817,8 @@ namespace BasketballManager.Simulation
             if (drawFoulScore < 70) chance *= 0.75f;
             if (drawFoulScore >= 88) chance *= 1.10f;
 
+            chance *= GetLowScoreAggressionAdjustment(offense, quarterIndex);
+
             if (_random.Chance(chance))
             {
                 freeThrows = shotType == ShotType.ThreePoint ? 3 : 2;
@@ -621,28 +827,105 @@ namespace BasketballManager.Simulation
             return false;
         }
 
-        private float CalculateFgChance(Player attacker, Player defender, ShotType shotType)
+        private void RecordShotResult(MatchTeamSnapshot offense, Player shooter, ShotType shotType, bool isMade, bool isBlocked = false)
+        {
+            var pStats = offense.PlayerStatsById[shooter.Id];
+            var pState = offense.PlayerGameStates[shooter.Id];
+            var tStats = offense.TeamStats;
+
+            pStats.FieldGoalsAttempted++;
+            pState.Fga++;
+            tStats.FieldGoalsAttempted++;
+
+            bool isThree = shotType == ShotType.ThreePoint;
+            if (isThree)
+            {
+                pStats.ThreePointersAttempted++;
+                pState.ThreePa++;
+                tStats.ThreePointersAttempted++;
+            }
+
+            if (isMade)
+            {
+                pStats.FieldGoalsMade++;
+                pState.Fgm++;
+                tStats.FieldGoalsMade++;
+                
+                int pts = isThree ? 3 : 2;
+                pStats.Points += pts;
+                pState.Points += pts;
+                tStats.Points += pts;
+                
+                pState.ConsecutiveMisses = 0;
+
+                if (isThree)
+                {
+                    pStats.ThreePointersMade++;
+                    pState.ThreePm++;
+                    tStats.ThreePointersMade++;
+                    
+                    pState.ConsecutiveThreeMisses = 0;
+                    offense.ConsecutiveTeamThreeMisses = 0;
+                }
+            }
+            else
+            {
+                pState.ConsecutiveMisses++;
+                if (isThree)
+                {
+                    pState.ConsecutiveThreeMisses++;
+                    offense.ConsecutiveTeamThreeMisses++;
+                }
+            }
+        }
+
+        private void RecordFreeThrow(MatchTeamSnapshot offense, Player shooter, bool isMade)
+        {
+            var pStats = offense.PlayerStatsById[shooter.Id];
+            var pState = offense.PlayerGameStates[shooter.Id];
+            var tStats = offense.TeamStats;
+
+            pStats.FreeThrowsAttempted++;
+            tStats.FreeThrowsAttempted++;
+
+            if (isMade)
+            {
+                pStats.FreeThrowsMade++;
+                tStats.FreeThrowsMade++;
+                
+                pStats.Points++;
+                pState.Points++;
+                tStats.Points++;
+            }
+        }
+
+        private float CalculateFgChance(Player attacker, Player defender, ShotType shotType, bool isTransition = false)
         {
             float offAttr = 60f;
             float defAttr = 60f;
+            float transitionBoost = 0f;
 
             switch (shotType)
             {
                 case ShotType.ThreePoint:
                     offAttr = attacker.Attributes.ThreePoint;
                     defAttr = defender.Attributes.PerimeterDefense;
+                    if (isTransition) transitionBoost = 0.025f;
                     break;
                 case ShotType.TwoPoint:
                     offAttr = attacker.Attributes.TwoPoint;
                     defAttr = defender.Attributes.PerimeterDefense;
+                    if (isTransition) transitionBoost = 0.02f;
                     break;
                 case ShotType.Layup:
                     offAttr = (attacker.Attributes.Layup + attacker.Attributes.Drive) / 2f;
                     defAttr = (defender.Attributes.InteriorDefense + defender.Attributes.Block + defender.Attributes.Strength) / 3f;
+                    if (isTransition) transitionBoost = 0.05f;
                     break;
                 case ShotType.CloseShot:
                     offAttr = attacker.Attributes.CloseShot;
                     defAttr = (defender.Attributes.InteriorDefense + defender.Attributes.Block + defender.Attributes.Strength) / 3f;
+                    if (isTransition) transitionBoost = 0.03f;
                     break;
                 case ShotType.Post:
                     offAttr = (attacker.Attributes.PostScoring + attacker.Attributes.Strength) / 2f;
@@ -657,10 +940,10 @@ namespace BasketballManager.Simulation
 
             float chance = shotType switch
             {
-                ShotType.ThreePoint => 0.35f + delta,
-                ShotType.TwoPoint => 0.45f + delta,
-                ShotType.Layup => 0.55f + delta,
-                ShotType.CloseShot => 0.58f + delta,
+                ShotType.ThreePoint => 0.35f + delta + transitionBoost,
+                ShotType.TwoPoint => 0.45f + delta + transitionBoost,
+                ShotType.Layup => 0.55f + delta + transitionBoost,
+                ShotType.CloseShot => 0.58f + delta + transitionBoost,
                 ShotType.Post => 0.50f + delta,
                 _ => 0.40f
             };
@@ -926,7 +1209,7 @@ namespace BasketballManager.Simulation
             return Mathf.Clamp(factor, 0.14f, 1.12f);
         }
 
-        private void ResolveRebound(MatchTeamSnapshot offense, MatchTeamSnapshot defense, ShotType? shotType)
+        private (Player rebounder, bool isOffensive) ResolveRebound(MatchTeamSnapshot offense, MatchTeamSnapshot defense, ShotType? shotType)
         {
             float teamOffWeight = 0;
             float teamDefWeight = 0;
@@ -1079,7 +1362,7 @@ namespace BasketballManager.Simulation
                 teamDefWeight += w;
             }
 
-            if (teamOffWeight + teamDefWeight == 0) return;
+            if (teamOffWeight + teamDefWeight == 0) return (null, false);
 
             float offChance = teamOffWeight / (teamOffWeight + teamDefWeight);
             offChance *= 0.58f;
@@ -1102,6 +1385,7 @@ namespace BasketballManager.Simulation
                 }
                 offense.PlayerStatsById[rebounder.Id].OffensiveRebounds++;
                 offense.TeamStats.OffensiveRebounds++;
+                return (rebounder, true);
             }
             else
             {
@@ -1118,7 +1402,68 @@ namespace BasketballManager.Simulation
                 }
                 defense.PlayerStatsById[rebounder.Id].DefensiveRebounds++;
                 defense.TeamStats.DefensiveRebounds++;
+                return (rebounder, false);
             }
+        }
+        private float GetInGameFinisherAdjustment(MatchTeamSnapshot offense, Player player, ShotType? shotType = null)
+        {
+            if (!offense.PlayerGameStates.TryGetValue(player.Id, out var state))
+                return 1.0f;
+
+            float multiplier = 1.0f;
+
+            float fgPct = state.Fga > 0 ? (float)state.Fgm / state.Fga : 0f;
+            if (state.Fga >= 8 && fgPct < 0.35f) multiplier *= 0.88f;
+            if (state.Fga >= 12 && fgPct < 0.32f) multiplier *= 0.78f;
+
+            if (state.ConsecutiveMisses >= 4) multiplier *= 0.85f;
+            if (state.ConsecutiveMisses >= 6) multiplier *= 0.72f;
+
+            if (shotType == null || shotType == ShotType.ThreePoint)
+            {
+                float threePct = state.ThreePa > 0 ? (float)state.ThreePm / state.ThreePa : 0f;
+                if (state.ThreePa >= 6 && threePct < 0.28f) multiplier *= 0.82f;
+                if (state.ConsecutiveThreeMisses >= 4) multiplier *= 0.78f;
+            }
+
+            float offensiveCore = player.Tendencies.ShotTendency * 0.35f +
+                                  player.Attributes.OffensiveConsistency * 0.25f +
+                                  player.Attributes.BallHandle * 0.20f +
+                                  player.Overall * 0.20f;
+
+            if (offensiveCore >= 88f) multiplier = Mathf.Max(multiplier, 0.78f);
+            else if (offensiveCore >= 82f) multiplier = Mathf.Max(multiplier, 0.72f);
+            else multiplier = Mathf.Max(multiplier, 0.55f);
+
+            return Mathf.Max(multiplier, 0.10f);
+        }
+
+        private float GetTeamThreePointAdjustment(MatchTeamSnapshot offense)
+        {
+            var tStats = offense.TeamStats;
+            if (tStats.ThreePointersAttempted < 16) return 1.0f;
+
+            float team3p = (float)tStats.ThreePointersMade / tStats.ThreePointersAttempted;
+
+            if (tStats.ThreePointersAttempted >= 30 && team3p < 0.26f) return 0.65f;
+            if (tStats.ThreePointersAttempted >= 24 && team3p < 0.28f) return 0.74f;
+            if (tStats.ThreePointersAttempted >= 16 && team3p < 0.30f) return 0.86f;
+
+            if (tStats.ThreePointersAttempted >= 20 && team3p > 0.40f) return 1.08f;
+
+            return 1.0f;
+        }
+
+        private float GetLowScoreAggressionAdjustment(MatchTeamSnapshot offense, int quarterIndex)
+        {
+            if (quarterIndex == 0) return 1.0f;
+
+            int pts = offense.TeamStats.Points;
+            if (quarterIndex == 1 && pts < 42) return 1.08f;
+            if (quarterIndex == 2 && pts < 68) return 1.12f;
+            if (quarterIndex == 3 && pts < 92) return 1.16f;
+
+            return 1.0f;
         }
 
         private void ValidateResult(MatchResult result)

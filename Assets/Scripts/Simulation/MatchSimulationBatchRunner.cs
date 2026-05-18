@@ -34,6 +34,7 @@ namespace BasketballManager.Simulation
             float awayFTM = 0, awayFTA = 0;
             
             float homeReb = 0, awayReb = 0;
+            float homeOReb = 0, awayOReb = 0;
             float homeAst = 0, awayAst = 0;
             float homeTov = 0, awayTov = 0;
             float homePf = 0, awayPf = 0;
@@ -81,6 +82,7 @@ namespace BasketballManager.Simulation
                 homeFTA += result.HomeTeamStats.FreeThrowsAttempted;
                 
                 homeReb += result.HomeTeamStats.Rebounds;
+                homeOReb += result.HomeTeamStats.OffensiveRebounds;
                 homeAst += result.HomeTeamStats.Assists;
                 homeTov += result.HomeTeamStats.Turnovers;
                 homePf += result.HomeTeamStats.Fouls;
@@ -93,6 +95,7 @@ namespace BasketballManager.Simulation
                 awayFTA += result.AwayTeamStats.FreeThrowsAttempted;
                 
                 awayReb += result.AwayTeamStats.Rebounds;
+                awayOReb += result.AwayTeamStats.OffensiveRebounds;
                 awayAst += result.AwayTeamStats.Assists;
                 awayTov += result.AwayTeamStats.Turnovers;
                 awayPf += result.AwayTeamStats.Fouls;
@@ -104,6 +107,7 @@ namespace BasketballManager.Simulation
                         statLine.Minutes += ps.Minutes;
                         statLine.Points += ps.Points;
                         statLine.Rebounds += ps.Rebounds;
+                        statLine.OffensiveRebounds += ps.OffensiveRebounds;
                         statLine.Assists += ps.Assists;
                         statLine.FieldGoalsMade += ps.FieldGoalsMade;
                         statLine.FieldGoalAttempts += ps.FieldGoalsAttempted;
@@ -121,6 +125,7 @@ namespace BasketballManager.Simulation
                         statLine.Minutes += ps.Minutes;
                         statLine.Points += ps.Points;
                         statLine.Rebounds += ps.Rebounds;
+                        statLine.OffensiveRebounds += ps.OffensiveRebounds;
                         statLine.Assists += ps.Assists;
                         statLine.FieldGoalsMade += ps.FieldGoalsMade;
                         statLine.FieldGoalAttempts += ps.FieldGoalsAttempted;
@@ -150,6 +155,8 @@ namespace BasketballManager.Simulation
 
             report.HomeRebounds = homeReb / games;
             report.AwayRebounds = awayReb / games;
+            report.HomeOffensiveRebounds = homeOReb / games;
+            report.AwayOffensiveRebounds = awayOReb / games;
             report.HomeAssists = homeAst / games;
             report.AwayAssists = awayAst / games;
             report.HomeAssistRate = homeFGM > 0 ? homeAst / homeFGM : 0;
@@ -164,6 +171,7 @@ namespace BasketballManager.Simulation
                 ps.Minutes /= games;
                 ps.Points /= games;
                 ps.Rebounds /= games;
+                ps.OffensiveRebounds /= games;
                 ps.Assists /= games;
                 ps.FieldGoalsMade /= games;
                 ps.FieldGoalAttempts /= games;
@@ -178,6 +186,7 @@ namespace BasketballManager.Simulation
                 ps.Minutes /= games;
                 ps.Points /= games;
                 ps.Rebounds /= games;
+                ps.OffensiveRebounds /= games;
                 ps.Assists /= games;
                 ps.FieldGoalsMade /= games;
                 ps.FieldGoalAttempts /= games;

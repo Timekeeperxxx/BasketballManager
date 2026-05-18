@@ -8,7 +8,9 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DB_PATH = PROJECT_ROOT / "Assets" / "StreamingAssets" / "game.db"
-CSV_PATH = PROJECT_ROOT / "data" / "source" / "champion_player_stats.csv"
+CSV_PATH_1 = PROJECT_ROOT / "data" / "source" / "champion_player_stats.csv"
+CSV_PATH_2 = PROJECT_ROOT / "data" / "source" / "historical_champion_player_stats.csv"
+RATINGS_CSV_PATH = PROJECT_ROOT / "data" / "source" / "historical_champion_player_ratings.csv"
 
 DEFENSE_BOOSTS = {
     "Jrue Holiday": {"perimeter_defense": 10, "defensive_consistency": 8},
@@ -44,7 +46,7 @@ def normalize_name(name: str) -> str:
     n = re.sub(r'\s+', ' ', n).strip()
     return n
 
-def clamp_int(val, min_val=25, max_val=99) -> int:
+def clamp_int(val, min_val=0, max_val=99) -> int:
     return int(max(min_val, min(max_val, round(val))))
 
 def scale(val, src_min, src_max, dst_min, dst_max) -> float:
@@ -204,9 +206,9 @@ def calculate_tendencies(row):
     tends['drive_tendency'] = dt
 
     base_post_tend = {"PG": 10, "SG": 15, "SF": 35, "PF": 60, "C": 70}.get(pos, 30)
-    if row['player_name'] == "Nikola Jokic": base_post_tend += 15
-    if row['player_name'] == "Kristaps Porzingis": base_post_tend += 8
-    if row['player_name'] == "Draymond Green": base_post_tend += 5
+    if row.get('player_name') == "Nikola Jokic": base_post_tend += 15
+    if row.get('player_name') == "Kristaps Porzingis": base_post_tend += 8
+    if row.get('player_name') == "Draymond Green": base_post_tend += 5
     tends['post_tendency'] = base_post_tend
 
     cst = scale(fg_pct, 0.400, 0.650, 35, 90)
@@ -219,17 +221,17 @@ def calculate_tendencies(row):
     tends['block_tendency'] = scale(bpg, 0.1, 2.2, 30, 95)
 
     ft = {"PG": 35, "SG": 38, "SF": 42, "PF": 50, "C": 55}.get(pos, 40)
-    if row['player_name'] in ["Jrue Holiday", "Alex Caruso", "Al Horford"]: ft -= 5
+    if row.get('player_name') in ["Jrue Holiday", "Alex Caruso", "Al Horford"]: ft -= 5
     tends['foul_tendency'] = ft
 
     hdt = 0
-    if row['player_name'] == "Draymond Green": hdt = 95
-    elif row['player_name'] == "Jrue Holiday": hdt = 85
-    elif row['player_name'] == "Derrick White": hdt = 82
-    elif row['player_name'] == "Alex Caruso": hdt = 85
-    elif row['player_name'] == "Chet Holmgren": hdt = 88
-    elif row['player_name'] == "Al Horford": hdt = 82
-    elif row['player_name'] == "Kristaps Porzingis": hdt = 80
+    if row.get('player_name') == "Draymond Green": hdt = 95
+    elif row.get('player_name') == "Jrue Holiday": hdt = 85
+    elif row.get('player_name') == "Derrick White": hdt = 82
+    elif row.get('player_name') == "Alex Caruso": hdt = 85
+    elif row.get('player_name') == "Chet Holmgren": hdt = 88
+    elif row.get('player_name') == "Al Horford": hdt = 82
+    elif row.get('player_name') == "Kristaps Porzingis": hdt = 80
     else:
         dc = scale(mpg * 0.5 + spg * 8 + bpg * 6 + rpg * 0.8, 10, 35, 50, 95)
         hdt = scale(dc, 50, 95, 45, 75)
@@ -241,13 +243,78 @@ def calculate_tendencies(row):
 
     return tends
 
+def get_expected_fields():
+    expected_attrs = {
+        'two_point', 'three_point', 'layup', 'close_shot', 'post_scoring', 'free_throw',
+        'passing', 'ball_handle', 'drive', 'draw_foul', 'offensive_consistency',
+        'perimeter_defense', 'interior_defense', 'steal', 'block',
+        'offensive_rebound', 'defensive_rebound', 'defensive_consistency',
+        'speed', 'strength', 'stamina'
+    }
+    expected_tends = {
+        'shot_tendency', 'three_tendency', 'two_point_tendency', 'drive_tendency',
+        'post_tendency', 'close_shot_tendency', 'pass_tendency', 'draw_foul_tendency',
+        'steal_tendency', 'block_tendency', 'foul_tendency', 'help_defense_tendency',
+        'offensive_rebound_tendency', 'defensive_rebound_tendency'
+    }
+    return expected_attrs, expected_tends
+
+def load_ratings_csv(path):
+    if not path.exists():
+        return {}
+
+    expected_attrs, expected_tends = get_expected_fields()
+    all_expected = expected_attrs.union(expected_tends)
+
+    ratings_db = {}
+    with open(path, 'r', encoding='utf-8-sig') as f:
+        reader = csv.DictReader(f)
+        headers = set(reader.fieldnames)
+        
+        # Check missing fields
+        missing = all_expected - headers
+        if missing:
+            raise ValueError(f"Ratings CSV is missing expected fields: {missing}")
+
+        # Check extra fields
+        extra = headers - all_expected - {'player_id'}
+        if extra:
+            print(f"[WARNING] Ratings CSV contains extra unexpected fields: {extra} (will be ignored)")
+
+        for row in reader:
+            if not row.get('player_id'): continue
+            pid = int(row['player_id'])
+            
+            attrs = {}
+            for k in expected_attrs:
+                attrs[k] = clamp_int(int(row[k]))
+
+            tends = {}
+            for k in expected_tends:
+                tends[k] = clamp_int(int(row[k]))
+
+            ratings_db[pid] = {'attributes': attrs, 'tendencies': tends}
+            
+    return ratings_db
+
 def main(dry_run: bool):
     if not DB_PATH.exists():
         print(f"[ERROR] Database {DB_PATH} not found.")
         return
 
-    if not CSV_PATH.exists():
-        print(f"[ERROR] CSV {CSV_PATH} not found.")
+    csv_paths = []
+    if CSV_PATH_1.exists(): csv_paths.append(CSV_PATH_1)
+    if CSV_PATH_2.exists(): csv_paths.append(CSV_PATH_2)
+
+    if not csv_paths:
+        print("[ERROR] No stats CSV files found.")
+        return
+
+    ratings_db = {}
+    try:
+        ratings_db = load_ratings_csv(RATINGS_CSV_PATH)
+    except Exception as e:
+        print(f"[ERROR] Failed to load ratings CSV: {e}")
         return
 
     if not dry_run:
@@ -262,52 +329,65 @@ def main(dry_run: bool):
     cur.execute("SELECT id, team_id, display_name, first_name, last_name FROM players")
     db_players = cur.fetchall()
 
-    def match_player(team_id, d_name, f_name, l_name, p_name):
-        # 1. Exact team_id + display_name
+    def match_player(row_pid, team_id, d_name, f_name, l_name):
+        # 1. Exact player_id
+        if row_pid:
+            for dbp in db_players:
+                if str(dbp["id"]) == str(row_pid):
+                    return dbp["id"]
+        # 2. Exact team_id + display_name
         for dbp in db_players:
             if dbp["team_id"] == team_id and dbp["display_name"] == d_name:
                 return dbp["id"]
-        # 2. Exact team_id + first_name + last_name
+        # 3. Exact team_id + first_name + last_name
         for dbp in db_players:
             if dbp["team_id"] == team_id and dbp["first_name"] == f_name and dbp["last_name"] == l_name:
                 return dbp["id"]
-        # 3. Normalized name
-        norm_p = normalize_name(p_name)
-        for dbp in db_players:
-            if dbp["team_id"] == team_id:
-                norm_d = normalize_name(dbp["display_name"])
-                norm_fl = normalize_name(f"{dbp['first_name']} {dbp['last_name']}")
-                if norm_p == norm_d or norm_p == norm_fl:
-                    return dbp["id"]
         return None
 
     csv_data = []
-    with open(CSV_PATH, 'r', encoding='utf-8-sig') as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            csv_data.append(row)
+    for cp in csv_paths:
+        with open(cp, 'r', encoding='utf-8-sig') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                csv_data.append(row)
 
     processed = 0
     updated = 0
+    overrides_applied = 0
     warnings = []
+    errors = []
+    small_sample_logs = []
 
     for row in csv_data:
         processed += 1
         team_id = row['team_id']
-        p_name = row['player_name']
-        f_name = row['first_name']
-        l_name = row['last_name']
-        d_name = row['display_name'] if row['display_name'] else p_name
+        p_name = row.get('player_name') or row.get('display_name') or f"{row.get('first_name')} {row.get('last_name')}"
+        f_name = row.get('first_name', '')
+        l_name = row.get('last_name', '')
+        d_name = row.get('display_name') if row.get('display_name') else p_name
+        row_pid = row.get('player_id')
 
-        pid = match_player(team_id, d_name, f_name, l_name, p_name)
+        pid = match_player(row_pid, team_id, d_name, f_name, l_name)
         if not pid:
-            warnings.append(f"[WARN] Cannot find player {p_name} ({team_id}) in database.")
+            errors.append(f"[ERROR] Cannot find player {p_name} ({team_id}) in database. Skipping.")
             continue
 
-        attrs = calculate_attributes(row)
-        tends = calculate_tendencies(row)
-        
-        apply_boosts(p_name, attrs, tends)
+        if pid in ratings_db:
+            attrs = ratings_db[pid]['attributes']
+            tends = ratings_db[pid]['tendencies']
+            overrides_applied += 1
+        else:
+            if row_pid and int(row_pid) >= 1040:
+                errors.append(f"[ERROR] Missing ratings override for historical player {p_name} (ID: {pid})")
+                
+            attrs = calculate_attributes(row)
+            tends = calculate_tendencies(row)
+            apply_boosts(p_name, attrs, tends)
+            
+        # small sample protection check
+        if "small-sample 3P protected" in row.get('source_note', ''):
+            small_sample_logs.append(f"Protected 3P small sample for {p_name}: three_point={attrs['three_point']}, three_tendency={tends['three_tendency']}")
 
         for k in attrs: attrs[k] = clamp_int(attrs[k])
         for k in tends: tends[k] = clamp_int(tends[k])
@@ -315,17 +395,14 @@ def main(dry_run: bool):
         if dry_run:
             print(f"[DRY-RUN] Will update player {p_name} (ID: {pid})")
         else:
-            # Update players table
+            # Note: We won't update first_name/last_name here, we just update stats if it's historical, but for safety we can update position/height/weight.
             cur.execute("""
                 UPDATE players SET
-                    first_name = ?, last_name = ?, display_name = ?, name_order = ?,
-                    nationality = ?, region_type = ?, position = ?,
-                    height_cm = ?, weight_kg = ?, age = ?, jersey_number = ?
+                    position = ?, height_cm = ?, weight_kg = ?, age = ?
                 WHERE id = ?
             """, (
-                f_name, l_name, d_name, row['name_order'],
-                row['nationality'], row['region_type'], row['position'],
-                int(row['height_cm']), int(row['weight_kg']), int(row['age']), int(row['jersey_number']),
+                row['position'],
+                int(row['height_cm']), int(row['weight_kg']), int(row['age']),
                 pid
             ))
 
@@ -349,12 +426,18 @@ def main(dry_run: bool):
     print("\n--- Summary ---")
     print(f"Processed from CSV: {processed}")
     print(f"Updated in DB: {updated}")
+    print(f"Ratings Overrides Applied: {overrides_applied}")
+    for log in small_sample_logs:
+        print(f"[PROTECT] {log}")
     for w in warnings:
         print(w)
+    for e in errors:
+        print(e)
+        
+    if errors:
+        print("[FATAL] Errors occurred during stat generation. Check logs.")
 
-    print("\n[INFO] Attributes updated. Overall cache may be stale until rating formula is recalculated.")
-    if (PROJECT_ROOT / "tools" / "fit_overall_formula.py").exists():
-        print("[INFO] Consider running 'python tools/fit_overall_formula.py' to recalculate overalls.")
+    print("\n[INFO] Attributes updated. Remember to run tools/recalculate_overalls.py next.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

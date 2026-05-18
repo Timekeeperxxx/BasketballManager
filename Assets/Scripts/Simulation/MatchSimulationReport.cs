@@ -9,6 +9,7 @@ namespace BasketballManager.Simulation
         public float Minutes { get; set; }
         public float Points { get; set; }
         public float Rebounds { get; set; }
+        public float OffensiveRebounds { get; set; }
         public float Assists { get; set; }
         public float FieldGoalsMade { get; set; }
         public float FieldGoalAttempts { get; set; }
@@ -47,6 +48,8 @@ namespace BasketballManager.Simulation
         
         public float HomeRebounds { get; set; }
         public float AwayRebounds { get; set; }
+        public float HomeOffensiveRebounds { get; set; }
+        public float AwayOffensiveRebounds { get; set; }
         public float HomeAssists { get; set; }
         public float AwayAssists { get; set; }
         public float HomeAssistRate { get; set; }

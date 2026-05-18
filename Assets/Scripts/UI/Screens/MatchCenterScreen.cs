@@ -94,16 +94,14 @@ namespace BasketballManager.UI.Screens
             rowLayout.childForceExpandHeight = false;
             rowLayout.childControlHeight = true;
             rowLayout.childControlWidth = true;
-            LayoutElementWithHeight(selectionRow.gameObject, 50f);
+            LayoutElementWithHeight(selectionRow.gameObject, 100f);
 
             // Home Team Selection
             var homeGroup = CreatePanel("HomeGroup", selectionRow, Color.clear);
-            var homeLayout = homeGroup.gameObject.AddComponent<HorizontalLayoutGroup>();
-            homeLayout.spacing = 8f;
-            homeLayout.childForceExpandWidth = false;
-            homeLayout.childForceExpandHeight = false;
-            homeLayout.childControlHeight = true;
-            homeLayout.childControlWidth = true;
+            var homeLayout = homeGroup.gameObject.AddComponent<GridLayoutGroup>();
+            homeLayout.cellSize = new Vector2(160f, 40f);
+            homeLayout.spacing = new Vector2(8f, 8f);
+            homeLayout.childAlignment = TextAnchor.MiddleCenter;
             CreateBodyText(homeGroup, "\u4e3b\u961f:").color = new Color(0.8f, 0.8f, 0.8f); // 主队:
             
             foreach (var team in _teams)
@@ -112,7 +110,6 @@ namespace BasketballManager.UI.Screens
                 var shortName = t.Name.Contains(" ") ? t.Name.Substring(t.Name.LastIndexOf(' ') + 1) : t.Name;
                 var label = t.Era > 0 ? $"{t.Era} {shortName}" : shortName;
                 var btn = CreateButton(homeGroup, label, () => SelectHomeTeam(t));
-                LayoutElementWithWidth(btn.gameObject, 180f);
                 _homeTeamButtons.Add(btn.GetComponent<Image>());
             }
 
@@ -122,12 +119,10 @@ namespace BasketballManager.UI.Screens
 
             // Away Team Selection
             var awayGroup = CreatePanel("AwayGroup", selectionRow, Color.clear);
-            var awayLayout = awayGroup.gameObject.AddComponent<HorizontalLayoutGroup>();
-            awayLayout.spacing = 8f;
-            awayLayout.childForceExpandWidth = false;
-            awayLayout.childForceExpandHeight = false;
-            awayLayout.childControlHeight = true;
-            awayLayout.childControlWidth = true;
+            var awayLayout = awayGroup.gameObject.AddComponent<GridLayoutGroup>();
+            awayLayout.cellSize = new Vector2(160f, 40f);
+            awayLayout.spacing = new Vector2(8f, 8f);
+            awayLayout.childAlignment = TextAnchor.MiddleCenter;
             CreateBodyText(awayGroup, "\u5ba2\u961f:").color = new Color(0.8f, 0.8f, 0.8f); // 客队:
             
             foreach (var team in _teams)
@@ -136,7 +131,6 @@ namespace BasketballManager.UI.Screens
                 var shortName = t.Name.Contains(" ") ? t.Name.Substring(t.Name.LastIndexOf(' ') + 1) : t.Name;
                 var label = t.Era > 0 ? $"{t.Era} {shortName}" : shortName;
                 var btn = CreateButton(awayGroup, label, () => SelectAwayTeam(t));
-                LayoutElementWithWidth(btn.gameObject, 180f);
                 _awayTeamButtons.Add(btn.GetComponent<Image>());
             }
 
@@ -297,6 +291,7 @@ namespace BasketballManager.UI.Screens
             AddTeamStatRow(statsPanel, "FT", $"{result.HomeTeamStats.FreeThrowsMade}/{result.HomeTeamStats.FreeThrowsAttempted}", $"{result.AwayTeamStats.FreeThrowsMade}/{result.AwayTeamStats.FreeThrowsAttempted}");
             AddTeamStatRow(statsPanel, "FT%", FormatPercent(result.HomeTeamStats.FreeThrowsMade, result.HomeTeamStats.FreeThrowsAttempted), FormatPercent(result.AwayTeamStats.FreeThrowsMade, result.AwayTeamStats.FreeThrowsAttempted));
             AddTeamStatRow(statsPanel, "REB", result.HomeTeamStats.Rebounds.ToString(), result.AwayTeamStats.Rebounds.ToString());
+            AddTeamStatRow(statsPanel, "ORB", result.HomeTeamStats.OffensiveRebounds.ToString(), result.AwayTeamStats.OffensiveRebounds.ToString());
             AddTeamStatRow(statsPanel, "AST", result.HomeTeamStats.Assists.ToString(), result.AwayTeamStats.Assists.ToString());
             AddTeamStatRow(statsPanel, "STL", result.HomeTeamStats.Steals.ToString(), result.AwayTeamStats.Steals.ToString());
             AddTeamStatRow(statsPanel, "BLK", result.HomeTeamStats.Blocks.ToString(), result.AwayTeamStats.Blocks.ToString());
@@ -480,6 +475,7 @@ namespace BasketballManager.UI.Screens
             AddTeamStatRow(statsPanel, "3PA", report.HomeThreePointAttempts.ToString("F1"), report.AwayThreePointAttempts.ToString("F1"));
             AddTeamStatRow(statsPanel, "FTA", report.HomeFreeThrowAttempts.ToString("F1"), report.AwayFreeThrowAttempts.ToString("F1"));
             AddTeamStatRow(statsPanel, "REB", report.HomeRebounds.ToString("F1"), report.AwayRebounds.ToString("F1"));
+            AddTeamStatRow(statsPanel, "ORB", report.HomeOffensiveRebounds.ToString("F1"), report.AwayOffensiveRebounds.ToString("F1"));
             AddTeamStatRow(statsPanel, "AST", report.HomeAssists.ToString("F1"), report.AwayAssists.ToString("F1"));
             AddTeamStatRow(statsPanel, "AST/FGM", $"{(report.HomeAssistRate * 100):F1}%", $"{(report.AwayAssistRate * 100):F1}%");
             AddTeamStatRow(statsPanel, "TOV", report.HomeTurnovers.ToString("F1"), report.AwayTurnovers.ToString("F1"));
