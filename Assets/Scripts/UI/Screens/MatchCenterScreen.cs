@@ -348,6 +348,7 @@ namespace BasketballManager.UI.Screens
                 ("\u5f97\u5206", 60f),
                 ("\u7bee\u677f", 60f),
                 ("\u52a9\u653b", 60f),
+                ("+/-", 60f),
                 ("\u6295\u7bee", 80f),
                 ("\u4e09\u5206", 80f),
                 ("\u7f5a\u7403", 80f)
@@ -364,6 +365,7 @@ namespace BasketballManager.UI.Screens
                     (p.Points.ToString(), 60f),
                     (p.Rebounds.ToString(), 60f),
                     (p.Assists.ToString(), 60f),
+                    (p.PlusMinus > 0 ? $"+{p.PlusMinus}" : p.PlusMinus.ToString(), 60f),
                     ($"{p.FieldGoalsMade}/{p.FieldGoalsAttempted}", 80f),
                     ($"{p.ThreePointersMade}/{p.ThreePointersAttempted}", 80f),
                     ($"{p.FreeThrowsMade}/{p.FreeThrowsAttempted}", 80f)
@@ -388,6 +390,7 @@ namespace BasketballManager.UI.Screens
                 ("\u5f97\u5206", 50f),
                 ("\u7bee\u677f", 50f),
                 ("\u52a9\u653b", 50f),
+                ("+/-", 50f),
                 ("\u6295\u7bee", 120f),
                 ("\u4e09\u5206", 120f),
                 ("\u7f5a\u7403", 120f)
@@ -409,6 +412,8 @@ namespace BasketballManager.UI.Screens
                 string posStr = p.PrimaryPosition.ToString();
                 if (p.SecondaryPosition.HasValue) posStr += $"/{p.SecondaryPosition.Value}";
 
+                string plusMinusStr = p.PlusMinus > 0 ? $"+{p.PlusMinus:F1}" : p.PlusMinus.ToString("F1");
+
                 var rowData = new List<(string, float)>
                 {
                     (p.PlayerName, 170f),
@@ -417,6 +422,7 @@ namespace BasketballManager.UI.Screens
                     (p.Points.ToString("F1"), 50f),
                     (p.Rebounds.ToString("F1"), 50f),
                     (p.Assists.ToString("F1"), 50f),
+                    (plusMinusStr, 50f),
                     (fg, 120f),
                     (tp, 120f),
                     (ft, 120f)

@@ -24,5 +24,6 @@ namespace BasketballManager.Core.Models
         public int Blocks { get; set; }
         public int Turnovers { get; set; }
         public int Fouls { get; set; }
+        public int PlusMinus { get; set; }
     }
 }

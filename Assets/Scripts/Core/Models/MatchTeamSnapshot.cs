@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using BasketballManager.Simulation;
 
 namespace BasketballManager.Core.Models
 {
@@ -43,5 +44,14 @@ namespace BasketballManager.Core.Models
         public int ConsecutiveTeamThreeMisses { get; set; }
         public bool HasTransitionOpportunity { get; set; }
         public TeamStyleProfile StyleProfile { get; set; } = new TeamStyleProfile();
+
+        public RotationSchedule Rotation { get; set; }
+        public List<Player> CurrentLineup { get; set; } = new List<Player>();
+        public IReadOnlyDictionary<int, SimulationPlayerProfile> Profiles { get; set; }
+
+        public float GetSourceMpg(int playerId, float fallback = 20f)
+        {
+            return Profiles != null && Profiles.TryGetValue(playerId, out var p) ? p.SourceMpg : fallback;
+        }
     }
 }

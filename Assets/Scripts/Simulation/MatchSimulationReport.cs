@@ -19,6 +19,7 @@ namespace BasketballManager.Simulation
         public float ThreePointAttempts { get; set; }
         public float FreeThrowsMade { get; set; }
         public float FreeThrowAttempts { get; set; }
+        public float PlusMinus { get; set; }
     }
 
     public class MatchSimulationReport

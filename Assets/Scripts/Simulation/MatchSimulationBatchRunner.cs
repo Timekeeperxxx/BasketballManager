@@ -117,6 +117,7 @@ namespace BasketballManager.Simulation
                         statLine.ThreePointAttempts += ps.ThreePointersAttempted;
                         statLine.FreeThrowsMade += ps.FreeThrowsMade;
                         statLine.FreeThrowAttempts += ps.FreeThrowsAttempted;
+                        statLine.PlusMinus += ps.PlusMinus;
                     }
                 }
 
@@ -135,6 +136,7 @@ namespace BasketballManager.Simulation
                         statLine.ThreePointAttempts += ps.ThreePointersAttempted;
                         statLine.FreeThrowsMade += ps.FreeThrowsMade;
                         statLine.FreeThrowAttempts += ps.FreeThrowsAttempted;
+                        statLine.PlusMinus += ps.PlusMinus;
                     }
                 }
                 
@@ -190,6 +192,7 @@ namespace BasketballManager.Simulation
                 ps.ThreePointAttempts /= games;
                 ps.FreeThrowsMade /= games;
                 ps.FreeThrowAttempts /= games;
+                ps.PlusMinus /= games;
             }
 
             foreach (var ps in awayPlayerStats.Values)
@@ -205,6 +208,7 @@ namespace BasketballManager.Simulation
                 ps.ThreePointAttempts /= games;
                 ps.FreeThrowsMade /= games;
                 ps.FreeThrowAttempts /= games;
+                ps.PlusMinus /= games;
             }
 
             report.TopHomeScorers = homePlayerStats.Values.Where(p => p.FieldGoalAttempts > 0 || p.Points > 0 || p.Rebounds > 0 || p.Assists > 0).OrderByDescending(p => p.Points).ToList();
