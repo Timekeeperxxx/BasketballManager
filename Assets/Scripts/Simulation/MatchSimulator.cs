@@ -902,6 +902,30 @@ namespace BasketballManager.Simulation
             return 1.0f;
         }
 
+        private float GetReboundMinuteParticipationFactor(int minutes)
+        {
+            float factor = Mathf.Clamp(minutes / 32f, 0.10f, 1.20f);
+
+            if (minutes < 8)
+            {
+                factor *= 0.35f;
+            }
+            else if (minutes < 12)
+            {
+                factor *= 0.50f;
+            }
+            else if (minutes < 18)
+            {
+                factor *= 0.68f;
+            }
+            else if (minutes < 24)
+            {
+                factor *= 0.85f;
+            }
+
+            return Mathf.Clamp(factor, 0.05f, 1.20f);
+        }
+
         private void ResolveRebound(MatchTeamSnapshot offense, MatchTeamSnapshot defense, ShotType? shotType)
         {
             float teamOffWeight = 0;
@@ -912,7 +936,8 @@ namespace BasketballManager.Simulation
             {
                 var p = offense.RotationPlayers[i];
                 int mins = offense.PlayerStatsById[p.Id].Minutes;
-                float w = p.Attributes.OffensiveRebound * 1.65f + p.Tendencies.OffensiveReboundTendency * 1.25f + p.Attributes.Strength * 0.35f + p.HeightCm * 0.16f + mins * 0.45f;
+                float baseWeight = p.Attributes.OffensiveRebound * 1.65f + p.Tendencies.OffensiveReboundTendency * 1.25f + p.Attributes.Strength * 0.35f + p.HeightCm * 0.16f;
+                float w = baseWeight * GetReboundMinuteParticipationFactor(mins);
 
                 float posMultiplier = 1.0f;
                 if (p.Position == BasketballManager.Core.Enums.Position.PG) posMultiplier = 0.78f;
@@ -939,7 +964,20 @@ namespace BasketballManager.Simulation
                 }
 
                 w *= posMultiplier;
-                w *= GetEliteRebounderBoost(p, false);
+
+                float eliteBoost = GetEliteRebounderBoost(p, false);
+                if (mins < 12)
+                    eliteBoost = Mathf.Min(eliteBoost, 1.05f);
+                else if (mins < 18)
+                    eliteBoost = Mathf.Min(eliteBoost, 1.12f);
+                w *= eliteBoost;
+
+                if (mins <= 6)
+                    w *= 0.45f;
+                else if (mins <= 10)
+                    w *= 0.60f;
+                else if (mins <= 16)
+                    w *= 0.78f;
 
                 offWeights[i] = w;
                 teamOffWeight += w;
@@ -950,7 +988,8 @@ namespace BasketballManager.Simulation
             {
                 var p = defense.RotationPlayers[i];
                 int mins = defense.PlayerStatsById[p.Id].Minutes;
-                float w = p.Attributes.DefensiveRebound * 1.65f + p.Tendencies.DefensiveReboundTendency * 1.25f + p.Attributes.Strength * 0.35f + p.HeightCm * 0.16f + mins * 0.45f;
+                float baseWeight = p.Attributes.DefensiveRebound * 1.65f + p.Tendencies.DefensiveReboundTendency * 1.25f + p.Attributes.Strength * 0.35f + p.HeightCm * 0.16f;
+                float w = baseWeight * GetReboundMinuteParticipationFactor(mins);
 
                 float posMultiplier = 1.0f;
                 if (p.Position == BasketballManager.Core.Enums.Position.PG) posMultiplier = 0.78f;
@@ -988,7 +1027,20 @@ namespace BasketballManager.Simulation
                 }
 
                 w *= posMultiplier;
-                w *= GetEliteRebounderBoost(p, true);
+                
+                float eliteBoost = GetEliteRebounderBoost(p, true);
+                if (mins < 12)
+                    eliteBoost = Mathf.Min(eliteBoost, 1.05f);
+                else if (mins < 18)
+                    eliteBoost = Mathf.Min(eliteBoost, 1.12f);
+                w *= eliteBoost;
+
+                if (mins <= 6)
+                    w *= 0.45f;
+                else if (mins <= 10)
+                    w *= 0.60f;
+                else if (mins <= 16)
+                    w *= 0.78f;
 
                 defWeights[i] = w;
                 teamDefWeight += w;
