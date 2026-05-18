@@ -65,11 +65,9 @@ SET
     team_id = @teamId,
     first_name = @firstName,
     last_name = @lastName,
-    display_name = @displayName,
     name_order = @nameOrder,
-    nationality = @nationality,
-    region_type = @regionType,
     position = @position,
+    secondary_position = @secondaryPosition,
     height_cm = @heightCm,
     weight_kg = @weightKg,
     age = @age,
@@ -84,7 +82,7 @@ WHERE id = @id;";
             {
                 attributeCommand.Transaction = transaction;
                 attributeCommand.CommandText = @"
-INSERT INTO player_attributes (
+REPLACE INTO player_attributes (
     player_id, two_point, three_point, layup, close_shot, post_scoring, free_throw, passing,
     ball_handle, drive, draw_foul, offensive_consistency, perimeter_defense, interior_defense,
     steal, block, offensive_rebound, defensive_rebound, defensive_consistency, speed, strength, stamina
@@ -92,29 +90,7 @@ INSERT INTO player_attributes (
     @playerId, @twoPoint, @threePoint, @layup, @closeShot, @postScoring, @freeThrow, @passing,
     @ballHandle, @drive, @drawFoul, @offensiveConsistency, @perimeterDefense, @interiorDefense,
     @steal, @block, @offensiveRebound, @defensiveRebound, @defensiveConsistency, @speed, @strength, @stamina
-)
-ON CONFLICT(player_id) DO UPDATE SET
-    two_point = excluded.two_point,
-    three_point = excluded.three_point,
-    layup = excluded.layup,
-    close_shot = excluded.close_shot,
-    post_scoring = excluded.post_scoring,
-    free_throw = excluded.free_throw,
-    passing = excluded.passing,
-    ball_handle = excluded.ball_handle,
-    drive = excluded.drive,
-    draw_foul = excluded.draw_foul,
-    offensive_consistency = excluded.offensive_consistency,
-    perimeter_defense = excluded.perimeter_defense,
-    interior_defense = excluded.interior_defense,
-    steal = excluded.steal,
-    block = excluded.block,
-    offensive_rebound = excluded.offensive_rebound,
-    defensive_rebound = excluded.defensive_rebound,
-    defensive_consistency = excluded.defensive_consistency,
-    speed = excluded.speed,
-    strength = excluded.strength,
-    stamina = excluded.stamina;";
+);";
                 AddAttributeParameters(attributeCommand, player);
                 attributeCommand.ExecuteNonQuery();
             }
@@ -123,7 +99,7 @@ ON CONFLICT(player_id) DO UPDATE SET
             {
                 tendencyCommand.Transaction = transaction;
                 tendencyCommand.CommandText = @"
-INSERT INTO player_tendencies (
+REPLACE INTO player_tendencies (
     player_id, shot_tendency, three_tendency, two_point_tendency, drive_tendency, post_tendency,
     close_shot_tendency, pass_tendency, draw_foul_tendency, steal_tendency, block_tendency,
     foul_tendency, help_defense_tendency, offensive_rebound_tendency, defensive_rebound_tendency
@@ -131,22 +107,7 @@ INSERT INTO player_tendencies (
     @playerId, @shotTendency, @threeTendency, @twoPointTendency, @driveTendency, @postTendency,
     @closeShotTendency, @passTendency, @drawFoulTendency, @stealTendency, @blockTendency,
     @foulTendency, @helpDefenseTendency, @offensiveReboundTendency, @defensiveReboundTendency
-)
-ON CONFLICT(player_id) DO UPDATE SET
-    shot_tendency = excluded.shot_tendency,
-    three_tendency = excluded.three_tendency,
-    two_point_tendency = excluded.two_point_tendency,
-    drive_tendency = excluded.drive_tendency,
-    post_tendency = excluded.post_tendency,
-    close_shot_tendency = excluded.close_shot_tendency,
-    pass_tendency = excluded.pass_tendency,
-    draw_foul_tendency = excluded.draw_foul_tendency,
-    steal_tendency = excluded.steal_tendency,
-    block_tendency = excluded.block_tendency,
-    foul_tendency = excluded.foul_tendency,
-    help_defense_tendency = excluded.help_defense_tendency,
-    offensive_rebound_tendency = excluded.offensive_rebound_tendency,
-    defensive_rebound_tendency = excluded.defensive_rebound_tendency;";
+);";
                 AddTendencyParameters(tendencyCommand, player);
                 tendencyCommand.ExecuteNonQuery();
             }
@@ -163,11 +124,9 @@ SELECT
     p.team_id,
     p.first_name,
     p.last_name,
-    COALESCE(p.display_name, '') AS display_name,
-    COALESCE(p.name_order, 'WESTERN') AS name_order,
-    COALESCE(p.nationality, '') AS nationality,
-    COALESCE(p.region_type, '') AS region_type,
-    COALESCE(p.position, 'PG') AS position,
+    p.name_order,
+    p.position,
+    p.secondary_position,
     p.height_cm,
     p.weight_kg,
     p.age,
@@ -223,11 +182,9 @@ LEFT JOIN player_tendencies t ON t.player_id = p.id
                 TeamId = reader["team_id"].ToString() ?? string.Empty,
                 FirstName = reader["first_name"].ToString() ?? string.Empty,
                 LastName = reader["last_name"].ToString() ?? string.Empty,
-                DisplayName = reader["display_name"].ToString() ?? string.Empty,
-                NameOrder = ParseNameOrder(reader["name_order"].ToString()),
-                Nationality = reader["nationality"].ToString() ?? string.Empty,
-                RegionType = reader["region_type"].ToString() ?? string.Empty,
-                Position = ParsePosition(reader["position"].ToString()),
+                NameOrder = ParseNameOrder(reader["name_order"]?.ToString()),
+                Position = ParsePosition(reader["position"]?.ToString()),
+                SecondaryPosition = ParseSecondaryPosition(reader["secondary_position"]),
                 HeightCm = ReadInt(reader["height_cm"]),
                 WeightKg = ReadInt(reader["weight_kg"]),
                 Age = ReadInt(reader["age"]),
@@ -286,11 +243,9 @@ LEFT JOIN player_tendencies t ON t.player_id = p.id
             command.Parameters.AddWithValue("@teamId", player.TeamId);
             command.Parameters.AddWithValue("@firstName", player.FirstName);
             command.Parameters.AddWithValue("@lastName", player.LastName);
-            command.Parameters.AddWithValue("@displayName", string.IsNullOrWhiteSpace(player.DisplayName) ? (object)DBNull.Value : player.DisplayName);
             command.Parameters.AddWithValue("@nameOrder", player.NameOrder.ToString());
-            command.Parameters.AddWithValue("@nationality", player.Nationality);
-            command.Parameters.AddWithValue("@regionType", player.RegionType);
             command.Parameters.AddWithValue("@position", player.Position.ToString());
+            command.Parameters.AddWithValue("@secondaryPosition", player.SecondaryPosition.HasValue ? (object)player.SecondaryPosition.Value.ToString() : DBNull.Value);
             command.Parameters.AddWithValue("@heightCm", player.HeightCm);
             command.Parameters.AddWithValue("@weightKg", player.WeightKg);
             command.Parameters.AddWithValue("@age", player.Age);
@@ -343,6 +298,15 @@ LEFT JOIN player_tendencies t ON t.player_id = p.id
             command.Parameters.AddWithValue("@helpDefenseTendency", tendencies.HelpDefenseTendency);
             command.Parameters.AddWithValue("@offensiveReboundTendency", tendencies.OffensiveReboundTendency);
             command.Parameters.AddWithValue("@defensiveReboundTendency", tendencies.DefensiveReboundTendency);
+        }
+
+        private static Position? ParseSecondaryPosition(object value)
+        {
+            if (value == null || value == DBNull.Value) return null;
+            var str = value.ToString();
+            if (string.IsNullOrWhiteSpace(str)) return null;
+            if (Enum.TryParse<Position>(str, out var result)) return result;
+            return null;
         }
 
         private static int ReadInt(object value)

@@ -46,11 +46,11 @@ namespace BasketballManager.Simulation
 
             foreach (var p in homePlayers)
             {
-                homePlayerStats[p.Id] = new PlayerAverageStatLine { PlayerId = p.Id, PlayerName = p.GetDisplayName() };
+                homePlayerStats[p.Id] = new PlayerAverageStatLine { PlayerId = p.Id, PlayerName = p.GetDisplayName(), PrimaryPosition = p.Position, SecondaryPosition = p.SecondaryPosition };
             }
             foreach (var p in awayPlayers)
             {
-                awayPlayerStats[p.Id] = new PlayerAverageStatLine { PlayerId = p.Id, PlayerName = p.GetDisplayName() };
+                awayPlayerStats[p.Id] = new PlayerAverageStatLine { PlayerId = p.Id, PlayerName = p.GetDisplayName(), PrimaryPosition = p.Position, SecondaryPosition = p.SecondaryPosition };
             }
 
             var config = new MatchConfig
@@ -142,6 +142,9 @@ namespace BasketballManager.Simulation
                 {
                     report.HomeStyleProfile = result.HomeStyleProfile;
                     report.AwayStyleProfile = result.AwayStyleProfile;
+                    
+                    report.HomeStarters = result.HomeStarters;
+                    report.AwayStarters = result.AwayStarters;
                 }
             }
 

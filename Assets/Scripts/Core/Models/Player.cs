@@ -10,11 +10,9 @@ namespace BasketballManager.Core.Models
         public string TeamId = string.Empty;
         public string FirstName = string.Empty;
         public string LastName = string.Empty;
-        public string DisplayName = string.Empty;
         public NameOrder NameOrder = NameOrder.WESTERN;
-        public string Nationality = string.Empty;
-        public string RegionType = string.Empty;
         public Position Position = Position.PG;
+        public Position? SecondaryPosition = null;
         public int HeightCm;
         public int WeightKg;
         public int Age;

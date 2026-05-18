@@ -31,12 +31,10 @@ def create_schema(conn: sqlite3.Connection) -> None:
 
             first_name TEXT NOT NULL,
             last_name TEXT NOT NULL,
-            display_name TEXT,
             name_order TEXT NOT NULL DEFAULT 'WESTERN',
-            nationality TEXT,
-            region_type TEXT,
 
             position TEXT NOT NULL,
+            secondary_position TEXT,
             height_cm INTEGER NOT NULL,
             weight_kg INTEGER NOT NULL,
             age INTEGER NOT NULL,
@@ -130,23 +128,22 @@ def insert_team(conn: sqlite3.Connection, team: dict) -> None:
 
 
 def insert_player_base(conn: sqlite3.Connection, player_id: int, player: dict) -> None:
+    secondary = player.get("secondary_position", "")
     conn.execute(
         """
         INSERT INTO players (
-            id, team_id, first_name, last_name, display_name, name_order, nationality, region_type,
-            position, height_cm, weight_kg, age, jersey_number, overall
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            id, team_id, first_name, last_name, name_order,
+            position, secondary_position, height_cm, weight_kg, age, jersey_number, overall
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             player_id,
             player["team_id"],
             player["first_name"],
             player["last_name"],
-            player["display_name"] or None,
             player["name_order"],
-            player["nationality"],
-            player["region_type"],
             player["position"],
+            secondary if secondary else None,
             player["height_cm"],
             player["weight_kg"],
             player["age"],
@@ -280,9 +277,7 @@ def make_player(
     age: int,
     jersey_number: int,
     overall: int,
-    nationality: str = "USA",
     region_type: str = "NORTH_AMERICA",
-    display_name: str = "",
     name_order: str = "WESTERN",
     attributes: dict | None = None,
     tendencies: dict | None = None,
@@ -291,10 +286,7 @@ def make_player(
         "team_id": team_id,
         "first_name": first_name,
         "last_name": last_name,
-        "display_name": display_name,
         "name_order": name_order,
-        "nationality": nationality,
-        "region_type": region_type,
         "position": position,
         "height_cm": height_cm,
         "weight_kg": weight_kg,
@@ -347,7 +339,7 @@ def get_players() -> list[dict]:
                                                post_tendency=10, close_shot_tendency=42, pass_tendency=42, draw_foul_tendency=28,
                                                steal_tendency=44, block_tendency=18, foul_tendency=34, help_defense_tendency=58,
                                                offensive_rebound_tendency=14, defensive_rebound_tendency=34)),
-        make_player("warriors_2022", "Andrew", "Wiggins", "SF", 201, 89, 27, 22, 84, nationality="Canada",
+        make_player("warriors_2022", "Andrew", "Wiggins", "SF", 201, 89, 27, 22, 84,
                     attributes=make_attributes(two_point=84, three_point=79, layup=82, close_shot=80, post_scoring=63, free_throw=63,
                                                passing=68, ball_handle=74, drive=82, draw_foul=62, offensive_consistency=80,
                                                perimeter_defense=84, interior_defense=62, steal=68, block=55,
@@ -417,7 +409,7 @@ def get_players() -> list[dict]:
                                                post_tendency=8, close_shot_tendency=30, pass_tendency=62, draw_foul_tendency=20,
                                                steal_tendency=52, block_tendency=18, foul_tendency=32, help_defense_tendency=72,
                                                offensive_rebound_tendency=14, defensive_rebound_tendency=34)),
-        make_player("warriors_2022", "Nemanja", "Bjelica", "PF", 208, 106, 34, 8, 74, nationality="Serbia", region_type="EUROPE",
+        make_player("warriors_2022", "Nemanja", "Bjelica", "PF", 208, 106, 34, 8, 74,
                     attributes=make_attributes(two_point=74, three_point=78, layup=68, close_shot=74, post_scoring=64, free_throw=76,
                                                passing=70, ball_handle=62, drive=46, draw_foul=42, offensive_consistency=70,
                                                perimeter_defense=54, interior_defense=64, steal=44, block=38,
@@ -427,7 +419,7 @@ def get_players() -> list[dict]:
                                                post_tendency=20, close_shot_tendency=30, pass_tendency=48, draw_foul_tendency=26,
                                                steal_tendency=18, block_tendency=16, foul_tendency=34, help_defense_tendency=56,
                                                offensive_rebound_tendency=28, defensive_rebound_tendency=52)),
-        make_player("nuggets_2023", "Nikola", "Jokic", "C", 211, 129, 28, 15, 98, nationality="Serbia", region_type="EUROPE",
+        make_player("nuggets_2023", "Nikola", "Jokic", "C", 211, 129, 28, 15, 98,
                     attributes=make_attributes(two_point=96, three_point=83, layup=92, close_shot=98, post_scoring=97, free_throw=83,
                                                passing=99, ball_handle=86, drive=74, draw_foul=82, offensive_consistency=98,
                                                perimeter_defense=70, interior_defense=84, steal=72, block=58,
@@ -567,7 +559,7 @@ def get_players() -> list[dict]:
                                                post_tendency=4, close_shot_tendency=30, pass_tendency=54, draw_foul_tendency=28,
                                                steal_tendency=46, block_tendency=22, foul_tendency=32, help_defense_tendency=76,
                                                offensive_rebound_tendency=12, defensive_rebound_tendency=36)),
-        make_player("celtics_2024", "Kristaps", "Porzingis", "C", 221, 109, 28, 8, 88, nationality="Latvia", region_type="EUROPE",
+        make_player("celtics_2024", "Kristaps", "Porzingis", "C", 221, 109, 28, 8, 88,
                     attributes=make_attributes(two_point=84, three_point=82, layup=78, close_shot=86, post_scoring=82, free_throw=84,
                                                passing=66, ball_handle=58, drive=54, draw_foul=66, offensive_consistency=86,
                                                perimeter_defense=64, interior_defense=84, steal=44, block=82,
@@ -627,7 +619,7 @@ def get_players() -> list[dict]:
                                                post_tendency=24, close_shot_tendency=30, pass_tendency=22, draw_foul_tendency=18,
                                                steal_tendency=14, block_tendency=16, foul_tendency=38, help_defense_tendency=62,
                                                offensive_rebound_tendency=34, defensive_rebound_tendency=52)),
-        make_player("thunder_2025", "Shai", "Gilgeous-Alexander", "PG", 198, 88, 27, 2, 97, nationality="Canada",
+        make_player("thunder_2025", "Shai", "Gilgeous-Alexander", "PG", 198, 88, 27, 2, 97,
                     attributes=make_attributes(two_point=94, three_point=82, layup=96, close_shot=92, post_scoring=60, free_throw=90,
                                                passing=90, ball_handle=96, drive=96, draw_foul=92, offensive_consistency=98,
                                                perimeter_defense=82, interior_defense=56, steal=72, block=44,
@@ -657,7 +649,7 @@ def get_players() -> list[dict]:
                                                post_tendency=26, close_shot_tendency=34, pass_tendency=38, draw_foul_tendency=34,
                                                steal_tendency=22, block_tendency=58, foul_tendency=40, help_defense_tendency=78,
                                                offensive_rebound_tendency=24, defensive_rebound_tendency=58)),
-        make_player("thunder_2025", "Luguentz", "Dort", "SG", 193, 100, 26, 5, 81, nationality="Canada",
+        make_player("thunder_2025", "Luguentz", "Dort", "SG", 193, 100, 26, 5, 81,
                     attributes=make_attributes(two_point=74, three_point=78, layup=74, close_shot=72, post_scoring=46, free_throw=78,
                                                passing=60, ball_handle=68, drive=68, draw_foul=42, offensive_consistency=74,
                                                perimeter_defense=92, interior_defense=56, steal=70, block=38,
@@ -763,8 +755,7 @@ def seed_data(conn: sqlite3.Connection) -> tuple[int, int]:
                     weight_kg=int(row['weight_kg']),
                     age=int(row['age']),
                     jersey_number=0,
-                    overall=70,
-                    display_name=row['display_name']
+                    overall=70
                 )
                 insert_player_base(conn, player_id, hp)
                 insert_player_attributes(conn, player_id, hp["attributes"])

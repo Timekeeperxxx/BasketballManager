@@ -383,6 +383,7 @@ namespace BasketballManager.UI.Screens
             var columns = new List<(string, float)>
             {
                 ("\u540d\u5b57", 170f),
+                ("\u4f4d\u7f6e", 50f),
                 ("\u5206\u949f", 50f),
                 ("\u5f97\u5206", 50f),
                 ("\u7bee\u677f", 50f),
@@ -405,9 +406,13 @@ namespace BasketballManager.UI.Screens
                 string ftPct = p.FreeThrowAttempts > 0 ? (p.FreeThrowsMade / p.FreeThrowAttempts * 100).ToString("F1") + "%" : "-";
                 string ft = $"{p.FreeThrowsMade:F1}/{p.FreeThrowAttempts:F1} ({ftPct})";
 
+                string posStr = p.PrimaryPosition.ToString();
+                if (p.SecondaryPosition.HasValue) posStr += $"/{p.SecondaryPosition.Value}";
+
                 var rowData = new List<(string, float)>
                 {
                     (p.PlayerName, 170f),
+                    (posStr, 50f),
                     (p.Minutes.ToString("F1"), 50f),
                     (p.Points.ToString("F1"), 50f),
                     (p.Rebounds.ToString("F1"), 50f),
@@ -511,6 +516,31 @@ namespace BasketballManager.UI.Screens
                 AddTeamStatRow(stylePanel, "\u540e\u573a\u4fdd\u62a4", report.HomeStyleProfile.DefensiveReboundModifier.ToString("F2"), report.AwayStyleProfile.DefensiveReboundModifier.ToString("F2"));
                 AddTeamStatRow(stylePanel, "\u5931\u8bef\u63a7\u5236", report.HomeStyleProfile.TurnoverControl.ToString("F2"), report.AwayStyleProfile.TurnoverControl.ToString("F2"));
                 AddTeamStatRow(stylePanel, "\u72af\u89c4\u538b\u8feb", report.HomeStyleProfile.FoulPressure.ToString("F2"), report.AwayStyleProfile.FoulPressure.ToString("F2"));
+            }
+
+            var startersPanel = CreatePanel("StartersPanel", content, new Color(0.12f, 0.13f, 0.17f));
+            var startersLayout = startersPanel.gameObject.AddComponent<VerticalLayoutGroup>();
+            startersLayout.padding = new RectOffset(16, 16, 16, 16);
+            startersLayout.spacing = 8f;
+            startersLayout.childForceExpandWidth = true;
+            startersLayout.childForceExpandHeight = false;
+            startersLayout.childControlHeight = true;
+            startersLayout.childControlWidth = true;
+            CreateHeader(startersPanel, "\u9996\u53d1\u9635\u5bb9", 20); // 首发阵容
+
+            var positions = new[] { 
+                BasketballManager.Core.Enums.Position.PG, 
+                BasketballManager.Core.Enums.Position.SG, 
+                BasketballManager.Core.Enums.Position.SF, 
+                BasketballManager.Core.Enums.Position.PF, 
+                BasketballManager.Core.Enums.Position.C 
+            };
+
+            foreach (var pos in positions)
+            {
+                string homeStarter = report.HomeStarters.TryGetValue(pos, out var hs) ? hs : "-";
+                string awayStarter = report.AwayStarters.TryGetValue(pos, out var as_) ? as_ : "-";
+                AddTeamStatRow(startersPanel, pos.ToString(), homeStarter, awayStarter);
             }
 
             // Player Stats

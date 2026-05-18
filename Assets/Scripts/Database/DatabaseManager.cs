@@ -31,11 +31,30 @@ namespace BasketballManager.Database
             Directory.CreateDirectory(UnityEngine.Application.persistentDataPath);
             Debug.Log($"[Database] Persistent path: {_persistentDatabasePath}");
 
-            if (!File.Exists(_persistentDatabasePath))
+            bool shouldCopyFromStreaming = !File.Exists(_persistentDatabasePath);
+
+#if UNITY_EDITOR
+            // In the Editor, the StreamingAssets DB is the source of truth for data
+            // pipeline updates (build_unity_database.py / apply_real_stats_to_unity_database.py).
+            // Refresh the persistent copy whenever StreamingAssets is newer so devs don't
+            // have to manually delete persistentDataPath/game.db after running tools.
+            if (!shouldCopyFromStreaming && File.Exists(_streamingDatabasePath))
+            {
+                var streamingMtime = File.GetLastWriteTimeUtc(_streamingDatabasePath);
+                var persistentMtime = File.GetLastWriteTimeUtc(_persistentDatabasePath);
+                if (streamingMtime > persistentMtime)
+                {
+                    Debug.Log($"[Database] StreamingAssets db is newer ({streamingMtime} > {persistentMtime}) — refreshing persistent copy.");
+                    shouldCopyFromStreaming = true;
+                }
+            }
+#endif
+
+            if (shouldCopyFromStreaming)
             {
                 if (File.Exists(_streamingDatabasePath))
                 {
-                    File.Copy(_streamingDatabasePath, _persistentDatabasePath, false);
+                    File.Copy(_streamingDatabasePath, _persistentDatabasePath, true);
                     Debug.Log($"[Database] Copied StreamingAssets database to persistent path: {_persistentDatabasePath}");
                 }
                 else
@@ -81,11 +100,7 @@ namespace BasketballManager.Database
 
         private string BuildSchemaMismatchMessage()
         {
-            return
-                "数据库结构不匹配，请删除 persistentDataPath 下旧 game.db，或重新生成 Assets/StreamingAssets/game.db。\n"
-                + $"Persistent DB: {_persistentDatabasePath}\n"
-                + $"Streaming DB: {_streamingDatabasePath}\n"
-                + "数据库结构不匹配，请删除持久化目录下的旧 game.db 后重试。";
+            return $"当前 game.db schema 与代码不匹配。请删除旧数据库后重新启动，或重新运行 tools/build_unity_database.py。路径：{_persistentDatabasePath}";
         }
 
         private static void SetForeignKeys(SqliteConnection connection, bool enabled)
@@ -108,10 +123,11 @@ namespace BasketballManager.Database
                 && HasColumn(connection, "players", "team_id")
                 && HasColumn(connection, "players", "first_name")
                 && HasColumn(connection, "players", "last_name")
-                && HasColumn(connection, "players", "display_name")
                 && HasColumn(connection, "players", "name_order")
-                && HasColumn(connection, "players", "nationality")
-                && HasColumn(connection, "players", "region_type")
+                && HasColumn(connection, "players", "secondary_position")
+                && !HasColumn(connection, "players", "display_name")
+                && !HasColumn(connection, "players", "nationality")
+                && !HasColumn(connection, "players", "region_type")
                 && HasColumn(connection, "player_attributes", "draw_foul")
                 && HasColumn(connection, "player_tendencies", "draw_foul_tendency")
                 && HasColumn(connection, "player_simulation_profiles", "source_mpg");
@@ -143,11 +159,9 @@ CREATE TABLE players (
     team_id TEXT NOT NULL,
     first_name TEXT NOT NULL,
     last_name TEXT NOT NULL,
-    display_name TEXT,
     name_order TEXT NOT NULL DEFAULT 'WESTERN',
-    nationality TEXT,
-    region_type TEXT,
     position TEXT NOT NULL,
+    secondary_position TEXT,
     height_cm INTEGER NOT NULL,
     weight_kg INTEGER NOT NULL,
     age INTEGER NOT NULL,

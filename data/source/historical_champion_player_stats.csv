@@ -1,41 +1,41 @@
-player_id,team_id,first_name,last_name,display_name,position,height_cm,weight_kg,age,gp,mpg,fg_pct,three_pct,ft_pct,rpg,apg,spg,bpg,ppg,source_note
-1040,warriors_2017,Stephen,Curry,Stephen Curry,PG,191,86,28,79,33.4,0.468,0.411,0.898,4.5,6.6,1.8,0.2,25.3,2016-17 regular season
-1041,warriors_2017,Klay,Thompson,Klay Thompson,SG,201,98,26,78,34.0,0.468,0.414,0.853,3.7,2.1,0.8,0.5,22.3,2016-17 regular season
-1042,warriors_2017,Kevin,Durant,Kevin Durant,SF,208,109,28,62,33.4,0.537,0.375,0.875,8.3,4.9,1.1,1.6,25.1,2016-17 regular season
-1043,warriors_2017,Draymond,Green,Draymond Green,PF,201,104,26,76,32.5,0.418,0.308,0.709,7.9,7.0,2.0,1.4,10.2,2016-17 regular season
-1044,warriors_2017,Andre,Iguodala,Andre Iguodala,SF,198,98,33,76,26.3,0.528,0.362,0.706,4.0,3.4,1.0,0.5,7.6,2016-17 regular season
-1045,warriors_2017,Shaun,Livingston,Shaun Livingston,PG,201,87,31,76,17.7,0.547,0.333,0.700,2.0,1.8,0.5,0.3,5.1,2016-17 regular season
-1046,warriors_2017,Zaza,Pachulia,Zaza Pachulia,C,211,125,32,70,18.1,0.534,0.000,0.778,5.9,1.9,0.8,0.5,6.1,2016-17 regular season
-1047,warriors_2017,JaVale,McGee,JaVale McGee,C,213,122,29,77,9.6,0.652,0.000,0.505,3.2,0.2,0.2,0.9,6.1,2016-17 regular season
-1048,warriors_2017,David,West,David West,PF,206,113,36,68,12.6,0.536,0.375,0.768,3.0,2.2,0.6,0.7,4.6,2016-17 regular season
-1049,warriors_2017,Ian,Clark,Ian Clark,SG,191,79,25,77,14.8,0.487,0.374,0.759,1.6,1.2,0.5,0.1,6.8,2016-17 regular season
-1050,lakers_2020,LeBron,James,LeBron James,SF,206,113,35,67,34.6,0.493,0.348,0.693,7.8,10.2,1.2,0.5,25.3,2019-20 regular season
-1051,lakers_2020,Anthony,Davis,Anthony Davis,PF,208,115,26,62,34.4,0.503,0.330,0.846,9.3,3.2,1.5,2.3,26.1,2019-20 regular season
-1052,lakers_2020,Kentavious,Caldwell-Pope,Kentavious Caldwell-Pope,SG,196,93,26,69,25.5,0.467,0.385,0.775,2.1,1.6,0.8,0.2,9.3,2019-20 regular season
-1053,lakers_2020,Danny,Green,Danny Green,SG,198,98,32,68,24.8,0.416,0.367,0.688,3.3,1.3,1.3,0.5,8.0,2019-20 regular season
-1054,lakers_2020,Kyle,Kuzma,Kyle Kuzma,PF,206,100,24,61,25.0,0.436,0.316,0.735,4.5,1.3,0.5,0.4,12.8,2019-20 regular season
-1055,lakers_2020,Rajon,Rondo,Rajon Rondo,PG,185,82,33,48,20.5,0.418,0.328,0.659,3.0,5.0,0.8,0.0,7.1,2019-20 regular season
-1056,lakers_2020,Alex,Caruso,Alex Caruso,PG,196,84,25,64,18.4,0.412,0.333,0.734,1.9,1.9,1.1,0.3,5.5,2019-20 regular season
-1057,lakers_2020,Dwight,Howard,Dwight Howard,C,208,120,34,69,18.9,0.729,0.600,0.514,7.3,0.7,0.4,1.1,7.5,2019-20 regular season small-sample 3P protected
-1058,lakers_2020,JaVale,McGee,JaVale McGee,C,213,122,32,68,16.6,0.637,0.500,0.646,5.7,0.5,0.5,1.4,6.6,2019-20 regular season small-sample 3P protected
-1059,lakers_2020,Markieff,Morris,Markieff Morris,PF,206,111,30,14,14.2,0.406,0.333,0.833,3.2,0.6,0.4,0.4,5.3,2019-20 Lakers split
-1060,bucks_2021,Giannis,Antetokounmpo,Giannis Antetokounmpo,PF,211,110,26,61,33.0,0.569,0.303,0.685,11.0,5.9,1.2,1.2,28.1,2020-21 regular season
-1061,bucks_2021,Khris,Middleton,Khris Middleton,SF,201,101,29,68,33.4,0.476,0.414,0.898,6.0,5.4,1.1,0.1,20.4,2020-21 regular season
-1062,bucks_2021,Jrue,Holiday,Jrue Holiday,PG,193,93,30,59,32.3,0.503,0.392,0.787,4.5,6.1,1.6,0.6,17.7,2020-21 regular season
-1063,bucks_2021,Brook,Lopez,Brook Lopez,C,216,127,32,70,27.2,0.503,0.338,0.845,5.0,0.7,0.6,1.5,12.3,2020-21 regular season
-1064,bucks_2021,P.J.,Tucker,P.J. Tucker,PF,196,111,35,20,19.9,0.391,0.394,0.600,2.8,0.8,0.5,0.1,2.6,2020-21 Bucks split
-1065,bucks_2021,Bobby,Portis,Bobby Portis,C,208,113,25,66,20.8,0.523,0.471,0.740,7.1,1.1,0.8,0.4,11.4,2020-21 regular season
-1066,bucks_2021,Pat,Connaughton,Pat Connaughton,SG,196,95,28,69,22.8,0.434,0.371,0.775,4.8,1.2,0.7,0.3,6.8,2020-21 regular season
-1067,bucks_2021,Donte,DiVincenzo,Donte DiVincenzo,SG,193,92,24,66,27.5,0.420,0.379,0.718,5.8,3.1,1.1,0.2,10.4,2020-21 regular season
-1068,bucks_2021,Bryn,Forbes,Bryn Forbes,SG,188,93,27,70,19.3,0.473,0.452,0.770,1.6,0.6,0.3,0.0,10.0,2020-21 regular season
-1069,bucks_2021,Jeff,Teague,Jeff Teague,PG,191,88,32,21,15.9,0.469,0.385,0.864,1.5,2.8,0.4,0.2,6.6,2020-21 Bucks split
-1070,raptors_2019,Kawhi,Leonard,Kawhi Leonard,SF,201,102,27,60,34.0,0.496,0.371,0.854,7.3,3.3,1.8,0.4,26.6,2018-19 regular season
-1071,raptors_2019,Kyle,Lowry,Kyle Lowry,PG,183,89,32,65,34.0,0.411,0.347,0.830,4.8,8.7,1.4,0.5,14.2,2018-19 regular season
-1072,raptors_2019,Pascal,Siakam,Pascal Siakam,PF,203,104,24,80,31.9,0.549,0.369,0.785,6.9,3.1,0.9,0.7,16.9,2018-19 regular season
-1073,raptors_2019,Marc,Gasol,Marc Gasol,C,211,116,34,26,24.9,0.465,0.442,0.769,6.6,3.9,0.9,0.9,9.1,2018-19 Raptors split
-1074,raptors_2019,Serge,Ibaka,Serge Ibaka,C,208,107,29,74,27.2,0.529,0.290,0.763,8.1,1.3,0.4,1.4,15.0,2018-19 regular season
-1075,raptors_2019,Danny,Green,Danny Green,SG,198,98,31,80,27.7,0.465,0.455,0.841,4.0,1.6,0.9,0.7,10.3,2018-19 regular season
-1076,raptors_2019,Fred,VanVleet,Fred VanVleet,PG,185,89,24,64,27.5,0.410,0.378,0.843,2.6,4.8,0.9,0.3,11.0,2018-19 regular season
-1077,raptors_2019,Norman,Powell,Norman Powell,SG,193,98,25,60,18.8,0.483,0.400,0.827,2.3,1.5,0.7,0.2,8.6,2018-19 regular season
-1078,raptors_2019,OG,Anunoby,OG Anunoby,SF,201,105,21,67,20.2,0.453,0.332,0.581,2.9,0.7,0.7,0.3,7.0,2018-19 regular season
-1079,raptors_2019,Patrick,McCaw,Patrick McCaw,SG,201,84,23,26,13.2,0.465,0.333,0.867,1.7,1.0,0.8,0.1,2.7,2018-19 Raptors split
+﻿player_id,team_id,first_name,last_name,position,secondary_position,height_cm,weight_kg,age,gp,mpg,fg_pct,three_pct,ft_pct,rpg,apg,spg,bpg,ppg,source_note
+1040,warriors_2017,Stephen,Curry,PG,SG,185,86,28,79,33.4,0.468,0.411,0.898,4.5,6.6,1.8,0.2,25.3,2016-17 regular season
+1041,warriors_2017,Klay,Thompson,SG,SF,193,98,26,78,34.0,0.468,0.414,0.853,3.7,2.1,0.8,0.5,22.3,2016-17 regular season
+1042,warriors_2017,Kevin,Durant,SF,PF,198,109,28,62,33.4,0.537,0.375,0.875,8.3,4.9,1.1,1.6,25.1,2016-17 regular season
+1043,warriors_2017,Draymond,Green,PF,C,203,104,26,76,32.5,0.418,0.308,0.709,7.9,7.0,2.0,1.4,10.2,2016-17 regular season
+1044,warriors_2017,Andre,Iguodala,SF,SG,198,98,33,76,26.3,0.528,0.362,0.706,4.0,3.4,1.0,0.5,7.6,2016-17 regular season
+1045,warriors_2017,Shaun,Livingston,PG,SG,185,87,31,76,17.7,0.547,0.333,0.700,2.0,1.8,0.5,0.3,5.1,2016-17 regular season
+1046,warriors_2017,Zaza,Pachulia,C,PF,210,125,32,70,18.1,0.534,0.000,0.778,5.9,1.9,0.8,0.5,6.1,2016-17 regular season
+1047,warriors_2017,JaVale,McGee,C,PF,210,122,29,77,9.6,0.652,0.000,0.505,3.2,0.2,0.2,0.9,6.1,2016-17 regular season
+1048,warriors_2017,David,West,PF,C,203,113,36,68,12.6,0.536,0.375,0.768,3.0,2.2,0.6,0.7,4.6,2016-17 regular season
+1049,warriors_2017,Ian,Clark,SG,PG,193,79,25,77,14.8,0.487,0.374,0.759,1.6,1.2,0.5,0.1,6.8,2016-17 regular season
+1050,lakers_2020,LeBron,James,SF,PF,198,113,35,67,34.6,0.493,0.348,0.693,7.8,10.2,1.2,0.5,25.3,2019-20 regular season
+1051,lakers_2020,Anthony,Davis,PF,C,203,115,26,62,34.4,0.503,0.330,0.846,9.3,3.2,1.5,2.3,26.1,2019-20 regular season
+1052,lakers_2020,Kentavious,Caldwell-Pope,SG,SF,193,93,26,69,25.5,0.467,0.385,0.775,2.1,1.6,0.8,0.2,9.3,2019-20 regular season
+1053,lakers_2020,Danny,Green,SG,SF,193,98,32,68,24.8,0.416,0.367,0.688,3.3,1.3,1.3,0.5,8.0,2019-20 regular season
+1054,lakers_2020,Kyle,Kuzma,PF,SF,203,100,24,61,25.0,0.436,0.316,0.735,4.5,1.3,0.5,0.4,12.8,2019-20 regular season
+1055,lakers_2020,Rajon,Rondo,PG,SG,185,82,33,48,20.5,0.418,0.328,0.659,3.0,5.0,0.8,0.0,7.1,2019-20 regular season
+1056,lakers_2020,Alex,Caruso,PG,SG,185,84,25,64,18.4,0.412,0.333,0.734,1.9,1.9,1.1,0.3,5.5,2019-20 regular season
+1057,lakers_2020,Dwight,Howard,C,PF,210,120,34,69,18.9,0.729,0.600,0.514,7.3,0.7,0.4,1.1,7.5,2019-20 regular season small-sample 3P protected
+1058,lakers_2020,JaVale,McGee,C,PF,210,122,32,68,16.6,0.637,0.500,0.646,5.7,0.5,0.5,1.4,6.6,2019-20 regular season small-sample 3P protected
+1059,lakers_2020,Markieff,Morris,PF,C,203,111,30,14,14.2,0.406,0.333,0.833,3.2,0.6,0.4,0.4,5.3,2019-20 Lakers split
+1060,bucks_2021,Giannis,Antetokounmpo,PF,C,203,110,26,61,33.0,0.569,0.303,0.685,11.0,5.9,1.2,1.2,28.1,2020-21 regular season
+1061,bucks_2021,Khris,Middleton,SF,SG,198,101,29,68,33.4,0.476,0.414,0.898,6.0,5.4,1.1,0.1,20.4,2020-21 regular season
+1062,bucks_2021,Jrue,Holiday,PG,SG,185,93,30,59,32.3,0.503,0.392,0.787,4.5,6.1,1.6,0.6,17.7,2020-21 regular season
+1063,bucks_2021,Brook,Lopez,C,PF,210,127,32,70,27.2,0.503,0.338,0.845,5.0,0.7,0.6,1.5,12.3,2020-21 regular season
+1064,bucks_2021,P.J.,Tucker,PF,SF,203,111,35,20,19.9,0.391,0.394,0.600,2.8,0.8,0.5,0.1,2.6,2020-21 Bucks split
+1065,bucks_2021,Bobby,Portis,C,PF,210,113,25,66,20.8,0.523,0.471,0.740,7.1,1.1,0.8,0.4,11.4,2020-21 regular season
+1066,bucks_2021,Pat,Connaughton,SG,SF,193,95,28,69,22.8,0.434,0.371,0.775,4.8,1.2,0.7,0.3,6.8,2020-21 regular season
+1067,bucks_2021,Donte,DiVincenzo,SG,PG,193,92,24,66,27.5,0.420,0.379,0.718,5.8,3.1,1.1,0.2,10.4,2020-21 regular season
+1068,bucks_2021,Bryn,Forbes,SG,PG,193,93,27,70,19.3,0.473,0.452,0.770,1.6,0.6,0.3,0.0,10.0,2020-21 regular season
+1069,bucks_2021,Jeff,Teague,PG,SG,185,88,32,21,15.9,0.469,0.385,0.864,1.5,2.8,0.4,0.2,6.6,2020-21 Bucks split
+1070,raptors_2019,Kawhi,Leonard,SF,SG,198,102,27,60,34.0,0.496,0.371,0.854,7.3,3.3,1.8,0.4,26.6,2018-19 regular season
+1071,raptors_2019,Kyle,Lowry,PG,SG,185,89,32,65,34.0,0.411,0.347,0.830,4.8,8.7,1.4,0.5,14.2,2018-19 regular season
+1072,raptors_2019,Pascal,Siakam,PF,SF,203,104,24,80,31.9,0.549,0.369,0.785,6.9,3.1,0.9,0.7,16.9,2018-19 regular season
+1073,raptors_2019,Marc,Gasol,C,PF,210,116,34,26,24.9,0.465,0.442,0.769,6.6,3.9,0.9,0.9,9.1,2018-19 Raptors split
+1074,raptors_2019,Serge,Ibaka,C,PF,210,107,29,74,27.2,0.529,0.290,0.763,8.1,1.3,0.4,1.4,15.0,2018-19 regular season
+1075,raptors_2019,Danny,Green,SG,SF,193,98,31,80,27.7,0.465,0.455,0.841,4.0,1.6,0.9,0.7,10.3,2018-19 regular season
+1076,raptors_2019,Fred,VanVleet,PG,SG,185,89,24,64,27.5,0.410,0.378,0.843,2.6,4.8,0.9,0.3,11.0,2018-19 regular season
+1077,raptors_2019,Norman,Powell,SG,SF,193,98,25,60,18.8,0.483,0.400,0.827,2.3,1.5,0.7,0.2,8.6,2018-19 regular season
+1078,raptors_2019,OG,Anunoby,SF,PF,198,105,21,67,20.2,0.453,0.332,0.581,2.9,0.7,0.7,0.3,7.0,2018-19 regular season
+1079,raptors_2019,Patrick,McCaw,SG,SF,193,84,23,26,13.2,0.465,0.333,0.867,1.7,1.0,0.8,0.1,2.7,2018-19 Raptors split

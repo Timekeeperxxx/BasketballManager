@@ -62,6 +62,23 @@ def validate() -> bool:
             if not re.match(r".+_\d{4}$", tid):
                 errors.append(f"Historical team id '{tid}' must end with year.")
 
+    cur.execute("PRAGMA table_info(players)")
+    player_columns = [row["name"] for row in cur.fetchall()]
+    
+    for banned_col in ["display_name", "nationality", "region_type"]:
+        if banned_col in player_columns:
+            errors.append(f"players table should NOT contain column '{banned_col}'.")
+            
+    for req_col in ["first_name", "last_name", "name_order"]:
+        if req_col not in player_columns:
+            errors.append(f"players table MUST contain column '{req_col}'.")
+
+    # Check secondary_position column exists in players
+    cur.execute("PRAGMA table_info(players)")
+    player_columns = [row["name"] for row in cur.fetchall()]
+    if "secondary_position" not in player_columns:
+        errors.append("players table MUST contain column 'secondary_position'.")
+
     cur.execute("SELECT * FROM players ORDER BY id ASC")
     players = cur.fetchall()
     
@@ -78,8 +95,16 @@ def validate() -> bool:
         players_per_team[tid] = players_per_team.get(tid, 0) + 1
         id_by_team.setdefault(tid, []).append(pid)
         
-        if p["position"] not in ALLOWED_POSITIONS:
-            errors.append(f"Player {pid} has invalid position '{p['position']}'.")
+        pos = p["position"]
+        if pos not in ALLOWED_POSITIONS:
+            errors.append(f"Player {pid} has invalid position '{pos}'.")
+
+        sec_pos = p["secondary_position"]
+        if sec_pos is not None and sec_pos != "":
+            if sec_pos not in ALLOWED_POSITIONS:
+                errors.append(f"Player {pid} has invalid secondary_position '{sec_pos}'.")
+            if sec_pos == pos:
+                errors.append(f"Player {pid} secondary_position '{sec_pos}' cannot be equal to primary position.")
 
     for tid in REQUIRED_TEAMS:
         count = players_per_team.get(tid, 0)
@@ -132,6 +157,20 @@ def validate() -> bool:
                 errors.append(f"Player {pname} (ID: {pid}) has unusually high three_tendency {p_tend['three_tendency']}.")
 
     conn.close()
+
+    # Check CSVs for deprecated fields
+    csv_paths = [
+        PROJECT_ROOT / "data" / "source" / "champion_player_stats.csv",
+        PROJECT_ROOT / "data" / "source" / "historical_champion_player_stats.csv"
+    ]
+    for cp in csv_paths:
+        if cp.exists():
+            with open(cp, 'r', encoding='utf-8-sig') as f:
+                reader = csv.reader(f)
+                headers = next(reader, [])
+                for banned in ["display_name", "nationality", "region_type"]:
+                    if banned in headers:
+                        errors.append(f"CSV {cp.name} contains deprecated column '{banned}'.")
 
     # Scan for hardcoded logic
     simulator_path = PROJECT_ROOT / "Assets" / "Scripts" / "Simulation" / "MatchSimulator.cs"

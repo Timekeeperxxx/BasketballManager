@@ -6,6 +6,8 @@ namespace BasketballManager.Simulation
     {
         public int PlayerId { get; set; }
         public string PlayerName { get; set; }
+        public BasketballManager.Core.Enums.Position PrimaryPosition { get; set; }
+        public BasketballManager.Core.Enums.Position? SecondaryPosition { get; set; }
         public float Minutes { get; set; }
         public float Points { get; set; }
         public float Rebounds { get; set; }
@@ -61,6 +63,9 @@ namespace BasketballManager.Simulation
         
         public List<PlayerAverageStatLine> TopHomeScorers { get; set; } = new List<PlayerAverageStatLine>();
         public List<PlayerAverageStatLine> TopAwayScorers { get; set; } = new List<PlayerAverageStatLine>();
+
+        public Dictionary<BasketballManager.Core.Enums.Position, string> HomeStarters { get; set; } = new Dictionary<BasketballManager.Core.Enums.Position, string>();
+        public Dictionary<BasketballManager.Core.Enums.Position, string> AwayStarters { get; set; } = new Dictionary<BasketballManager.Core.Enums.Position, string>();
 
         public BasketballManager.Core.Models.TeamStyleProfile HomeStyleProfile { get; set; }
         public BasketballManager.Core.Models.TeamStyleProfile AwayStyleProfile { get; set; }

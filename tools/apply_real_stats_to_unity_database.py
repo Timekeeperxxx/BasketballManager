@@ -96,11 +96,11 @@ def calculate_attributes(row):
     attrs['two_point'] = twop
 
     # 4. layup
-    layup = scale(fg_pct, 0.400, 0.650, 55, 92)
-    if pos in ["PG", "SG", "SF"] and ppg > 20: layup += 5
-    attrs['layup'] = layup
-
+    base_layup = scale(fg_pct, 0.400, 0.650, 50, 95)
+    attrs['layup'] = base_layup + (5 if pos in ["PG", "SG"] else 0)
+    
     # 5. close_shot
+    attrs['close_shot'] = base_layup + (5 if pos in ["C", "PF"] else 0)
     cs = scale(fg_pct, 0.430, 0.700, 55, 95)
     if pos in ["PF", "C"]: cs += 8
     attrs['close_shot'] = cs
@@ -114,8 +114,8 @@ def calculate_attributes(row):
 
     # 8. ball_handle
     bh = scale(apg + ppg * 0.08, 1.0, 9.0, 45, 96)
-    if pos in ["PG", "SG"]: bh += 5
-    if pos == "C" and apg < 5: bh -= 10
+    if pos in ["PG", "SG"]: bh += 8
+    if pos == "C" and apg < 5: bh -= 12
     attrs['ball_handle'] = bh
 
     # 9. drive
@@ -129,14 +129,14 @@ def calculate_attributes(row):
 
     # 11. perimeter_defense
     pd = scale(spg, 0.2, 1.8, 50, 92)
-    if pos in ["PG", "SG", "SF"]: pd += 5
-    if pos in ["PF", "C"]: pd -= 5
+    if pos in ["PG", "SG", "SF"]: pd += 8
+    if pos in ["PF", "C"]: pd -= 8
     attrs['perimeter_defense'] = pd
 
     # 12. interior_defense
     id_val = scale(bpg * 2 + rpg * 0.25, 0.5, 7.0, 45, 95)
-    if pos in ["PF", "C"]: id_val += 8
-    if pos in ["PG", "SG"]: id_val -= 8
+    if pos in ["PF", "C"]: id_val += 10
+    if pos in ["PG", "SG"]: id_val -= 10
     attrs['interior_defense'] = id_val
 
     # 13. steal
@@ -326,7 +326,7 @@ def main(dry_run: bool):
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
-    cur.execute("SELECT id, team_id, display_name, first_name, last_name FROM players")
+    cur.execute("SELECT id, team_id, first_name, last_name FROM players")
     db_players = cur.fetchall()
 
     def match_player(row_pid, team_id, d_name, f_name, l_name):
@@ -335,11 +335,7 @@ def main(dry_run: bool):
             for dbp in db_players:
                 if str(dbp["id"]) == str(row_pid):
                     return dbp["id"]
-        # 2. Exact team_id + display_name
-        for dbp in db_players:
-            if dbp["team_id"] == team_id and dbp["display_name"] == d_name:
-                return dbp["id"]
-        # 3. Exact team_id + first_name + last_name
+        # 2. Exact team_id + first_name + last_name
         for dbp in db_players:
             if dbp["team_id"] == team_id and dbp["first_name"] == f_name and dbp["last_name"] == l_name:
                 return dbp["id"]
@@ -426,6 +422,15 @@ def main(dry_run: bool):
                 ceiling = 40.0
             else:
                 source_mpg = float(source_mpg_str)
+                # Defense: catch column-shifted CSVs where mpg field actually holds FG% (0..1).
+                # Real NBA mpg is in [5, 45] range; anything <2 is almost certainly a misaligned column.
+                if source_mpg < 2.0:
+                    errors.append(
+                        f"[ERROR] Suspicious mpg={source_mpg} for {p_name} (ID: {pid}). "
+                        f"Looks like CSV column misalignment — refusing to write profile. "
+                        f"Run tools/fix_historical_stats_alignment.py first."
+                    )
+                    continue
                 if source_mpg >= 33:
                     role, floor, ceiling = "superstar_or_star", 32.0, 38.0
                 elif source_mpg >= 28:

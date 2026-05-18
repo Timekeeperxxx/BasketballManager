@@ -19,7 +19,9 @@ namespace BasketballManager.UI.Core
             layout.childForceExpandHeight = false;
 
             var element = panel.gameObject.AddComponent<LayoutElement>();
+            element.minWidth = width;
             element.preferredWidth = width;
+            element.flexibleWidth = 0f;
             element.flexibleHeight = 1f;
             return panel;
         }
@@ -50,24 +52,23 @@ namespace BasketballManager.UI.Core
             return panel;
         }
 
-        protected static Text CreateHeader(RectTransform parent, string text, int fontSize = 28)
+        protected static Text CreateHeader(RectTransform parent, string text, int fontSize = 20)
         {
-            var label = CreateBodyText(parent, text);
-            label.fontSize = fontSize;
+            var label = CreateBodyText(parent, text, fontSize);
             label.fontStyle = FontStyle.Bold;
             label.color = Color.white;
-            LayoutElementWithHeight(label.gameObject, fontSize + 18f);
+            LayoutElementWithHeight(label.gameObject, fontSize + 16f);
             return label;
         }
 
-        protected static Text CreateBodyText(Transform parent, string text)
+        protected static Text CreateBodyText(Transform parent, string text, int fontSize = 16)
         {
             var textObject = new GameObject("Text", typeof(RectTransform), typeof(Text));
             textObject.transform.SetParent(parent, false);
 
             var textComponent = textObject.GetComponent<Text>();
             textComponent.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            textComponent.fontSize = 20;
+            textComponent.fontSize = fontSize;
             textComponent.color = new Color(0.9f, 0.92f, 0.96f);
             textComponent.alignment = TextAnchor.MiddleLeft;
             textComponent.text = text;

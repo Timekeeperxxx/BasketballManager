@@ -24,6 +24,9 @@ namespace BasketballManager.Core.Models
         public TeamStyleProfile HomeStyleProfile { get; set; }
         public TeamStyleProfile AwayStyleProfile { get; set; }
         
+        public Dictionary<BasketballManager.Core.Enums.Position, string> HomeStarters { get; set; } = new Dictionary<BasketballManager.Core.Enums.Position, string>();
+        public Dictionary<BasketballManager.Core.Enums.Position, string> AwayStarters { get; set; } = new Dictionary<BasketballManager.Core.Enums.Position, string>();
+        
         public string WinnerTeamId { get; set; } = string.Empty;
     }
 }

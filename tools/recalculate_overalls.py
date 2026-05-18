@@ -45,7 +45,7 @@ def main():
     for row in rows:
         pid = row["id"]
         pos = row["position"]
-        features = [float(row[f]) / 100.0 for f in feature_names]
+        features = [float(row[f]) for f in feature_names]
         
         formula = position_formulas.get(pos, global_formula)
         new_ovr = predict(features, formula, min_ovr, max_ovr)

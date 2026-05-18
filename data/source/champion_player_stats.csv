@@ -1,41 +1,41 @@
-team_id,player_name,first_name,last_name,display_name,name_order,nationality,region_type,position,height_cm,weight_kg,age,jersey_number,gp,mpg,fg_pct,three_pct,ft_pct,rpg,apg,spg,bpg,ppg,source_note
-warriors_2022,Stephen Curry,Stephen,Curry,Stephen Curry,WESTERN,USA,US,PG,188,84,34,30,64,34.5,0.437,0.380,0.923,5.2,6.3,1.3,0.4,25.5,2021-22 regular season
-warriors_2022,Klay Thompson,Klay,Thompson,Klay Thompson,WESTERN,USA,US,SG,198,100,32,11,32,29.4,0.429,0.385,0.902,3.9,2.8,0.5,0.5,20.4,2021-22 regular season
-warriors_2022,Andrew Wiggins,Andrew,Wiggins,Andrew Wiggins,WESTERN,Canada,INTERNATIONAL,SF,201,89,27,22,73,31.9,0.466,0.393,0.634,4.5,2.2,1.0,0.7,17.2,2021-22 regular season
-warriors_2022,Draymond Green,Draymond,Green,Draymond Green,WESTERN,USA,US,PF,198,104,32,23,46,28.9,0.525,0.296,0.659,7.3,7.0,1.3,1.1,7.5,2021-22 regular season
-warriors_2022,Kevon Looney,Kevon,Looney,Kevon Looney,WESTERN,USA,US,C,206,101,26,5,82,21.1,0.571,0.000,0.600,7.3,2.0,0.6,0.6,6.0,2021-22 regular season
-warriors_2022,Jordan Poole,Jordan,Poole,Jordan Poole,WESTERN,USA,US,SG,193,88,22,3,76,30.0,0.448,0.364,0.925,3.4,4.0,0.8,0.3,18.5,2021-22 regular season
-warriors_2022,Otto Porter Jr.,Otto,Porter Jr.,Otto Porter Jr.,WESTERN,USA,US,PF,203,90,28,32,63,22.2,0.464,0.370,0.803,5.7,1.5,1.1,0.5,8.2,2021-22 regular season
-warriors_2022,Gary Payton II,Gary,Payton II,Gary Payton II,WESTERN,USA,US,SG,191,88,29,0,71,17.6,0.616,0.358,0.603,3.5,0.9,1.4,0.3,7.1,2021-22 regular season
-warriors_2022,Andre Iguodala,Andre,Iguodala,Andre Iguodala,WESTERN,USA,US,SF,198,98,38,9,31,19.5,0.380,0.230,0.750,3.2,3.7,0.9,0.7,4.0,2021-22 regular season
-warriors_2022,Nemanja Bjelica,Nemanja,Bjelica,Nemanja Bjelica,WESTERN,Serbia,INTERNATIONAL,PF,208,106,33,8,71,16.1,0.468,0.362,0.728,4.1,2.2,0.6,0.4,6.1,2021-22 regular season
-nuggets_2023,Nikola Jokic,Nikola,Jokic,Nikola Jokic,WESTERN,Serbia,INTERNATIONAL,C,211,129,28,15,69,33.7,0.632,0.383,0.822,11.8,9.8,1.3,0.7,24.5,2022-23 regular season
-nuggets_2023,Jamal Murray,Jamal,Murray,Jamal Murray,WESTERN,Canada,INTERNATIONAL,PG,193,98,26,27,65,32.8,0.454,0.398,0.833,4.0,6.2,1.0,0.2,20.0,2022-23 regular season
-nuggets_2023,Aaron Gordon,Aaron,Gordon,Aaron Gordon,WESTERN,USA,US,PF,203,107,27,50,68,30.2,0.564,0.347,0.608,6.6,3.0,0.8,0.8,16.3,2022-23 regular season
-nuggets_2023,Michael Porter Jr.,Michael,Porter Jr.,Michael Porter Jr.,WESTERN,USA,US,SF,208,99,24,1,62,29.0,0.487,0.414,0.800,5.5,1.0,0.6,0.5,17.4,2022-23 regular season
-nuggets_2023,Kentavious Caldwell-Pope,Kentavious,Caldwell-Pope,K. Caldwell-Pope,WESTERN,USA,US,SG,196,93,30,5,76,31.3,0.462,0.423,0.824,2.7,2.4,1.5,0.5,10.8,2022-23 regular season
-nuggets_2023,Bruce Brown,Bruce,Brown,Bruce Brown,WESTERN,USA,US,SG,193,92,26,11,80,28.5,0.483,0.358,0.758,4.1,3.4,1.1,0.6,11.5,2022-23 regular season
-nuggets_2023,Christian Braun,Christian,Braun,Christian Braun,WESTERN,USA,US,SG,198,100,21,0,76,15.5,0.495,0.354,0.625,2.4,0.8,0.5,0.2,4.7,2022-23 regular season
-nuggets_2023,Jeff Green,Jeff,Green,Jeff Green,WESTERN,USA,US,PF,203,107,36,32,56,19.5,0.488,0.288,0.744,2.6,1.2,0.3,0.3,7.8,2022-23 regular season
-nuggets_2023,Reggie Jackson,Reggie,Jackson,Reggie Jackson,WESTERN,USA,US,PG,188,94,32,7,16,19.9,0.383,0.279,0.833,1.8,3.1,0.6,0.1,7.9,2022-23 regular season
-nuggets_2023,DeAndre Jordan,DeAndre,Jordan,DeAndre Jordan,WESTERN,USA,US,C,211,120,34,6,39,15.0,0.765,1.000,0.458,5.2,0.9,0.3,0.6,5.1,2022-23 regular season
-celtics_2024,Jayson Tatum,Jayson,Tatum,Jayson Tatum,WESTERN,USA,US,SF,203,95,26,0,74,35.7,0.471,0.376,0.833,8.1,4.9,1.0,0.6,26.9,2023-24 regular season
-celtics_2024,Jaylen Brown,Jaylen,Brown,Jaylen Brown,WESTERN,USA,US,SG,198,101,27,7,70,33.5,0.499,0.354,0.703,5.5,3.6,1.2,0.5,23.0,2023-24 regular season
-celtics_2024,Jrue Holiday,Jrue,Holiday,Jrue Holiday,WESTERN,USA,US,PG,193,93,33,4,69,32.8,0.480,0.429,0.833,5.4,4.8,0.9,0.8,12.5,2023-24 regular season
-celtics_2024,Derrick White,Derrick,White,Derrick White,WESTERN,USA,US,PG,193,86,29,9,73,32.6,0.461,0.396,0.901,4.2,5.2,1.0,1.2,15.2,2023-24 regular season
-celtics_2024,Kristaps Porzingis,Kristaps,Porzingis,Kristaps Porzingis,WESTERN,Latvia,INTERNATIONAL,C,218,109,28,8,57,29.6,0.516,0.375,0.858,7.2,2.0,0.7,1.9,20.1,2023-24 regular season
-celtics_2024,Al Horford,Al,Horford,Al Horford,WESTERN,Dominican Republic,INTERNATIONAL,C,206,109,37,42,65,26.8,0.511,0.419,0.867,6.4,2.6,0.6,1.0,8.6,2023-24 regular season
-celtics_2024,Payton Pritchard,Payton,Pritchard,Payton Pritchard,WESTERN,USA,US,PG,185,88,26,11,82,22.3,0.468,0.385,0.821,3.2,3.4,0.5,0.1,9.6,2023-24 regular season
-celtics_2024,Sam Hauser,Sam,Hauser,Sam Hauser,WESTERN,USA,US,SF,203,98,26,30,79,22.0,0.446,0.424,0.895,3.5,1.0,0.5,0.3,9.0,2023-24 regular season
-celtics_2024,Luke Kornet,Luke,Kornet,Luke Kornet,WESTERN,USA,US,C,218,113,28,40,63,15.6,0.700,1.000,0.907,4.1,1.1,0.4,1.0,5.3,2023-24 regular season
-celtics_2024,Xavier Tillman,Xavier,Tillman,Xavier Tillman,WESTERN,USA,US,PF,203,111,25,26,20,13.7,0.515,0.286,0.571,2.7,1.0,0.5,0.5,4.0,2023-24 regular season
-thunder_2025,Shai Gilgeous-Alexander,Shai,Gilgeous-Alexander,S. Gilgeous-Alexander,WESTERN,Canada,INTERNATIONAL,PG,198,88,26,2,76,34.2,0.519,0.375,0.898,5.0,6.4,1.7,1.0,32.7,2024-25 regular season
-thunder_2025,Jalen Williams,Jalen,Williams,Jalen Williams,WESTERN,USA,US,SF,196,96,23,8,69,32.4,0.484,0.365,0.789,5.3,5.1,1.6,0.7,21.6,2024-25 regular season
-thunder_2025,Chet Holmgren,Chet,Holmgren,Chet Holmgren,WESTERN,USA,US,C,216,94,22,7,32,27.4,0.490,0.379,0.754,8.0,2.0,0.7,2.2,15.0,2024-25 regular season
-thunder_2025,Luguentz Dort,Luguentz,Dort,Luguentz Dort,WESTERN,Canada,INTERNATIONAL,SG,193,98,25,5,71,29.2,0.435,0.412,0.717,4.1,1.6,1.1,0.6,10.1,2024-25 regular season
-thunder_2025,Isaiah Hartenstein,Isaiah,Hartenstein,Isaiah Hartenstein,WESTERN,Germany,INTERNATIONAL,C,213,113,26,55,57,27.9,0.581,0.000,0.675,10.7,3.8,0.8,1.1,11.2,2024-25 regular season
-thunder_2025,Alex Caruso,Alex,Caruso,Alex Caruso,WESTERN,USA,US,PG,196,84,30,9,54,19.3,0.446,0.353,0.824,2.9,2.5,1.6,0.6,7.1,2024-25 regular season
-thunder_2025,Cason Wallace,Cason,Wallace,Cason Wallace,WESTERN,USA,US,SG,193,88,20,22,68,27.6,0.474,0.356,0.811,3.4,2.5,1.8,0.5,8.4,2024-25 regular season
-thunder_2025,Aaron Wiggins,Aaron,Wiggins,Aaron Wiggins,WESTERN,USA,US,SG,196,91,25,21,76,22.9,0.488,0.383,0.831,3.9,1.8,0.8,0.2,12.0,2024-25 regular season
-thunder_2025,Isaiah Joe,Isaiah,Joe,Isaiah Joe,WESTERN,USA,US,SG,193,75,24,11,74,21.7,0.440,0.412,0.821,2.6,1.6,0.6,0.1,10.2,2024-25 regular season
-thunder_2025,Jaylin Williams,Jaylin,Williams,Jaylin Williams,WESTERN,USA,US,PF,208,109,21,6,47,16.7,0.439,0.399,0.767,5.6,2.6,0.5,0.6,5.9,2024-25 regular season
+﻿team_id,player_name,first_name,last_name,name_order,position,secondary_position,height_cm,weight_kg,age,jersey_number,gp,mpg,fg_pct,three_pct,ft_pct,rpg,apg,spg,bpg,ppg,source_note
+warriors_2022,Stephen Curry,Stephen,Curry,WESTERN,PG,,188,84,34,30,64,34.5,0.437,0.380,0.923,5.2,6.3,1.3,0.4,25.5,2021-22 regular season
+warriors_2022,Klay Thompson,Klay,Thompson,WESTERN,SG,,198,100,32,11,32,29.4,0.429,0.385,0.902,3.9,2.8,0.5,0.5,20.4,2021-22 regular season
+warriors_2022,Andrew Wiggins,Andrew,Wiggins,WESTERN,SF,,201,89,27,22,73,31.9,0.466,0.393,0.634,4.5,2.2,1.0,0.7,17.2,2021-22 regular season
+warriors_2022,Draymond Green,Draymond,Green,WESTERN,PF,,198,104,32,23,46,28.9,0.525,0.296,0.659,7.3,7.0,1.3,1.1,7.5,2021-22 regular season
+warriors_2022,Kevon Looney,Kevon,Looney,WESTERN,C,,206,101,26,5,82,21.1,0.571,0.000,0.600,7.3,2.0,0.6,0.6,6.0,2021-22 regular season
+warriors_2022,Jordan Poole,Jordan,Poole,WESTERN,SG,,193,88,22,3,76,30.0,0.448,0.364,0.925,3.4,4.0,0.8,0.3,18.5,2021-22 regular season
+warriors_2022,Otto Porter Jr.,Otto,Porter Jr.,WESTERN,PF,,203,90,28,32,63,22.2,0.464,0.370,0.803,5.7,1.5,1.1,0.5,8.2,2021-22 regular season
+warriors_2022,Gary Payton II,Gary,Payton II,WESTERN,SG,,191,88,29,0,71,17.6,0.616,0.358,0.603,3.5,0.9,1.4,0.3,7.1,2021-22 regular season
+warriors_2022,Andre Iguodala,Andre,Iguodala,WESTERN,SF,,198,98,38,9,31,19.5,0.380,0.230,0.750,3.2,3.7,0.9,0.7,4.0,2021-22 regular season
+warriors_2022,Nemanja Bjelica,Nemanja,Bjelica,WESTERN,PF,,208,106,33,8,71,16.1,0.468,0.362,0.728,4.1,2.2,0.6,0.4,6.1,2021-22 regular season
+nuggets_2023,Nikola Jokic,Nikola,Jokic,WESTERN,C,,211,129,28,15,69,33.7,0.632,0.383,0.822,11.8,9.8,1.3,0.7,24.5,2022-23 regular season
+nuggets_2023,Jamal Murray,Jamal,Murray,WESTERN,PG,,193,98,26,27,65,32.8,0.454,0.398,0.833,4.0,6.2,1.0,0.2,20.0,2022-23 regular season
+nuggets_2023,Aaron Gordon,Aaron,Gordon,WESTERN,PF,,203,107,27,50,68,30.2,0.564,0.347,0.608,6.6,3.0,0.8,0.8,16.3,2022-23 regular season
+nuggets_2023,Michael Porter Jr.,Michael,Porter Jr.,WESTERN,SF,,208,99,24,1,62,29.0,0.487,0.414,0.800,5.5,1.0,0.6,0.5,17.4,2022-23 regular season
+nuggets_2023,Kentavious Caldwell-Pope,Kentavious,Caldwell-Pope,WESTERN,SG,,196,93,30,5,76,31.3,0.462,0.423,0.824,2.7,2.4,1.5,0.5,10.8,2022-23 regular season
+nuggets_2023,Bruce Brown,Bruce,Brown,WESTERN,SG,,193,92,26,11,80,28.5,0.483,0.358,0.758,4.1,3.4,1.1,0.6,11.5,2022-23 regular season
+nuggets_2023,Christian Braun,Christian,Braun,WESTERN,SG,,198,100,21,0,76,15.5,0.495,0.354,0.625,2.4,0.8,0.5,0.2,4.7,2022-23 regular season
+nuggets_2023,Jeff Green,Jeff,Green,WESTERN,PF,,203,107,36,32,56,19.5,0.488,0.288,0.744,2.6,1.2,0.3,0.3,7.8,2022-23 regular season
+nuggets_2023,Reggie Jackson,Reggie,Jackson,WESTERN,PG,,188,94,32,7,16,19.9,0.383,0.279,0.833,1.8,3.1,0.6,0.1,7.9,2022-23 regular season
+nuggets_2023,DeAndre Jordan,DeAndre,Jordan,WESTERN,C,,211,120,34,6,39,15.0,0.765,1.000,0.458,5.2,0.9,0.3,0.6,5.1,2022-23 regular season
+celtics_2024,Jayson Tatum,Jayson,Tatum,WESTERN,SF,,203,95,26,0,74,35.7,0.471,0.376,0.833,8.1,4.9,1.0,0.6,26.9,2023-24 regular season
+celtics_2024,Jaylen Brown,Jaylen,Brown,WESTERN,SG,,198,101,27,7,70,33.5,0.499,0.354,0.703,5.5,3.6,1.2,0.5,23.0,2023-24 regular season
+celtics_2024,Jrue Holiday,Jrue,Holiday,WESTERN,PG,,193,93,33,4,69,32.8,0.480,0.429,0.833,5.4,4.8,0.9,0.8,12.5,2023-24 regular season
+celtics_2024,Derrick White,Derrick,White,WESTERN,PG,,193,86,29,9,73,32.6,0.461,0.396,0.901,4.2,5.2,1.0,1.2,15.2,2023-24 regular season
+celtics_2024,Kristaps Porzingis,Kristaps,Porzingis,WESTERN,C,,218,109,28,8,57,29.6,0.516,0.375,0.858,7.2,2.0,0.7,1.9,20.1,2023-24 regular season
+celtics_2024,Al Horford,Al,Horford,WESTERN,C,,206,109,37,42,65,26.8,0.511,0.419,0.867,6.4,2.6,0.6,1.0,8.6,2023-24 regular season
+celtics_2024,Payton Pritchard,Payton,Pritchard,WESTERN,PG,,185,88,26,11,82,22.3,0.468,0.385,0.821,3.2,3.4,0.5,0.1,9.6,2023-24 regular season
+celtics_2024,Sam Hauser,Sam,Hauser,WESTERN,SF,,203,98,26,30,79,22.0,0.446,0.424,0.895,3.5,1.0,0.5,0.3,9.0,2023-24 regular season
+celtics_2024,Luke Kornet,Luke,Kornet,WESTERN,C,,218,113,28,40,63,15.6,0.700,1.000,0.907,4.1,1.1,0.4,1.0,5.3,2023-24 regular season
+celtics_2024,Xavier Tillman,Xavier,Tillman,WESTERN,PF,,203,111,25,26,20,13.7,0.515,0.286,0.571,2.7,1.0,0.5,0.5,4.0,2023-24 regular season
+thunder_2025,Shai Gilgeous-Alexander,Shai,Gilgeous-Alexander,WESTERN,PG,,198,88,26,2,76,34.2,0.519,0.375,0.898,5.0,6.4,1.7,1.0,32.7,2024-25 regular season
+thunder_2025,Jalen Williams,Jalen,Williams,WESTERN,SF,,196,96,23,8,69,32.4,0.484,0.365,0.789,5.3,5.1,1.6,0.7,21.6,2024-25 regular season
+thunder_2025,Chet Holmgren,Chet,Holmgren,WESTERN,C,,216,94,22,7,32,27.4,0.490,0.379,0.754,8.0,2.0,0.7,2.2,15.0,2024-25 regular season
+thunder_2025,Luguentz Dort,Luguentz,Dort,WESTERN,SG,,193,98,25,5,71,29.2,0.435,0.412,0.717,4.1,1.6,1.1,0.6,10.1,2024-25 regular season
+thunder_2025,Isaiah Hartenstein,Isaiah,Hartenstein,WESTERN,C,,213,113,26,55,57,27.9,0.581,0.000,0.675,10.7,3.8,0.8,1.1,11.2,2024-25 regular season
+thunder_2025,Alex Caruso,Alex,Caruso,WESTERN,PG,,196,84,30,9,54,19.3,0.446,0.353,0.824,2.9,2.5,1.6,0.6,7.1,2024-25 regular season
+thunder_2025,Cason Wallace,Cason,Wallace,WESTERN,SG,,193,88,20,22,68,27.6,0.474,0.356,0.811,3.4,2.5,1.8,0.5,8.4,2024-25 regular season
+thunder_2025,Aaron Wiggins,Aaron,Wiggins,WESTERN,SG,,196,91,25,21,76,22.9,0.488,0.383,0.831,3.9,1.8,0.8,0.2,12.0,2024-25 regular season
+thunder_2025,Isaiah Joe,Isaiah,Joe,WESTERN,SG,,193,75,24,11,74,21.7,0.440,0.412,0.821,2.6,1.6,0.6,0.1,10.2,2024-25 regular season
+thunder_2025,Jaylin Williams,Jaylin,Williams,WESTERN,PF,,208,109,21,6,47,16.7,0.439,0.399,0.767,5.6,2.6,0.5,0.6,5.9,2024-25 regular season

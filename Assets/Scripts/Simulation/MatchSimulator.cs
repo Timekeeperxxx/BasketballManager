@@ -42,8 +42,8 @@ namespace BasketballManager.Simulation
             };
 
             // Distribute minutes based on rotation constraints before simulation
-            DistributeMinutes(homeSnapshot, homeProfiles, config);
-            DistributeMinutes(awaySnapshot, awayProfiles, config);
+            DistributeMinutesByPosition(homeSnapshot, homePlayers, homeProfiles, config);
+            DistributeMinutesByPosition(awaySnapshot, awayPlayers, awayProfiles, config);
 
             for (int q = 0; q < config.QuarterCount; q++)
             {
@@ -58,6 +58,9 @@ namespace BasketballManager.Simulation
             result.AwayTeamStats = awaySnapshot.TeamStats;
             result.HomePlayerStats = homeSnapshot.PlayerStatsById.Values.ToList();
             result.AwayPlayerStats = awaySnapshot.PlayerStatsById.Values.ToList();
+
+            foreach (var kvp in homeSnapshot.Starters) result.HomeStarters[kvp.Key] = kvp.Value.GetDisplayName();
+            foreach (var kvp in awaySnapshot.Starters) result.AwayStarters[kvp.Key] = kvp.Value.GetDisplayName();
 
             result.HomeStyleProfile = homeSnapshot.StyleProfile;
             result.AwayStyleProfile = awaySnapshot.StyleProfile;
@@ -116,8 +119,11 @@ namespace BasketballManager.Simulation
 
         private void SimulateQuarter(MatchTeamSnapshot home, MatchTeamSnapshot away, MatchConfig config, int quarterIndex)
         {
-            int quarterPossessions = _random.Range(config.MinPossessionsPerTeam, config.MaxPossessionsPerTeam) / config.QuarterCount;
-            
+            float gamePace = (home.StyleProfile.PaceModifier + away.StyleProfile.PaceModifier) * 0.5f;
+            float minPerQuarter = config.MinPossessionsPerTeam / (float)config.QuarterCount;
+            float maxPerQuarter = config.MaxPossessionsPerTeam / (float)config.QuarterCount;
+            int quarterPossessions = Mathf.Max(1, Mathf.RoundToInt(_random.Range(minPerQuarter, maxPerQuarter) * gamePace));
+
             for (int i = 0; i < quarterPossessions; i++)
             {
                 SimulatePossession(home, away, quarterIndex);
@@ -125,102 +131,238 @@ namespace BasketballManager.Simulation
             }
         }
 
-        private void DistributeMinutes(MatchTeamSnapshot snapshot, IReadOnlyDictionary<int, SimulationPlayerProfile> profiles, MatchConfig config)
+        private BasketballManager.Core.Enums.Position NormalizePosition(string pos)
         {
-            int requiredMinutes = config.QuarterCount * config.MinutesPerQuarter * 5;
-            var rotation = snapshot.RotationPlayers;
-            
-            if (rotation.Count == 0) return;
+            if (string.IsNullOrEmpty(pos)) return BasketballManager.Core.Enums.Position.PG;
+            if (Enum.TryParse<BasketballManager.Core.Enums.Position>(pos, out var parsed)) return parsed;
+            return BasketballManager.Core.Enums.Position.PG;
+        }
 
-            int[] fallbackMinutes = { 37, 35, 33, 31, 28, 24, 20, 16, 10, 6 };
-            
-            float[] candidates = new float[rotation.Count];
-            float[] floors = new float[rotation.Count];
-            float[] ceilings = new float[rotation.Count];
+        private float GetPositionFit(Player player, BasketballManager.Core.Enums.Position slot)
+        {
+            if (player.Position == slot) return 1.0f;
+            if (player.SecondaryPosition.HasValue && player.SecondaryPosition.Value == slot) return 0.85f;
+            if (IsAdjacentPosition(player.Position, slot)) return 0.60f;
+            return 0.0f;
+        }
 
-            for (int i = 0; i < rotation.Count; i++)
+        private bool IsAdjacentPosition(BasketballManager.Core.Enums.Position p1, BasketballManager.Core.Enums.Position p2)
+        {
+            int diff = Math.Abs((int)p1 - (int)p2);
+            return diff == 1;
+        }
+
+        private void SelectStartersByPosition(MatchTeamSnapshot snapshot, IReadOnlyList<Player> players, IReadOnlyDictionary<int, SimulationPlayerProfile> profiles)
+        {
+            var positions = new[] { 
+                BasketballManager.Core.Enums.Position.PG, 
+                BasketballManager.Core.Enums.Position.SG, 
+                BasketballManager.Core.Enums.Position.SF, 
+                BasketballManager.Core.Enums.Position.PF, 
+                BasketballManager.Core.Enums.Position.C 
+            };
+            var availablePlayers = new HashSet<Player>(players);
+
+            foreach (var pos in positions)
             {
-                var p = rotation[i];
-                if (profiles != null && profiles.TryGetValue(p.Id, out var profile) && profile.SourceMpg > 0f)
-                {
-                    float factor = p.Overall >= 92 ? 1.05f : p.Overall >= 86 ? 1.03f : p.Overall >= 80 ? 1.00f : p.Overall >= 74 ? 0.97f : 0.94f;
-                    candidates[i] = profile.SourceMpg * factor;
-                    floors[i] = profile.MinuteFloor;
-                    ceilings[i] = profile.MinuteCeiling;
-                }
-                else
-                {
-                    candidates[i] = i < fallbackMinutes.Length ? fallbackMinutes[i] : 0;
-                    floors[i] = 0f;
-                    ceilings[i] = 40f;
-                }
+                var candidates = availablePlayers
+                    .Select(p => new
+                    {
+                        Player = p,
+                        Fit = GetPositionFit(p, pos),
+                        SourceMpg = profiles != null && profiles.TryGetValue(p.Id, out var profile) ? profile.SourceMpg : 20f
+                    })
+                    .Select(c => new
+                    {
+                        c.Player,
+                        c.Fit,
+                        c.SourceMpg,
+                        Score = c.Player.Overall * 1.00f + c.SourceMpg * 0.35f + (c.Fit > 0 ? c.Fit : 0.35f) * 15.0f
+                    })
+                    .OrderByDescending(c => c.Fit > 0 ? c.Fit : 0.35f) // Prefer those who have a fit first
+                    .ThenByDescending(c => c.Score)
+                    .ThenBy(c => c.Player.Id)
+                    .ToList();
 
-                candidates[i] = Mathf.Clamp(candidates[i], floors[i], ceilings[i]);
+                var best = candidates.FirstOrDefault();
+                if (best != null)
+                {
+                    if (best.Fit == 0f)
+                    {
+                        Debug.LogWarning($"[MatchSimulator] Emergency fallback for starting {pos} on team {snapshot.Team.Id}: {best.Player.GetDisplayName()}");
+                    }
+                    snapshot.Starters[pos] = best.Player;
+                    availablePlayers.Remove(best.Player);
+                }
             }
+            
+            // Build rotation list prioritizing starters
+            snapshot.RotationPlayers.Clear();
+            snapshot.RotationPlayers.AddRange(snapshot.Starters.Values);
+            
+            var benchPlayers = availablePlayers.OrderByDescending(p => p.Overall).ToList();
+            snapshot.RotationPlayers.AddRange(benchPlayers.Take(Math.Max(0, 10 - snapshot.RotationPlayers.Count)));
+        }
 
-            // Floor/ceiling aware normalization
-            float currentSum = candidates.Sum();
-            if (Mathf.Abs(currentSum - requiredMinutes) > 0.5f)
+        private void DistributeMinutesByPosition(MatchTeamSnapshot snapshot, IReadOnlyList<Player> players, IReadOnlyDictionary<int, SimulationPlayerProfile> profiles, MatchConfig config)
+        {
+            SelectStartersByPosition(snapshot, players, profiles);
+            
+            int totalRequiredMinutes = config.QuarterCount * config.MinutesPerQuarter * 5; // Usually 240
+            int requiredSlotMinutes = config.QuarterCount * config.MinutesPerQuarter; // Usually 48
+            
+            var playerMinutes = new Dictionary<int, float>();
+            foreach (var p in players) playerMinutes[p.Id] = 0f;
+
+            var positions = new[] { 
+                BasketballManager.Core.Enums.Position.PG, 
+                BasketballManager.Core.Enums.Position.SG, 
+                BasketballManager.Core.Enums.Position.SF, 
+                BasketballManager.Core.Enums.Position.PF, 
+                BasketballManager.Core.Enums.Position.C 
+            };
+
+            foreach (var slot in positions)
             {
-                int iterations = 0;
-                while (Mathf.Abs(currentSum - requiredMinutes) > 0.5f && iterations < 100)
+                float slotMinutesRemaining = requiredSlotMinutes;
+                
+                // 1. Assign to starter
+                if (snapshot.Starters.TryGetValue(slot, out var starter))
                 {
-                    float diff = requiredMinutes - currentSum;
-                    int count = 0;
+                    float starterMpg = profiles != null && profiles.TryGetValue(starter.Id, out var starterProfile) ? starterProfile.SourceMpg : 30f;
+                    float ceiling = profiles != null && profiles.TryGetValue(starter.Id, out var p1) ? p1.MinuteCeiling : 40f;
+
+                    // Base assignment logic for starter
+                    float assign = Mathf.Clamp(starterMpg * (starter.Overall >= 90 ? 1.05f : 1.0f), 0, ceiling);
+                    assign = Mathf.Min(assign, slotMinutesRemaining);
+
+                    // Respect ceiling cap across multiple positions
+                    float currentTotal = playerMinutes[starter.Id];
+                    if (currentTotal + assign > ceiling) assign = ceiling - currentTotal;
+
+                    playerMinutes[starter.Id] += assign;
+                    slotMinutesRemaining -= assign;
+                }
+
+                // 2. Distribute remaining slot minutes to eligible bench players
+                if (slotMinutesRemaining > 0.1f)
+                {
+                    var eligibleBench = players
+                        .Where(p => (!snapshot.Starters.TryGetValue(slot, out var s) || p.Id != s.Id))
+                        .Select(p => new
+                        {
+                            Player = p,
+                            Fit = GetPositionFit(p, slot),
+                            SourceMpg = profiles != null && profiles.TryGetValue(p.Id, out var profile) ? profile.SourceMpg : 15f,
+                            Ceiling = profiles != null && profiles.TryGetValue(p.Id, out var prof) ? prof.MinuteCeiling : 35f
+                        })
+                        .Where(c => playerMinutes[c.Player.Id] < c.Ceiling) // Only players who haven't reached ceiling
+                        .ToList();
+
+                    var fitBench = eligibleBench.Where(c => c.Fit > 0).ToList();
                     
-                    if (diff > 0)
+                    if (fitBench.Count == 0)
                     {
-                        for (int i = 0; i < candidates.Length; i++) if (candidates[i] < ceilings[i]) count++;
-                        if (count == 0) break;
-                        float add = diff / count;
-                        for (int i = 0; i < candidates.Length; i++)
+                        Debug.LogWarning($"[MatchSimulator] Emergency fallback for bench {slot} on team {snapshot.Team.Id}");
+                        // Apply emergency penalty
+                        fitBench = eligibleBench.Select(c => new { c.Player, Fit = 0.35f, c.SourceMpg, c.Ceiling }).ToList();
+                    }
+
+                    if (fitBench.Count > 0)
+                    {
+                        // Calculate weights
+                        float maxMpg = fitBench.Max(c => c.SourceMpg) > 0 ? fitBench.Max(c => c.SourceMpg) : 1f;
+                        float maxOvr = fitBench.Max(c => c.Player.Overall);
+                        
+                        var benchWeights = fitBench.Select(c => new
                         {
-                            if (candidates[i] < ceilings[i])
-                            {
-                                candidates[i] += add;
-                                if (candidates[i] > ceilings[i]) candidates[i] = ceilings[i];
-                            }
+                            c.Player,
+                            c.Ceiling,
+                            Weight = (c.SourceMpg / maxMpg) * 0.45f + (c.Player.Overall / maxOvr) * 0.30f + c.Fit * 0.25f
+                        }).ToList();
+
+                        float totalWeight = benchWeights.Sum(w => w.Weight);
+                        
+                        foreach (var bench in benchWeights)
+                        {
+                            if (slotMinutesRemaining <= 0.1f) break;
+                            float assign = (bench.Weight / totalWeight) * slotMinutesRemaining;
+                            
+                            float currentTotal = playerMinutes[bench.Player.Id];
+                            if (currentTotal + assign > bench.Ceiling) assign = bench.Ceiling - currentTotal;
+                            
+                            playerMinutes[bench.Player.Id] += assign;
                         }
                     }
-                    else
-                    {
-                        for (int i = 0; i < candidates.Length; i++) if (candidates[i] > floors[i]) count++;
-                        if (count == 0) break;
-                        float sub = -diff / count;
-                        for (int i = 0; i < candidates.Length; i++)
-                        {
-                            if (candidates[i] > floors[i])
-                            {
-                                candidates[i] -= sub;
-                                if (candidates[i] < floors[i]) candidates[i] = floors[i];
-                            }
-                        }
-                    }
-                    currentSum = candidates.Sum();
-                    iterations++;
-                }
-                
-                if (iterations >= 100)
-                {
-                    Debug.LogWarning($"[MatchSimulator] Could not perfectly normalize minutes for {snapshot.Team.Name}. Fallback clamping.");
                 }
             }
 
-            int assignedTotal = 0;
-            for (int i = 0; i < rotation.Count; i++)
+            // Normalization to ensure exactly 240 mins (or required total)
+            float sum = playerMinutes.Values.Sum();
+            if (Mathf.Abs(sum - totalRequiredMinutes) > 0.5f)
             {
-                int min = Mathf.RoundToInt(candidates[i]);
-                if (i == rotation.Count - 1)
+                float diff = totalRequiredMinutes - sum;
+                var availableForNorm = playerMinutes.Keys.Where(pid => 
                 {
-                    min = requiredMinutes - assignedTotal;
+                    float ceil = profiles != null && profiles.TryGetValue(pid, out var p) ? p.MinuteCeiling : 40f;
+                    return diff > 0 ? playerMinutes[pid] < ceil : playerMinutes[pid] > 0;
+                }).ToList();
+
+                if (availableForNorm.Count > 0)
+                {
+                    float adj = diff / availableForNorm.Count;
+                    foreach (var pid in availableForNorm) playerMinutes[pid] += adj;
                 }
-                
-                min = Mathf.Clamp(min, 0, 48);
-                snapshot.PlayerStatsById[rotation[i].Id].Minutes = min;
-                assignedTotal += min;
             }
 
-            var playmakerSorted = rotation.OrderByDescending(p =>
+            // Largest-remainder integerization: floor everyone, then hand the leftover
+            // out one minute at a time to the players with the biggest fractional parts.
+            // This keeps the residual bounded by orderedPids.Count instead of dumping
+            // hundreds of minutes onto a single player when ceilings are too tight.
+            var orderedPids = playerMinutes.Keys.OrderByDescending(k => playerMinutes[k]).ToList();
+            var remainders = new Dictionary<int, float>();
+            int assignedInt = 0;
+            foreach (var pid in orderedPids)
+            {
+                int min = Mathf.Max(0, Mathf.FloorToInt(playerMinutes[pid]));
+                snapshot.PlayerStatsById[pid].Minutes = min;
+                remainders[pid] = playerMinutes[pid] - min;
+                assignedInt += min;
+            }
+
+            int residual = totalRequiredMinutes - assignedInt;
+            if (Mathf.Abs(residual) > orderedPids.Count + 1)
+            {
+                Debug.LogWarning($"[MatchSimulator] Large minute distribution residual ({residual}) on team {snapshot.Team.Id} — profile data (mpg/ceiling) may be invalid.");
+            }
+
+            if (residual > 0)
+            {
+                foreach (var pid in orderedPids.OrderByDescending(pid => remainders[pid]))
+                {
+                    if (residual <= 0) break;
+                    float ceil = profiles != null && profiles.TryGetValue(pid, out var p) ? p.MinuteCeiling : 40f;
+                    if (snapshot.PlayerStatsById[pid].Minutes < ceil)
+                    {
+                        snapshot.PlayerStatsById[pid].Minutes++;
+                        residual--;
+                    }
+                }
+            }
+            else if (residual < 0)
+            {
+                foreach (var pid in orderedPids.OrderBy(pid => remainders[pid]))
+                {
+                    if (residual >= 0) break;
+                    if (snapshot.PlayerStatsById[pid].Minutes > 0)
+                    {
+                        snapshot.PlayerStatsById[pid].Minutes--;
+                        residual++;
+                    }
+                }
+            }
+
+            var playmakerSorted = snapshot.RotationPlayers.OrderByDescending(p =>
             {
                 int mins = snapshot.PlayerStatsById[p.Id].Minutes;
                 return p.Attributes.Passing * 0.38f +
@@ -298,6 +440,14 @@ namespace BasketballManager.Simulation
             float transitionScore = WeightedAvg(p => p.Attributes.Drive * 0.35f + p.Attributes.BallHandle * 0.25f + p.Attributes.Steal * 0.2f + p.Attributes.PerimeterDefense * 0.2f);
             profile.TransitionModifier = MapToModifier(transitionScore, 72f, 35f, 0.94f, 1.08f);
 
+            float paceScore = WeightedAvg(p =>
+                p.Attributes.Speed * 0.30f +
+                p.Tendencies.DriveTendency * 0.25f +
+                p.Tendencies.ThreeTendency * 0.18f +
+                p.Attributes.Steal * 0.15f +
+                p.Attributes.BallHandle * 0.12f);
+            profile.PaceModifier = MapToModifier(paceScore, 72f, 35f, 0.92f, 1.10f);
+
             return profile;
         }
 
@@ -305,6 +455,14 @@ namespace BasketballManager.Simulation
         {
             float modifier = 1f + (score - center) / scale * 0.05f;
             return Mathf.Clamp(modifier, min, max);
+        }
+
+        private struct ShotAttemptContext
+        {
+            public Player AssistAttributionPlayer;
+            public bool AllowSecondChanceOnMiss;
+            public float MadeChanceBoost;
+            public bool IsTransition;
         }
 
         private void SimulatePossession(MatchTeamSnapshot offense, MatchTeamSnapshot defense, int quarterIndex)
@@ -318,14 +476,13 @@ namespace BasketballManager.Simulation
             var offStats = offense.PlayerStatsById[attacker.Id];
             var defStats = defense.PlayerStatsById[defender.Id];
 
-            // 15. Turnovers
             float turnoverChance = CalculateTurnoverChance(offense, defense, attacker, defender, isTransition);
             if (_random.Chance(turnoverChance))
             {
                 offStats.Turnovers++;
                 offense.TeamStats.Turnovers++;
-                
-                if (_random.Chance(0.5f)) // 50% of TOs are Steals
+
+                if (_random.Chance(0.5f))
                 {
                     defStats.Steals++;
                     defense.TeamStats.Steals++;
@@ -334,124 +491,25 @@ namespace BasketballManager.Simulation
                 return;
             }
 
-            // Select Finisher (could be the same as initiator)
             var finisher = SelectFinisher(offense, isTransition);
-            var finStats = offense.PlayerStatsById[finisher.Id];
-            
             var shotType = SelectShotType(finisher, offense, quarterIndex, isTransition);
 
-            var finDefender = SelectMatchedDefender(defense, finisher, shotType);
-            var finDefStats = defense.PlayerStatsById[finDefender.Id];
-
-            // 16. Blocks (priority over Foul/And-1)
-            float blockChance = CalculateBlockChance(shotType, finDefender);
-            if (_random.Chance(blockChance))
+            ResolveShotAttempt(offense, defense, finisher, shotType, quarterIndex, new ShotAttemptContext
             {
-                finDefStats.Blocks++;
-                defense.TeamStats.Blocks++;
-                
-                RecordShotResult(offense, finisher, shotType, false, true);
-                
-                var (rebounder, isOffensive) = ResolveRebound(offense, defense, shotType);
-                if (isOffensive && rebounder != null)
-                {
-                    SimulateSecondChanceAttempt(offense, defense, rebounder, quarterIndex);
-                }
-                return;
-            }
-
-            // 12. Fouls & And-1
-            bool isFoul = ResolveFoul(finisher, finDefender, shotType, offense, quarterIndex, out int freeThrows);
-            if (isFoul)
-            {
-                float finishQuality = shotType switch
-                {
-                    ShotType.Layup => finisher.Attributes.Layup,
-                    ShotType.CloseShot => finisher.Attributes.CloseShot,
-                    ShotType.Post => finisher.Attributes.PostScoring,
-                    ShotType.TwoPoint => finisher.Attributes.TwoPoint,
-                    ShotType.ThreePoint => finisher.Attributes.ThreePoint,
-                    _ => 50f
-                };
-                
-                float andOneChance = shotType switch
-                {
-                    ShotType.Layup => 0.16f,
-                    ShotType.CloseShot => 0.13f,
-                    ShotType.Post => 0.11f,
-                    ShotType.TwoPoint => 0.07f,
-                    ShotType.ThreePoint => 0.025f,
-                    _ => 0.05f
-                };
-                
-                if (finishQuality >= 88) andOneChance += 0.04f;
-                else if (finishQuality >= 80) andOneChance += 0.025f;
-                
-                if (finDefender.Attributes.InteriorDefense >= 85 || finDefender.Attributes.PerimeterDefense >= 85)
-                    andOneChance -= 0.02f;
-                    
-                andOneChance = Mathf.Clamp(andOneChance, 0.01f, 0.22f);
-                
-                if (_random.Chance(andOneChance))
-                {
-                    // And-1 Success
-                    finDefStats.Fouls++;
-                    defense.TeamStats.Fouls++;
-                    
-                    RecordShotResult(offense, finisher, shotType, true, false);
-                    ResolveAssist(offense, attacker, finisher, shotType, true);
-
-                    // 1 FT
-                    float ftChance = (finisher.Attributes.FreeThrow / 100f) * 0.85f + 0.05f;
-                    RecordFreeThrow(offense, finisher, _random.Chance(ftChance));
-                    
-                    return;
-                }
-                else
-                {
-                    // Regular foul
-                    finDefStats.Fouls++;
-                    defense.TeamStats.Fouls++;
-                    
-                    for (int i = 0; i < freeThrows; i++)
-                    {
-                        float ftChance = (finisher.Attributes.FreeThrow / 100f) * 0.85f + 0.05f; // Simplify
-                        RecordFreeThrow(offense, finisher, _random.Chance(ftChance));
-                    }
-                    return;
-                }
-            }
-
-            // 11. Shot Success
-            float fgChance = CalculateFgChance(offense, defense, finisher, finDefender, shotType, isTransition);
-            bool isMade = _random.Chance(fgChance);
-            
-            RecordShotResult(offense, finisher, shotType, isMade, false);
-
-            if (isMade)
-            {
-                // 14. Assists
-                ResolveAssist(offense, attacker, finisher, shotType, true);
-            }
-            else
-            {
-                // Missed shot -> rebound
-                var (rebounder, isOffensive) = ResolveRebound(offense, defense, shotType);
-                if (isOffensive && rebounder != null)
-                {
-                    SimulateSecondChanceAttempt(offense, defense, rebounder, quarterIndex);
-                }
-            }
+                AssistAttributionPlayer = attacker,
+                AllowSecondChanceOnMiss = true,
+                MadeChanceBoost = 0f,
+                IsTransition = isTransition,
+            });
         }
 
         private void SimulateSecondChanceAttempt(MatchTeamSnapshot offense, MatchTeamSnapshot defense, Player rebounder, int quarterIndex)
         {
             bool isBig = rebounder.Position == BasketballManager.Core.Enums.Position.C || rebounder.Position == BasketballManager.Core.Enums.Position.PF;
             bool selfFinish = _random.Chance(isBig ? 0.55f : 0.25f);
-            
+
             Player finisher = selfFinish ? rebounder : SelectFinisher(offense, false);
-            var finStats = offense.PlayerStatsById[finisher.Id];
-            
+
             ShotType shotType;
             if (selfFinish)
             {
@@ -476,84 +534,6 @@ namespace BasketballManager.Simulation
                 shotType = SelectShotType(finisher, offense, quarterIndex, false);
             }
 
-            var finDefender = SelectMatchedDefender(defense, finisher, shotType);
-            var finDefStats = defense.PlayerStatsById[finDefender.Id];
-
-            float blockChance = CalculateBlockChance(shotType, finDefender);
-            if (_random.Chance(blockChance))
-            {
-                finDefStats.Blocks++;
-                defense.TeamStats.Blocks++;
-                
-                RecordShotResult(offense, finisher, shotType, false, true);
-                
-                ResolveRebound(offense, defense, shotType); // No recursive second chance
-                return;
-            }
-
-            bool isFoul = ResolveFoul(finisher, finDefender, shotType, offense, quarterIndex, out int freeThrows);
-            if (isFoul)
-            {
-                float finishQuality = shotType switch
-                {
-                    ShotType.Layup => finisher.Attributes.Layup,
-                    ShotType.CloseShot => finisher.Attributes.CloseShot,
-                    ShotType.Post => finisher.Attributes.PostScoring,
-                    ShotType.TwoPoint => finisher.Attributes.TwoPoint,
-                    ShotType.ThreePoint => finisher.Attributes.ThreePoint,
-                    _ => 50f
-                };
-                
-                float andOneChance = shotType switch
-                {
-                    ShotType.Layup => 0.16f,
-                    ShotType.CloseShot => 0.13f,
-                    ShotType.Post => 0.11f,
-                    ShotType.TwoPoint => 0.07f,
-                    ShotType.ThreePoint => 0.025f,
-                    _ => 0.05f
-                };
-                
-                if (finishQuality >= 88) andOneChance += 0.04f;
-                else if (finishQuality >= 80) andOneChance += 0.025f;
-                
-                if (finDefender.Attributes.InteriorDefense >= 85 || finDefender.Attributes.PerimeterDefense >= 85)
-                    andOneChance -= 0.02f;
-                    
-                andOneChance = Mathf.Clamp(andOneChance, 0.01f, 0.22f);
-                
-                if (_random.Chance(andOneChance))
-                {
-                    finDefStats.Fouls++;
-                    defense.TeamStats.Fouls++;
-                    
-                    RecordShotResult(offense, finisher, shotType, true, false);
-                    
-                    if (!selfFinish)
-                        ResolveAssist(offense, rebounder, finisher, shotType, true);
-
-                    float ftChance = (finisher.Attributes.FreeThrow / 100f) * 0.85f + 0.05f;
-                    RecordFreeThrow(offense, finisher, _random.Chance(ftChance));
-                    
-                    return;
-                }
-                else
-                {
-                    finDefStats.Fouls++;
-                    defense.TeamStats.Fouls++;
-                    
-                    for (int i = 0; i < freeThrows; i++)
-                    {
-                        float ftChance = (finisher.Attributes.FreeThrow / 100f) * 0.85f + 0.05f;
-                        RecordFreeThrow(offense, finisher, _random.Chance(ftChance));
-                    }
-                    
-                    return;
-                }
-            }
-
-            float fgChance = CalculateFgChance(offense, defense, finisher, finDefender, shotType, false);
-            
             float boost = shotType switch
             {
                 ShotType.CloseShot => 0.04f,
@@ -563,20 +543,126 @@ namespace BasketballManager.Simulation
                 ShotType.TwoPoint => 0.02f,
                 _ => 0f
             };
-            fgChance += boost;
-            
+
+            ResolveShotAttempt(offense, defense, finisher, shotType, quarterIndex, new ShotAttemptContext
+            {
+                AssistAttributionPlayer = selfFinish ? null : rebounder,
+                AllowSecondChanceOnMiss = false,
+                MadeChanceBoost = boost,
+                IsTransition = false,
+            });
+        }
+
+        private void ResolveShotAttempt(
+            MatchTeamSnapshot offense, MatchTeamSnapshot defense,
+            Player finisher, ShotType shotType, int quarterIndex,
+            ShotAttemptContext ctx)
+        {
+            var finDefender = SelectMatchedDefender(defense, finisher, shotType);
+            var finDefStats = defense.PlayerStatsById[finDefender.Id];
+
+            // Block (priority over Foul/And-1)
+            float blockChance = CalculateBlockChance(shotType, finisher, finDefender);
+            if (_random.Chance(blockChance))
+            {
+                finDefStats.Blocks++;
+                defense.TeamStats.Blocks++;
+
+                RecordShotResult(offense, finisher, shotType, false, true);
+
+                var (rebounder, isOffensive) = ResolveRebound(offense, defense, shotType);
+                if (isOffensive && rebounder != null && ctx.AllowSecondChanceOnMiss)
+                    SimulateSecondChanceAttempt(offense, defense, rebounder, quarterIndex);
+                return;
+            }
+
+            // Foul + And-1
+            bool isFoul = ResolveFoul(finisher, finDefender, shotType, offense, quarterIndex, out int freeThrows);
+            if (isFoul)
+            {
+                ResolveFoulOutcome(offense, defense, finisher, finDefender, shotType, freeThrows, ctx.AssistAttributionPlayer);
+                return;
+            }
+
+            // FG
+            float fgChance = CalculateFgChance(offense, defense, finisher, finDefender, shotType, ctx.IsTransition) + ctx.MadeChanceBoost;
             bool isMade = _random.Chance(fgChance);
-            
+
             RecordShotResult(offense, finisher, shotType, isMade, false);
 
             if (isMade)
             {
-                if (!selfFinish)
-                    ResolveAssist(offense, rebounder, finisher, shotType, true);
+                if (ctx.AssistAttributionPlayer != null)
+                    ResolveAssist(offense, ctx.AssistAttributionPlayer, finisher, shotType, true);
             }
             else
             {
-                ResolveRebound(offense, defense, shotType); // No recursive second chance
+                var (rebounder, isOffensive) = ResolveRebound(offense, defense, shotType);
+                if (isOffensive && rebounder != null && ctx.AllowSecondChanceOnMiss)
+                    SimulateSecondChanceAttempt(offense, defense, rebounder, quarterIndex);
+            }
+        }
+
+        private void ResolveFoulOutcome(
+            MatchTeamSnapshot offense, MatchTeamSnapshot defense,
+            Player finisher, Player finDefender, ShotType shotType, int freeThrows,
+            Player assistAttribution)
+        {
+            var finDefStats = defense.PlayerStatsById[finDefender.Id];
+
+            float finishQuality = shotType switch
+            {
+                ShotType.Layup => finisher.Attributes.Layup,
+                ShotType.CloseShot => finisher.Attributes.CloseShot,
+                ShotType.Post => finisher.Attributes.PostScoring,
+                ShotType.TwoPoint => finisher.Attributes.TwoPoint,
+                ShotType.ThreePoint => finisher.Attributes.ThreePoint,
+                _ => 50f
+            };
+
+            float andOneChance = shotType switch
+            {
+                ShotType.Layup => 0.16f,
+                ShotType.CloseShot => 0.13f,
+                ShotType.Post => 0.11f,
+                ShotType.TwoPoint => 0.07f,
+                ShotType.ThreePoint => 0.025f,
+                _ => 0.05f
+            };
+
+            if (finishQuality >= 88) andOneChance += 0.04f;
+            else if (finishQuality >= 80) andOneChance += 0.025f;
+
+            if (finDefender.Attributes.InteriorDefense >= 85 || finDefender.Attributes.PerimeterDefense >= 85)
+                andOneChance -= 0.02f;
+
+            andOneChance = Mathf.Clamp(andOneChance, 0.01f, 0.22f);
+
+            if (_random.Chance(andOneChance))
+            {
+                // And-1 Success
+                finDefStats.Fouls++;
+                defense.TeamStats.Fouls++;
+
+                RecordShotResult(offense, finisher, shotType, true, false);
+
+                if (assistAttribution != null)
+                    ResolveAssist(offense, assistAttribution, finisher, shotType, true);
+
+                float ftChance = (finisher.Attributes.FreeThrow / 100f) * 0.85f + 0.05f;
+                RecordFreeThrow(offense, finisher, _random.Chance(ftChance));
+            }
+            else
+            {
+                // Regular shooting foul
+                finDefStats.Fouls++;
+                defense.TeamStats.Fouls++;
+
+                for (int i = 0; i < freeThrows; i++)
+                {
+                    float ftChance = (finisher.Attributes.FreeThrow / 100f) * 0.85f + 0.05f;
+                    RecordFreeThrow(offense, finisher, _random.Chance(ftChance));
+                }
             }
         }
 
@@ -910,13 +996,22 @@ namespace BasketballManager.Simulation
             return result;
         }
 
-        private float CalculateBlockChance(ShotType shotType, Player defender)
+        private float CalculateBlockChance(ShotType shotType, Player attacker, Player defender)
         {
             if (shotType == ShotType.ThreePoint) return 0.01f;
             if (shotType == ShotType.TwoPoint) return 0.03f;
-            
+
             float defAbility = (defender.Attributes.Block + defender.Tendencies.BlockTendency + defender.Attributes.InteriorDefense) / 3f;
-            return Mathf.Clamp(defAbility / 100f * 0.15f, 0.02f, 0.15f);
+            float attAbility = shotType switch
+            {
+                ShotType.Layup => (attacker.Attributes.Layup + attacker.Attributes.Strength) * 0.5f,
+                ShotType.CloseShot => (attacker.Attributes.CloseShot + attacker.Attributes.Strength) * 0.5f,
+                ShotType.Post => (attacker.Attributes.PostScoring + attacker.Attributes.Strength) * 0.5f,
+                _ => 60f
+            };
+            float delta = (defAbility - attAbility) / 100f;
+            float baseChance = defAbility / 100f * 0.15f;
+            return Mathf.Clamp(baseChance + delta * 0.06f, 0.01f, 0.15f);
         }
 
         private bool ResolveFoul(Player attacker, Player defender, ShotType shotType, MatchTeamSnapshot offense, int quarterIndex, out int freeThrows)
@@ -1041,27 +1136,28 @@ namespace BasketballManager.Simulation
             float defAttr = 60f;
             float transitionBoost = 0f;
 
+            float transMod = offense.StyleProfile.TransitionModifier;
             switch (shotType)
             {
                 case ShotType.ThreePoint:
                     offAttr = attacker.Attributes.ThreePoint;
                     defAttr = defender.Attributes.PerimeterDefense;
-                    if (isTransition) transitionBoost = 0.025f;
+                    if (isTransition) transitionBoost = 0.025f * transMod;
                     break;
                 case ShotType.TwoPoint:
                     offAttr = attacker.Attributes.TwoPoint;
                     defAttr = defender.Attributes.PerimeterDefense;
-                    if (isTransition) transitionBoost = 0.02f;
+                    if (isTransition) transitionBoost = 0.02f * transMod;
                     break;
                 case ShotType.Layup:
                     offAttr = (attacker.Attributes.Layup + attacker.Attributes.Drive) / 2f;
                     defAttr = (defender.Attributes.InteriorDefense + defender.Attributes.Block + defender.Attributes.Strength) / 3f;
-                    if (isTransition) transitionBoost = 0.05f;
+                    if (isTransition) transitionBoost = 0.05f * transMod;
                     break;
                 case ShotType.CloseShot:
                     offAttr = attacker.Attributes.CloseShot;
                     defAttr = (defender.Attributes.InteriorDefense + defender.Attributes.Block + defender.Attributes.Strength) / 3f;
-                    if (isTransition) transitionBoost = 0.03f;
+                    if (isTransition) transitionBoost = 0.03f * transMod;
                     break;
                 case ShotType.Post:
                     offAttr = (attacker.Attributes.PostScoring + attacker.Attributes.Strength) / 2f;

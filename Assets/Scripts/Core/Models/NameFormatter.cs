@@ -11,11 +11,6 @@ namespace BasketballManager.Core.Models
                 return string.Empty;
             }
 
-            if (!string.IsNullOrWhiteSpace(player.DisplayName))
-            {
-                return player.DisplayName.Trim();
-            }
-
             var firstName = player.FirstName?.Trim() ?? string.Empty;
             var lastName = player.LastName?.Trim() ?? string.Empty;
 

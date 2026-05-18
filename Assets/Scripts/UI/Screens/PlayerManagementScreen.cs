@@ -149,11 +149,8 @@ namespace BasketballManager.UI.Screens
                 LayoutElementWithHeight(_overallText.gameObject, 36f);
                 AddField(CreateTextBinding(section, "\u540d", p => p.FirstName, (p, value) => p.FirstName = value));
                 AddField(CreateTextBinding(section, "\u59d3", p => p.LastName, (p, value) => p.LastName = value));
-                AddField(CreateTextBinding(section, "\u663e\u793a\u540d", p => p.DisplayName, (p, value) => p.DisplayName = value));
-                AddField(CreateEnumDropdownBinding(section, "\u59d3\u540d\u987a\u5e8f", Enum.GetNames(typeof(NameOrder)), p => p.NameOrder.ToString(), (p, value) => p.NameOrder = Enum.TryParse(value, out NameOrder parsed) ? parsed : NameOrder.WESTERN));
-                AddField(CreateTextBinding(section, "\u56fd\u7c4d", p => p.Nationality, (p, value) => p.Nationality = value));
-                AddField(CreateTextBinding(section, "\u5730\u533a\u7c7b\u578b", p => p.RegionType, (p, value) => p.RegionType = value));
-                AddField(CreateEnumDropdownBinding(section, "\u4f4d\u7f6e", Enum.GetNames(typeof(Position)), p => p.Position.ToString(), (p, value) => p.Position = Enum.TryParse(value, out Position parsed) ? parsed : Position.PG));
+AddField(CreateEnumDropdownBinding(section, "\u59d3\u540d\u987a\u5e8f", Enum.GetNames(typeof(NameOrder)), p => p.NameOrder.ToString(), (p, value) => p.NameOrder = Enum.TryParse(value, out NameOrder parsed) ? parsed : NameOrder.WESTERN));
+AddField(CreateEnumDropdownBinding(section, "\u4f4d\u7f6e", Enum.GetNames(typeof(Position)), p => p.Position.ToString(), (p, value) => p.Position = Enum.TryParse(value, out Position parsed) ? parsed : Position.PG));
                 AddField(CreateIntBinding(section, "\u8eab\u9ad8(cm)", p => p.HeightCm, (p, value) => p.HeightCm = value));
                 AddField(CreateIntBinding(section, "\u4f53\u91cd(kg)", p => p.WeightKg, (p, value) => p.WeightKg = value));
                 AddField(CreateIntBinding(section, "\u5e74\u9f84", p => p.Age, (p, value) => p.Age = value));
