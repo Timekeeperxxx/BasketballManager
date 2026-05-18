@@ -381,13 +381,14 @@ namespace BasketballManager.UI.Screens
         {
             var columns = new List<(string, float)>
             {
-                ("Name", 180f),
+                ("Name", 170f),
+                ("MIN", 50f),
                 ("PTS", 50f),
                 ("REB", 50f),
                 ("AST", 50f),
-                ("FG", 130f),
-                ("3PT", 130f),
-                ("FT", 130f)
+                ("FG", 120f),
+                ("3PT", 120f),
+                ("FT", 120f)
             };
 
             CreateTableHeaderRow(parent, columns);
@@ -405,13 +406,14 @@ namespace BasketballManager.UI.Screens
 
                 var rowData = new List<(string, float)>
                 {
-                    (p.PlayerName, 180f),
+                    (p.PlayerName, 170f),
+                    (p.Minutes.ToString("F1"), 50f),
                     (p.Points.ToString("F1"), 50f),
                     (p.Rebounds.ToString("F1"), 50f),
                     (p.Assists.ToString("F1"), 50f),
-                    (fg, 130f),
-                    (tp, 130f),
-                    (ft, 130f)
+                    (fg, 120f),
+                    (tp, 120f),
+                    (ft, 120f)
                 };
                 CreateTableDataRow(parent, rowData);
             }

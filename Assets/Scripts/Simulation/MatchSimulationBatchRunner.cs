@@ -101,6 +101,7 @@ namespace BasketballManager.Simulation
                 {
                     if (homePlayerStats.TryGetValue(ps.PlayerId, out var statLine))
                     {
+                        statLine.Minutes += ps.Minutes;
                         statLine.Points += ps.Points;
                         statLine.Rebounds += ps.Rebounds;
                         statLine.Assists += ps.Assists;
@@ -117,6 +118,7 @@ namespace BasketballManager.Simulation
                 {
                     if (awayPlayerStats.TryGetValue(ps.PlayerId, out var statLine))
                     {
+                        statLine.Minutes += ps.Minutes;
                         statLine.Points += ps.Points;
                         statLine.Rebounds += ps.Rebounds;
                         statLine.Assists += ps.Assists;
@@ -159,6 +161,7 @@ namespace BasketballManager.Simulation
 
             foreach (var ps in homePlayerStats.Values)
             {
+                ps.Minutes /= games;
                 ps.Points /= games;
                 ps.Rebounds /= games;
                 ps.Assists /= games;
@@ -172,6 +175,7 @@ namespace BasketballManager.Simulation
 
             foreach (var ps in awayPlayerStats.Values)
             {
+                ps.Minutes /= games;
                 ps.Points /= games;
                 ps.Rebounds /= games;
                 ps.Assists /= games;

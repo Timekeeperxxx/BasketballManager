@@ -6,6 +6,7 @@ namespace BasketballManager.Simulation
     {
         public int PlayerId { get; set; }
         public string PlayerName { get; set; }
+        public float Minutes { get; set; }
         public float Points { get; set; }
         public float Rebounds { get; set; }
         public float Assists { get; set; }
