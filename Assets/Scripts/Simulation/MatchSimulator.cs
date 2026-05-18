@@ -896,34 +896,34 @@ namespace BasketballManager.Simulation
 
             float reboundCore = reboundAttribute * 0.55f + reboundTendency * 0.30f + player.Attributes.Strength * 0.10f + heightScore * 0.05f;
 
-            if (reboundCore >= 88f) return 1.35f;
-            if (reboundCore >= 82f) return 1.20f;
-            if (reboundCore >= 76f) return 1.10f;
+            if (reboundCore >= 90f) return 1.22f;
+            if (reboundCore >= 84f) return 1.13f;
+            if (reboundCore >= 78f) return 1.06f;
             return 1.0f;
         }
 
         private float GetReboundMinuteParticipationFactor(int minutes)
         {
-            float factor = Mathf.Clamp(minutes / 32f, 0.10f, 1.20f);
+            float factor = Mathf.Clamp(minutes / 30f, 0.22f, 1.12f);
 
             if (minutes < 8)
             {
-                factor *= 0.35f;
+                factor *= 0.62f;
             }
             else if (minutes < 12)
             {
-                factor *= 0.50f;
+                factor *= 0.72f;
             }
             else if (minutes < 18)
             {
-                factor *= 0.68f;
+                factor *= 0.86f;
             }
             else if (minutes < 24)
             {
-                factor *= 0.85f;
+                factor *= 0.95f;
             }
 
-            return Mathf.Clamp(factor, 0.05f, 1.20f);
+            return Mathf.Clamp(factor, 0.14f, 1.12f);
         }
 
         private void ResolveRebound(MatchTeamSnapshot offense, MatchTeamSnapshot defense, ShotType? shotType)
@@ -973,11 +973,26 @@ namespace BasketballManager.Simulation
                 w *= eliteBoost;
 
                 if (mins <= 6)
-                    w *= 0.45f;
+                    w *= 0.75f;
                 else if (mins <= 10)
-                    w *= 0.60f;
+                    w *= 0.85f;
                 else if (mins <= 16)
-                    w *= 0.78f;
+                    w *= 0.94f;
+
+                float reboundDominanceScore = p.Attributes.OffensiveRebound * 0.55f + p.Tendencies.OffensiveReboundTendency * 0.30f + p.Attributes.Strength * 0.10f + Mathf.Clamp((p.HeightCm - 180f) / 50f * 100f, 0f, 100f) * 0.05f;
+                if (mins >= 32 && reboundDominanceScore >= 88f)
+                {
+                    w *= 0.92f;
+                }
+                else if (mins >= 32 && reboundDominanceScore >= 82f)
+                {
+                    w *= 0.96f;
+                }
+
+                if ((p.Position == BasketballManager.Core.Enums.Position.PF || p.Position == BasketballManager.Core.Enums.Position.C) && mins >= 12 && mins <= 24)
+                {
+                    w *= 1.06f;
+                }
 
                 offWeights[i] = w;
                 teamOffWeight += w;
@@ -1036,11 +1051,29 @@ namespace BasketballManager.Simulation
                 w *= eliteBoost;
 
                 if (mins <= 6)
-                    w *= 0.45f;
+                    w *= 0.75f;
                 else if (mins <= 10)
-                    w *= 0.60f;
+                    w *= 0.85f;
                 else if (mins <= 16)
-                    w *= 0.78f;
+                    w *= 0.94f;
+
+                float reboundDominanceScore = p.Attributes.DefensiveRebound * 0.55f + p.Tendencies.DefensiveReboundTendency * 0.30f + p.Attributes.Strength * 0.10f + Mathf.Clamp((p.HeightCm - 180f) / 50f * 100f, 0f, 100f) * 0.05f;
+                if (mins >= 32 && reboundDominanceScore >= 88f)
+                {
+                    w *= 0.92f;
+                }
+                else if (mins >= 32 && reboundDominanceScore >= 82f)
+                {
+                    w *= 0.96f;
+                }
+
+                if ((p.Position == BasketballManager.Core.Enums.Position.PF || p.Position == BasketballManager.Core.Enums.Position.C) && mins >= 12 && mins <= 24)
+                {
+                    if (p.Attributes.DefensiveRebound >= 70 || p.Tendencies.DefensiveReboundTendency >= 70)
+                    {
+                        w *= 1.12f;
+                    }
+                }
 
                 defWeights[i] = w;
                 teamDefWeight += w;
