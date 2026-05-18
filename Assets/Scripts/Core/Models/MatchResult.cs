@@ -20,6 +20,9 @@ namespace BasketballManager.Core.Models
         
         public List<PlayerBoxScore> HomePlayerStats { get; set; } = new List<PlayerBoxScore>();
         public List<PlayerBoxScore> AwayPlayerStats { get; set; } = new List<PlayerBoxScore>();
+
+        public TeamStyleProfile HomeStyleProfile { get; set; }
+        public TeamStyleProfile AwayStyleProfile { get; set; }
         
         public string WinnerTeamId { get; set; } = string.Empty;
     }

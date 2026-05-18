@@ -101,6 +101,7 @@ namespace BasketballManager.Database
                 && TableExists(connection, "players")
                 && TableExists(connection, "player_attributes")
                 && TableExists(connection, "player_tendencies")
+                && TableExists(connection, "player_simulation_profiles")
                 && HasColumn(connection, "teams", "id")
                 && HasColumn(connection, "teams", "era")
                 && HasColumn(connection, "teams", "is_current")
@@ -112,7 +113,8 @@ namespace BasketballManager.Database
                 && HasColumn(connection, "players", "nationality")
                 && HasColumn(connection, "players", "region_type")
                 && HasColumn(connection, "player_attributes", "draw_foul")
-                && HasColumn(connection, "player_tendencies", "draw_foul_tendency");
+                && HasColumn(connection, "player_tendencies", "draw_foul_tendency")
+                && HasColumn(connection, "player_simulation_profiles", "source_mpg");
         }
 
         private static void RebuildManagedSchema(SqliteConnection connection)
@@ -120,6 +122,7 @@ namespace BasketballManager.Database
             SetForeignKeys(connection, false);
 
             using var transaction = connection.BeginTransaction();
+            ExecuteNonQuery(connection, transaction, "DROP TABLE IF EXISTS player_simulation_profiles;");
             ExecuteNonQuery(connection, transaction, "DROP TABLE IF EXISTS player_tendencies;");
             ExecuteNonQuery(connection, transaction, "DROP TABLE IF EXISTS player_attributes;");
             ExecuteNonQuery(connection, transaction, "DROP TABLE IF EXISTS players;");
@@ -201,6 +204,18 @@ CREATE TABLE player_tendencies (
     defensive_rebound_tendency INTEGER DEFAULT 60,
     FOREIGN KEY (player_id) REFERENCES players (id) ON UPDATE CASCADE ON DELETE CASCADE
 );");
+
+            ExecuteNonQuery(connection, transaction, @"
+CREATE TABLE player_simulation_profiles (
+    player_id INTEGER PRIMARY KEY,
+    team_id TEXT NOT NULL,
+    source_mpg REAL NOT NULL,
+    rotation_role TEXT NOT NULL,
+    minute_floor REAL NOT NULL,
+    minute_ceiling REAL NOT NULL,
+    FOREIGN KEY (player_id) REFERENCES players (id) ON UPDATE CASCADE ON DELETE CASCADE
+);");
+
 
             transaction.Commit();
             SetForeignKeys(connection, true);

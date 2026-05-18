@@ -416,6 +416,36 @@ def main(dry_run: bool):
             tend_vals = list(tends.values()) + [pid]
             cur.execute(tend_sql, tend_vals)
 
+            # Update or Insert player_simulation_profiles
+            source_mpg_str = row.get('mpg', '')
+            if not source_mpg_str:
+                source_mpg = 0.0
+                warnings.append(f"[WARNING] Missing mpg for {p_name} (ID: {pid}), setting source_mpg=0.")
+                role = "unknown"
+                floor = 0.0
+                ceiling = 40.0
+            else:
+                source_mpg = float(source_mpg_str)
+                if source_mpg >= 33:
+                    role, floor, ceiling = "superstar_or_star", 32.0, 38.0
+                elif source_mpg >= 28:
+                    role, floor, ceiling = "starter", 26.0, 36.0
+                elif source_mpg >= 22:
+                    role, floor, ceiling = "sixth_man_or_heavy_rotation", 18.0, 31.0
+                elif source_mpg >= 14:
+                    role, floor, ceiling = "rotation", 10.0, 24.0
+                elif source_mpg >= 8:
+                    role, floor, ceiling = "bench_rotation", 6.0, 16.0
+                else:
+                    role, floor, ceiling = "deep_bench", 2.0, 10.0
+
+            # Delete old if exists (since we changed schemas perhaps)
+            cur.execute("DELETE FROM player_simulation_profiles WHERE player_id = ?", (pid,))
+            cur.execute("""
+                INSERT INTO player_simulation_profiles (player_id, team_id, source_mpg, rotation_role, minute_floor, minute_ceiling)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (pid, team_id, source_mpg, role, floor, ceiling))
+
         updated += 1
 
     if not dry_run:

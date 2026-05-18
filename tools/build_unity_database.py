@@ -103,6 +103,17 @@ def create_schema(conn: sqlite3.Connection) -> None:
 
             FOREIGN KEY (player_id) REFERENCES players (id) ON UPDATE CASCADE ON DELETE CASCADE
         );
+
+        CREATE TABLE IF NOT EXISTS player_simulation_profiles (
+            player_id INTEGER PRIMARY KEY,
+            team_id TEXT NOT NULL,
+            source_mpg REAL NOT NULL,
+            rotation_role TEXT NOT NULL,
+            minute_floor REAL NOT NULL,
+            minute_ceiling REAL NOT NULL,
+            FOREIGN KEY (player_id) REFERENCES players (id) ON UPDATE CASCADE ON DELETE CASCADE
+        );
+
         PRAGMA foreign_keys = ON;
         """
     )

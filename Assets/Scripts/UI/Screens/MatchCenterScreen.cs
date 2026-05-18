@@ -14,6 +14,7 @@ namespace BasketballManager.UI.Screens
         private DatabaseManager _databaseManager;
         private TeamRepository _teamRepository;
         private PlayerRepository _playerRepository;
+        private SimulationProfileRepository _profileRepository;
 
         private RectTransform _rootPanel;
         private RectTransform _resultsPanel;
@@ -29,11 +30,12 @@ namespace BasketballManager.UI.Screens
         private Color _btnInactiveColor = new Color(0.18f, 0.20f, 0.26f);
         private Color _btnDisabledColor = new Color(0.12f, 0.13f, 0.15f);
 
-        public void Initialize(DatabaseManager databaseManager, TeamRepository teamRepository, PlayerRepository playerRepository)
+        public void Initialize(DatabaseManager databaseManager, TeamRepository teamRepository, PlayerRepository playerRepository, SimulationProfileRepository profileRepository)
         {
             _databaseManager = databaseManager;
             _teamRepository = teamRepository;
             _playerRepository = playerRepository;
+            _profileRepository = profileRepository;
         }
 
         public void Show()
@@ -212,9 +214,11 @@ namespace BasketballManager.UI.Screens
             var homePlayers = _playerRepository.GetPlayersByTeamId(_homeTeam.Id);
             var awayPlayers = _playerRepository.GetPlayersByTeamId(_awayTeam.Id);
 
+            var allProfiles = _profileRepository.GetAllProfiles();
+
             int randomBaseSeed = UnityEngine.Random.Range(0, 1000000);
             var runner = new MatchSimulationBatchRunner();
-            var report = runner.Run(_homeTeam, homePlayers, _awayTeam, awayPlayers, 100, randomBaseSeed);
+            var report = runner.Run(_homeTeam, homePlayers, allProfiles, _awayTeam, awayPlayers, allProfiles, 100, randomBaseSeed);
 
             RenderBatchReport(report);
         }
@@ -228,9 +232,11 @@ namespace BasketballManager.UI.Screens
             var homePlayers = _playerRepository.GetPlayersByTeamId(_homeTeam.Id);
             var awayPlayers = _playerRepository.GetPlayersByTeamId(_awayTeam.Id);
 
+            var allProfiles = _profileRepository.GetAllProfiles();
+
             var simulator = new MatchSimulator();
             var config = new MatchConfig();
-            var result = simulator.Simulate(_homeTeam, homePlayers, _awayTeam, awayPlayers, config);
+            var result = simulator.Simulate(_homeTeam, homePlayers, allProfiles, _awayTeam, awayPlayers, allProfiles, config);
 
             RenderResults(result);
         }
@@ -283,20 +289,20 @@ namespace BasketballManager.UI.Screens
             statsLayout.childControlWidth = true;
             CreateHeader(statsPanel, "\u7403\u961f\u7edf\u8ba1", 20); // 球队统计
 
-            AddTeamStatRow(statsPanel, "PTS", result.HomeTeamStats.Points.ToString(), result.AwayTeamStats.Points.ToString());
-            AddTeamStatRow(statsPanel, "FG", $"{result.HomeTeamStats.FieldGoalsMade}/{result.HomeTeamStats.FieldGoalsAttempted}", $"{result.AwayTeamStats.FieldGoalsMade}/{result.AwayTeamStats.FieldGoalsAttempted}");
-            AddTeamStatRow(statsPanel, "FG%", FormatPercent(result.HomeTeamStats.FieldGoalsMade, result.HomeTeamStats.FieldGoalsAttempted), FormatPercent(result.AwayTeamStats.FieldGoalsMade, result.AwayTeamStats.FieldGoalsAttempted));
-            AddTeamStatRow(statsPanel, "3PT", $"{result.HomeTeamStats.ThreePointersMade}/{result.HomeTeamStats.ThreePointersAttempted}", $"{result.AwayTeamStats.ThreePointersMade}/{result.AwayTeamStats.ThreePointersAttempted}");
-            AddTeamStatRow(statsPanel, "3P%", FormatPercent(result.HomeTeamStats.ThreePointersMade, result.HomeTeamStats.ThreePointersAttempted), FormatPercent(result.AwayTeamStats.ThreePointersMade, result.AwayTeamStats.ThreePointersAttempted));
-            AddTeamStatRow(statsPanel, "FT", $"{result.HomeTeamStats.FreeThrowsMade}/{result.HomeTeamStats.FreeThrowsAttempted}", $"{result.AwayTeamStats.FreeThrowsMade}/{result.AwayTeamStats.FreeThrowsAttempted}");
-            AddTeamStatRow(statsPanel, "FT%", FormatPercent(result.HomeTeamStats.FreeThrowsMade, result.HomeTeamStats.FreeThrowsAttempted), FormatPercent(result.AwayTeamStats.FreeThrowsMade, result.AwayTeamStats.FreeThrowsAttempted));
-            AddTeamStatRow(statsPanel, "REB", result.HomeTeamStats.Rebounds.ToString(), result.AwayTeamStats.Rebounds.ToString());
-            AddTeamStatRow(statsPanel, "ORB", result.HomeTeamStats.OffensiveRebounds.ToString(), result.AwayTeamStats.OffensiveRebounds.ToString());
-            AddTeamStatRow(statsPanel, "AST", result.HomeTeamStats.Assists.ToString(), result.AwayTeamStats.Assists.ToString());
-            AddTeamStatRow(statsPanel, "STL", result.HomeTeamStats.Steals.ToString(), result.AwayTeamStats.Steals.ToString());
-            AddTeamStatRow(statsPanel, "BLK", result.HomeTeamStats.Blocks.ToString(), result.AwayTeamStats.Blocks.ToString());
-            AddTeamStatRow(statsPanel, "TOV", result.HomeTeamStats.Turnovers.ToString(), result.AwayTeamStats.Turnovers.ToString());
-            AddTeamStatRow(statsPanel, "PF", result.HomeTeamStats.Fouls.ToString(), result.AwayTeamStats.Fouls.ToString());
+            AddTeamStatRow(statsPanel, "\u5f97\u5206", result.HomeTeamStats.Points.ToString(), result.AwayTeamStats.Points.ToString());
+            AddTeamStatRow(statsPanel, "\u6295\u7bee", $"{result.HomeTeamStats.FieldGoalsMade}/{result.HomeTeamStats.FieldGoalsAttempted}", $"{result.AwayTeamStats.FieldGoalsMade}/{result.AwayTeamStats.FieldGoalsAttempted}");
+            AddTeamStatRow(statsPanel, "\u547d\u4e2d\u7387", FormatPercent(result.HomeTeamStats.FieldGoalsMade, result.HomeTeamStats.FieldGoalsAttempted), FormatPercent(result.AwayTeamStats.FieldGoalsMade, result.AwayTeamStats.FieldGoalsAttempted));
+            AddTeamStatRow(statsPanel, "\u4e09\u5206", $"{result.HomeTeamStats.ThreePointersMade}/{result.HomeTeamStats.ThreePointersAttempted}", $"{result.AwayTeamStats.ThreePointersMade}/{result.AwayTeamStats.ThreePointersAttempted}");
+            AddTeamStatRow(statsPanel, "\u4e09\u5206\u7387", FormatPercent(result.HomeTeamStats.ThreePointersMade, result.HomeTeamStats.ThreePointersAttempted), FormatPercent(result.AwayTeamStats.ThreePointersMade, result.AwayTeamStats.ThreePointersAttempted));
+            AddTeamStatRow(statsPanel, "\u7f5a\u7403", $"{result.HomeTeamStats.FreeThrowsMade}/{result.HomeTeamStats.FreeThrowsAttempted}", $"{result.AwayTeamStats.FreeThrowsMade}/{result.AwayTeamStats.FreeThrowsAttempted}");
+            AddTeamStatRow(statsPanel, "\u7f5a\u7403\u7387", FormatPercent(result.HomeTeamStats.FreeThrowsMade, result.HomeTeamStats.FreeThrowsAttempted), FormatPercent(result.AwayTeamStats.FreeThrowsMade, result.AwayTeamStats.FreeThrowsAttempted));
+            AddTeamStatRow(statsPanel, "\u7bee\u677f", result.HomeTeamStats.Rebounds.ToString(), result.AwayTeamStats.Rebounds.ToString());
+            AddTeamStatRow(statsPanel, "\u524d\u573a\u677f", result.HomeTeamStats.OffensiveRebounds.ToString(), result.AwayTeamStats.OffensiveRebounds.ToString());
+            AddTeamStatRow(statsPanel, "\u52a9\u653b", result.HomeTeamStats.Assists.ToString(), result.AwayTeamStats.Assists.ToString());
+            AddTeamStatRow(statsPanel, "\u62a2\u65ad", result.HomeTeamStats.Steals.ToString(), result.AwayTeamStats.Steals.ToString());
+            AddTeamStatRow(statsPanel, "\u76d6\u5e3d", result.HomeTeamStats.Blocks.ToString(), result.AwayTeamStats.Blocks.ToString());
+            AddTeamStatRow(statsPanel, "\u5931\u8bef", result.HomeTeamStats.Turnovers.ToString(), result.AwayTeamStats.Turnovers.ToString());
+            AddTeamStatRow(statsPanel, "\u72af\u89c4", result.HomeTeamStats.Fouls.ToString(), result.AwayTeamStats.Fouls.ToString());
 
             // Player Stats
             var playerStatsRow = CreatePanel("PlayerStatsRow", content, Color.clear);
@@ -337,14 +343,14 @@ namespace BasketballManager.UI.Screens
         {
             var columns = new List<(string, float)>
             {
-                ("Name", 200f),
-                ("MIN", 60f),
-                ("PTS", 60f),
-                ("REB", 60f),
-                ("AST", 60f),
-                ("FG", 80f),
-                ("3PT", 80f),
-                ("FT", 80f)
+                ("\u540d\u5b57", 200f),
+                ("\u5206\u949f", 60f),
+                ("\u5f97\u5206", 60f),
+                ("\u7bee\u677f", 60f),
+                ("\u52a9\u653b", 60f),
+                ("\u6295\u7bee", 80f),
+                ("\u4e09\u5206", 80f),
+                ("\u7f5a\u7403", 80f)
             };
 
             CreateTableHeaderRow(parent, columns);
@@ -376,14 +382,14 @@ namespace BasketballManager.UI.Screens
         {
             var columns = new List<(string, float)>
             {
-                ("Name", 170f),
-                ("MIN", 50f),
-                ("PTS", 50f),
-                ("REB", 50f),
-                ("AST", 50f),
-                ("FG", 120f),
-                ("3PT", 120f),
-                ("FT", 120f)
+                ("\u540d\u5b57", 170f),
+                ("\u5206\u949f", 50f),
+                ("\u5f97\u5206", 50f),
+                ("\u7bee\u677f", 50f),
+                ("\u52a9\u653b", 50f),
+                ("\u6295\u7bee", 120f),
+                ("\u4e09\u5206", 120f),
+                ("\u7f5a\u7403", 120f)
             };
 
             CreateTableHeaderRow(parent, columns);
@@ -442,7 +448,7 @@ namespace BasketballManager.UI.Screens
             var titleText = CreateHeader(scorePanel, $"{report.HomeTeamName} vs {report.AwayTeamName}", 28);
             titleText.alignment = TextAnchor.MiddleCenter;
             
-            var gamesText = CreateBodyText(scorePanel, $"Games: {report.Games}");
+            var gamesText = CreateBodyText(scorePanel, $"\u6bd4\u8d5b\u573a\u6570: {report.Games}");
             gamesText.alignment = TextAnchor.MiddleCenter;
             gamesText.color = new Color(0.7f, 0.7f, 0.7f);
 
@@ -469,17 +475,43 @@ namespace BasketballManager.UI.Screens
             statsLayout.childControlWidth = true;
             CreateHeader(statsPanel, "\u6838\u5fc3\u6548\u7387", 20); // 核心效率
 
-            AddTeamStatRow(statsPanel, "FG%", $"{(report.HomeFieldGoalPercent * 100):F1}%", $"{(report.AwayFieldGoalPercent * 100):F1}%");
-            AddTeamStatRow(statsPanel, "3P%", $"{(report.HomeThreePointPercent * 100):F1}%", $"{(report.AwayThreePointPercent * 100):F1}%");
-            AddTeamStatRow(statsPanel, "FT%", $"{(report.HomeFreeThrowPercent * 100):F1}%", $"{(report.AwayFreeThrowPercent * 100):F1}%");
-            AddTeamStatRow(statsPanel, "3PA", report.HomeThreePointAttempts.ToString("F1"), report.AwayThreePointAttempts.ToString("F1"));
-            AddTeamStatRow(statsPanel, "FTA", report.HomeFreeThrowAttempts.ToString("F1"), report.AwayFreeThrowAttempts.ToString("F1"));
-            AddTeamStatRow(statsPanel, "REB", report.HomeRebounds.ToString("F1"), report.AwayRebounds.ToString("F1"));
-            AddTeamStatRow(statsPanel, "ORB", report.HomeOffensiveRebounds.ToString("F1"), report.AwayOffensiveRebounds.ToString("F1"));
-            AddTeamStatRow(statsPanel, "AST", report.HomeAssists.ToString("F1"), report.AwayAssists.ToString("F1"));
-            AddTeamStatRow(statsPanel, "AST/FGM", $"{(report.HomeAssistRate * 100):F1}%", $"{(report.AwayAssistRate * 100):F1}%");
-            AddTeamStatRow(statsPanel, "TOV", report.HomeTurnovers.ToString("F1"), report.AwayTurnovers.ToString("F1"));
-            AddTeamStatRow(statsPanel, "PF", report.HomeFouls.ToString("F1"), report.AwayFouls.ToString("F1"));
+            AddTeamStatRow(statsPanel, "\u547d\u4e2d\u7387", $"{(report.HomeFieldGoalPercent * 100):F1}%", $"{(report.AwayFieldGoalPercent * 100):F1}%");
+            AddTeamStatRow(statsPanel, "\u4e09\u5206\u7387", $"{(report.HomeThreePointPercent * 100):F1}%", $"{(report.AwayThreePointPercent * 100):F1}%");
+            AddTeamStatRow(statsPanel, "\u7f5a\u7403\u7387", $"{(report.HomeFreeThrowPercent * 100):F1}%", $"{(report.AwayFreeThrowPercent * 100):F1}%");
+            AddTeamStatRow(statsPanel, "\u4e09\u5206\u51fa\u624b", report.HomeThreePointAttempts.ToString("F1"), report.AwayThreePointAttempts.ToString("F1"));
+            AddTeamStatRow(statsPanel, "\u7f5a\u7403\u51fa\u624b", report.HomeFreeThrowAttempts.ToString("F1"), report.AwayFreeThrowAttempts.ToString("F1"));
+            AddTeamStatRow(statsPanel, "\u7bee\u677f", report.HomeRebounds.ToString("F1"), report.AwayRebounds.ToString("F1"));
+            AddTeamStatRow(statsPanel, "\u524d\u573a\u677f", report.HomeOffensiveRebounds.ToString("F1"), report.AwayOffensiveRebounds.ToString("F1"));
+            AddTeamStatRow(statsPanel, "\u52a9\u653b", report.HomeAssists.ToString("F1"), report.AwayAssists.ToString("F1"));
+            AddTeamStatRow(statsPanel, "\u52a9\u653b\u7387", $"{(report.HomeAssistRate * 100):F1}%", $"{(report.AwayAssistRate * 100):F1}%");
+            AddTeamStatRow(statsPanel, "\u5931\u8bef", report.HomeTurnovers.ToString("F1"), report.AwayTurnovers.ToString("F1"));
+            AddTeamStatRow(statsPanel, "\u72af\u89c4", report.HomeFouls.ToString("F1"), report.AwayFouls.ToString("F1"));
+
+            var stylePanel = CreatePanel("TeamStyles", content, new Color(0.12f, 0.13f, 0.17f));
+            var styleLayout = stylePanel.gameObject.AddComponent<VerticalLayoutGroup>();
+            styleLayout.padding = new RectOffset(16, 16, 16, 16);
+            styleLayout.spacing = 8f;
+            styleLayout.childForceExpandWidth = true;
+            styleLayout.childForceExpandHeight = false;
+            styleLayout.childControlHeight = true;
+            styleLayout.childControlWidth = true;
+            CreateHeader(stylePanel, "\u7403\u961f\u98ce\u683c\u6307\u6807", 20); // 球队风格指标
+
+            if (report.HomeStyleProfile != null && report.AwayStyleProfile != null)
+            {
+                AddTeamStatRow(stylePanel, "\u56de\u5408\u6570", report.HomeStyleProfile.PaceModifier.ToString("F2"), report.AwayStyleProfile.PaceModifier.ToString("F2"));
+                AddTeamStatRow(stylePanel, "\u7a7a\u95f4", report.HomeStyleProfile.SpacingModifier.ToString("F2"), report.AwayStyleProfile.SpacingModifier.ToString("F2"));
+                AddTeamStatRow(stylePanel, "\u4e09\u5206\u7275\u5236", report.HomeStyleProfile.ThreeGravity.ToString("F2"), report.AwayStyleProfile.ThreeGravity.ToString("F2"));
+                AddTeamStatRow(stylePanel, "\u653b\u6846\u538b\u529b", report.HomeStyleProfile.RimPressure.ToString("F2"), report.AwayStyleProfile.RimPressure.ToString("F2"));
+                AddTeamStatRow(stylePanel, "\u7ec4\u7ec7\u68b3\u7406", report.HomeStyleProfile.AssistModifier.ToString("F2"), report.AwayStyleProfile.AssistModifier.ToString("F2"));
+                AddTeamStatRow(stylePanel, "\u524d\u573a\u62fc\u62a2", report.HomeStyleProfile.OffensiveReboundModifier.ToString("F2"), report.AwayStyleProfile.OffensiveReboundModifier.ToString("F2"));
+                
+                AddTeamStatRow(stylePanel, "\u62a4\u6846", report.HomeStyleProfile.RimProtection.ToString("F2"), report.AwayStyleProfile.RimProtection.ToString("F2"));
+                AddTeamStatRow(stylePanel, "\u6362\u9632", report.HomeStyleProfile.SwitchDefense.ToString("F2"), report.AwayStyleProfile.SwitchDefense.ToString("F2"));
+                AddTeamStatRow(stylePanel, "\u540e\u573a\u4fdd\u62a4", report.HomeStyleProfile.DefensiveReboundModifier.ToString("F2"), report.AwayStyleProfile.DefensiveReboundModifier.ToString("F2"));
+                AddTeamStatRow(stylePanel, "\u5931\u8bef\u63a7\u5236", report.HomeStyleProfile.TurnoverControl.ToString("F2"), report.AwayStyleProfile.TurnoverControl.ToString("F2"));
+                AddTeamStatRow(stylePanel, "\u72af\u89c4\u538b\u8feb", report.HomeStyleProfile.FoulPressure.ToString("F2"), report.AwayStyleProfile.FoulPressure.ToString("F2"));
+            }
 
             // Player Stats
             var playerStatsRow = CreatePanel("PlayerStatsRow", content, Color.clear);

@@ -61,5 +61,8 @@ namespace BasketballManager.Simulation
         
         public List<PlayerAverageStatLine> TopHomeScorers { get; set; } = new List<PlayerAverageStatLine>();
         public List<PlayerAverageStatLine> TopAwayScorers { get; set; } = new List<PlayerAverageStatLine>();
+
+        public BasketballManager.Core.Models.TeamStyleProfile HomeStyleProfile { get; set; }
+        public BasketballManager.Core.Models.TeamStyleProfile AwayStyleProfile { get; set; }
     }
 }

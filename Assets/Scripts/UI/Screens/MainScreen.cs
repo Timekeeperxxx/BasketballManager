@@ -14,6 +14,7 @@ namespace BasketballManager.UI.Screens
         private DatabaseManager _databaseManager;
         private TeamRepository _teamRepository;
         private PlayerRepository _playerRepository;
+        private SimulationProfileRepository _profileRepository;
 
         private RosterManagementScreen _rosterScreen;
         private MatchCenterScreen _matchScreen;
@@ -24,11 +25,12 @@ namespace BasketballManager.UI.Screens
         private Color _navActiveColor = new Color(0.23f, 0.49f, 0.81f);
         private Color _navInactiveColor = new Color(0.18f, 0.20f, 0.26f);
 
-        public void Initialize(DatabaseManager databaseManager, TeamRepository teamRepository, PlayerRepository playerRepository)
+        public void Initialize(DatabaseManager databaseManager, TeamRepository teamRepository, PlayerRepository playerRepository, SimulationProfileRepository profileRepository)
         {
             _databaseManager = databaseManager;
             _teamRepository = teamRepository;
             _playerRepository = playerRepository;
+            _profileRepository = profileRepository;
         }
 
         private void Start()
@@ -109,7 +111,7 @@ namespace BasketballManager.UI.Screens
             _rosterScreen.BuildUi(contentArea);
 
             _matchScreen = gameObject.AddComponent<MatchCenterScreen>();
-            _matchScreen.Initialize(_databaseManager, _teamRepository, _playerRepository);
+            _matchScreen.Initialize(_databaseManager, _teamRepository, _playerRepository, _profileRepository);
             _matchScreen.BuildUi(contentArea);
         }
 

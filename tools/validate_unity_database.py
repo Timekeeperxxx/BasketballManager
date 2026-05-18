@@ -133,6 +133,21 @@ def validate() -> bool:
 
     conn.close()
 
+    # Scan for hardcoded logic
+    simulator_path = PROJECT_ROOT / "Assets" / "Scripts" / "Simulation" / "MatchSimulator.cs"
+    snapshot_path = PROJECT_ROOT / "Assets" / "Scripts" / "Core" / "Models" / "MatchTeamSnapshot.cs"
+    
+    banned_names = ["Curry", "Klay", "Giannis", "Durant", "LeBron", "Green", "Porzingis", "Jokic", "Antetokounmpo", "warriors_", "bucks_", "lakers_", "raptors_"]
+    
+    for path in [simulator_path, snapshot_path]:
+        if path.exists():
+            with open(path, "r", encoding="utf-8") as f:
+                content = f.read()
+                for banned in banned_names:
+                    # Look for exact string matches inside quotes or as exact identifiers where it shouldn't be
+                    if f'"{banned}"' in content or f'"{banned}' in content:
+                        errors.append(f"Hardcoded constraint detected in {path.name}: found '{banned}'")
+
     if errors:
         for err in errors: print(f"[ERROR] {err}")
     if warnings:

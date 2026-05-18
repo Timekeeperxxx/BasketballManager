@@ -22,8 +22,10 @@ namespace BasketballManager.Simulation
         public MatchResult Simulate(
             Team homeTeam,
             IReadOnlyList<Player> homePlayers,
+            IReadOnlyDictionary<int, SimulationPlayerProfile> homeProfiles,
             Team awayTeam,
             IReadOnlyList<Player> awayPlayers,
+            IReadOnlyDictionary<int, SimulationPlayerProfile> awayProfiles,
             MatchConfig config)
         {
             _random = config.UseFixedSeed ? new SimulationRandom(config.Seed) : new SimulationRandom();
@@ -40,8 +42,8 @@ namespace BasketballManager.Simulation
             };
 
             // Distribute minutes based on rotation constraints before simulation
-            DistributeMinutes(homeSnapshot, config);
-            DistributeMinutes(awaySnapshot, config);
+            DistributeMinutes(homeSnapshot, homeProfiles, config);
+            DistributeMinutes(awaySnapshot, awayProfiles, config);
 
             for (int q = 0; q < config.QuarterCount; q++)
             {
@@ -56,6 +58,9 @@ namespace BasketballManager.Simulation
             result.AwayTeamStats = awaySnapshot.TeamStats;
             result.HomePlayerStats = homeSnapshot.PlayerStatsById.Values.ToList();
             result.AwayPlayerStats = awaySnapshot.PlayerStatsById.Values.ToList();
+
+            result.HomeStyleProfile = homeSnapshot.StyleProfile;
+            result.AwayStyleProfile = awaySnapshot.StyleProfile;
             
             result.WinnerTeamId = result.HomeScore > result.AwayScore ? result.HomeTeamId : result.AwayTeamId;
 
@@ -120,42 +125,99 @@ namespace BasketballManager.Simulation
             }
         }
 
-        private void DistributeMinutes(MatchTeamSnapshot snapshot, MatchConfig config)
+        private void DistributeMinutes(MatchTeamSnapshot snapshot, IReadOnlyDictionary<int, SimulationPlayerProfile> profiles, MatchConfig config)
         {
-            int totalMinutes = config.QuarterCount * config.MinutesPerQuarter * 5;
+            int requiredMinutes = config.QuarterCount * config.MinutesPerQuarter * 5;
             var rotation = snapshot.RotationPlayers;
             
             if (rotation.Count == 0) return;
 
-            int[] targetMinutes = { 37, 35, 33, 31, 28, 24, 20, 16, 10, 6 };
-            int index = 0;
-            foreach (var player in rotation)
-            {
-                int min = index < targetMinutes.Length ? targetMinutes[index] : 0;
-                snapshot.PlayerStatsById[player.Id].Minutes = min;
-                totalMinutes -= min;
-                index++;
-            }
+            int[] fallbackMinutes = { 37, 35, 33, 31, 28, 24, 20, 16, 10, 6 };
             
-            if (totalMinutes != 0 && rotation.Count > 0)
+            float[] candidates = new float[rotation.Count];
+            float[] floors = new float[rotation.Count];
+            float[] ceilings = new float[rotation.Count];
+
+            for (int i = 0; i < rotation.Count; i++)
             {
-                float assignedMins = (config.QuarterCount * config.MinutesPerQuarter * 5) - totalMinutes;
-                if (assignedMins <= 0) assignedMins = 1;
-                float ratio = (float)(config.QuarterCount * config.MinutesPerQuarter * 5) / assignedMins;
-                int newTotal = 0;
-                for (int i = 0; i < rotation.Count; i++)
+                var p = rotation[i];
+                if (profiles != null && profiles.TryGetValue(p.Id, out var profile) && profile.SourceMpg > 0f)
                 {
-                    var pStats = snapshot.PlayerStatsById[rotation[i].Id];
-                    if (i == rotation.Count - 1)
+                    float factor = p.Overall >= 92 ? 1.05f : p.Overall >= 86 ? 1.03f : p.Overall >= 80 ? 1.00f : p.Overall >= 74 ? 0.97f : 0.94f;
+                    candidates[i] = profile.SourceMpg * factor;
+                    floors[i] = profile.MinuteFloor;
+                    ceilings[i] = profile.MinuteCeiling;
+                }
+                else
+                {
+                    candidates[i] = i < fallbackMinutes.Length ? fallbackMinutes[i] : 0;
+                    floors[i] = 0f;
+                    ceilings[i] = 40f;
+                }
+
+                candidates[i] = Mathf.Clamp(candidates[i], floors[i], ceilings[i]);
+            }
+
+            // Floor/ceiling aware normalization
+            float currentSum = candidates.Sum();
+            if (Mathf.Abs(currentSum - requiredMinutes) > 0.5f)
+            {
+                int iterations = 0;
+                while (Mathf.Abs(currentSum - requiredMinutes) > 0.5f && iterations < 100)
+                {
+                    float diff = requiredMinutes - currentSum;
+                    int count = 0;
+                    
+                    if (diff > 0)
                     {
-                        pStats.Minutes = (config.QuarterCount * config.MinutesPerQuarter * 5) - newTotal;
+                        for (int i = 0; i < candidates.Length; i++) if (candidates[i] < ceilings[i]) count++;
+                        if (count == 0) break;
+                        float add = diff / count;
+                        for (int i = 0; i < candidates.Length; i++)
+                        {
+                            if (candidates[i] < ceilings[i])
+                            {
+                                candidates[i] += add;
+                                if (candidates[i] > ceilings[i]) candidates[i] = ceilings[i];
+                            }
+                        }
                     }
                     else
                     {
-                        pStats.Minutes = Mathf.RoundToInt(pStats.Minutes * ratio);
-                        newTotal += pStats.Minutes;
+                        for (int i = 0; i < candidates.Length; i++) if (candidates[i] > floors[i]) count++;
+                        if (count == 0) break;
+                        float sub = -diff / count;
+                        for (int i = 0; i < candidates.Length; i++)
+                        {
+                            if (candidates[i] > floors[i])
+                            {
+                                candidates[i] -= sub;
+                                if (candidates[i] < floors[i]) candidates[i] = floors[i];
+                            }
+                        }
                     }
+                    currentSum = candidates.Sum();
+                    iterations++;
                 }
+                
+                if (iterations >= 100)
+                {
+                    Debug.LogWarning($"[MatchSimulator] Could not perfectly normalize minutes for {snapshot.Team.Name}. Fallback clamping.");
+                }
+            }
+
+            int assignedTotal = 0;
+            for (int i = 0; i < rotation.Count; i++)
+            {
+                int min = Mathf.RoundToInt(candidates[i]);
+                if (i == rotation.Count - 1)
+                {
+                    min = requiredMinutes - assignedTotal;
+                }
+                
+                min = Mathf.Clamp(min, 0, 48);
+                snapshot.PlayerStatsById[rotation[i].Id].Minutes = min;
+                assignedTotal += min;
             }
 
             var playmakerSorted = rotation.OrderByDescending(p =>
@@ -173,6 +235,76 @@ namespace BasketballManager.Simulation
             {
                 snapshot.PlaymakerRoleRankByPlayerId[playmakerSorted[i].Id] = i + 1;
             }
+
+            snapshot.StyleProfile = DeriveTeamStyleProfile(snapshot);
+        }
+
+        private TeamStyleProfile DeriveTeamStyleProfile(MatchTeamSnapshot snapshot)
+        {
+            var profile = new TeamStyleProfile();
+            var rotation = snapshot.RotationPlayers;
+            if (rotation.Count == 0) return profile;
+
+            float totalMinutes = 0f;
+            foreach (var player in rotation)
+            {
+                totalMinutes += snapshot.PlayerStatsById[player.Id].Minutes;
+            }
+            if (totalMinutes <= 0) totalMinutes = 1f;
+
+            float WeightedAvg(Func<Player, float> metricSelector)
+            {
+                float sum = 0f;
+                foreach (var p in rotation)
+                {
+                    sum += metricSelector(p) * snapshot.PlayerStatsById[p.Id].Minutes;
+                }
+                return sum / totalMinutes;
+            }
+
+            float spacingScore = WeightedAvg(p => p.Attributes.ThreePoint * 0.6f + p.Tendencies.ThreeTendency * 0.4f);
+            profile.SpacingModifier = MapToModifier(spacingScore, 74f, 30f, 0.94f, 1.08f);
+
+            var top5 = rotation.OrderByDescending(p => snapshot.PlayerStatsById[p.Id].Minutes).Take(5).ToList();
+            float top5Mins = top5.Sum(p => snapshot.PlayerStatsById[p.Id].Minutes);
+            if (top5Mins <= 0) top5Mins = 1f;
+            float gravityScore = top5.Sum(p => (p.Attributes.ThreePoint * 0.5f + p.Tendencies.ThreeTendency * 0.5f) * snapshot.PlayerStatsById[p.Id].Minutes) / top5Mins;
+            profile.ThreeGravity = MapToModifier(gravityScore, 76f, 28f, 0.94f, 1.10f);
+
+            float rimScore = WeightedAvg(p => p.Attributes.Drive * 0.3f + p.Attributes.Layup * 0.25f + p.Attributes.DrawFoul * 0.25f + p.Tendencies.DrawFoulTendency * 0.2f);
+            profile.RimPressure = MapToModifier(rimScore, 74f, 30f, 0.94f, 1.10f);
+
+            float assistScore = WeightedAvg(p => p.Attributes.Passing * 0.55f + p.Tendencies.PassTendency * 0.45f);
+            profile.AssistModifier = MapToModifier(assistScore, 72f, 30f, 0.94f, 1.10f);
+
+            float controlScore = WeightedAvg(p => p.Attributes.BallHandle * 0.4f + p.Attributes.Passing * 0.3f + p.Attributes.OffensiveConsistency * 0.3f);
+            profile.TurnoverControl = MapToModifier(controlScore, 74f, 35f, 0.94f, 1.08f);
+
+            float orbScore = WeightedAvg(p => p.Attributes.OffensiveRebound * 0.55f + p.Tendencies.OffensiveReboundTendency * 0.45f);
+            profile.OffensiveReboundModifier = MapToModifier(orbScore, 70f, 35f, 0.94f, 1.08f);
+
+            float drbScore = WeightedAvg(p => p.Attributes.DefensiveRebound * 0.55f + p.Tendencies.DefensiveReboundTendency * 0.45f);
+            profile.DefensiveReboundModifier = MapToModifier(drbScore, 72f, 35f, 0.94f, 1.08f);
+
+            float switchScore = WeightedAvg(p => p.Attributes.PerimeterDefense * 0.45f + p.Attributes.DefensiveConsistency * 0.35f + p.Attributes.Steal * 0.2f);
+            profile.SwitchDefense = MapToModifier(switchScore, 74f, 35f, 0.94f, 1.08f);
+
+            float rimProtectionScore = WeightedAvg(p => p.Attributes.InteriorDefense * 0.45f + p.Attributes.Block * 0.35f + p.Attributes.Strength * 0.2f);
+            profile.RimProtection = MapToModifier(rimProtectionScore, 74f, 35f, 0.94f, 1.10f);
+
+            float foulScore = WeightedAvg(p => p.Attributes.DrawFoul * 0.4f + p.Attributes.Drive * 0.25f + p.Attributes.CloseShot * 0.2f + p.Attributes.PostScoring * 0.15f);
+            profile.FoulPressure = MapToModifier(foulScore, 72f, 35f, 0.94f, 1.10f);
+
+            float transitionScore = WeightedAvg(p => p.Attributes.Drive * 0.35f + p.Attributes.BallHandle * 0.25f + p.Attributes.Steal * 0.2f + p.Attributes.PerimeterDefense * 0.2f);
+            profile.TransitionModifier = MapToModifier(transitionScore, 72f, 35f, 0.94f, 1.08f);
+
+            return profile;
+        }
+
+        private float MapToModifier(float score, float center, float scale, float min, float max)
+        {
+            float modifier = 1f + (score - center) / scale * 0.05f;
+            return Mathf.Clamp(modifier, min, max);
         }
 
         private void SimulatePossession(MatchTeamSnapshot offense, MatchTeamSnapshot defense, int quarterIndex)
@@ -187,7 +319,7 @@ namespace BasketballManager.Simulation
             var defStats = defense.PlayerStatsById[defender.Id];
 
             // 15. Turnovers
-            float turnoverChance = CalculateTurnoverChance(attacker, defender, isTransition);
+            float turnoverChance = CalculateTurnoverChance(offense, defense, attacker, defender, isTransition);
             if (_random.Chance(turnoverChance))
             {
                 offStats.Turnovers++;
@@ -291,7 +423,7 @@ namespace BasketballManager.Simulation
             }
 
             // 11. Shot Success
-            float fgChance = CalculateFgChance(finisher, finDefender, shotType, isTransition);
+            float fgChance = CalculateFgChance(offense, defense, finisher, finDefender, shotType, isTransition);
             bool isMade = _random.Chance(fgChance);
             
             RecordShotResult(offense, finisher, shotType, isMade, false);
@@ -420,7 +552,7 @@ namespace BasketballManager.Simulation
                 }
             }
 
-            float fgChance = CalculateFgChance(finisher, finDefender, shotType, false);
+            float fgChance = CalculateFgChance(offense, defense, finisher, finDefender, shotType, false);
             
             float boost = shotType switch
             {
@@ -760,7 +892,7 @@ namespace BasketballManager.Simulation
             return ShotType.CloseShot;
         }
 
-        private float CalculateTurnoverChance(Player attacker, Player defender, bool isTransition = false)
+        private float CalculateTurnoverChance(MatchTeamSnapshot offense, MatchTeamSnapshot defense, Player attacker, Player defender, bool isTransition = false)
         {
             float off = (attacker.Attributes.BallHandle + attacker.Attributes.Passing + attacker.Attributes.OffensiveConsistency) / 3f;
             float def = (defender.Attributes.Steal + defender.Tendencies.StealTendency + defender.Attributes.PerimeterDefense) / 3f;
@@ -768,6 +900,8 @@ namespace BasketballManager.Simulation
             float baseChance = 0.12f;
             float delta = (def - off) / 100f * 0.1f; 
             float result = Mathf.Clamp(baseChance + delta, 0.05f, 0.25f);
+            
+            result /= offense.StyleProfile.TurnoverControl;
             
             if (isTransition)
             {
@@ -804,6 +938,8 @@ namespace BasketballManager.Simulation
                            defender.Attributes.DefensiveConsistency / 100f * 0.05f;
 
             chance = Mathf.Clamp(chance, 0.02f, 0.40f);
+
+            chance *= offense.StyleProfile.FoulPressure;
 
             chance *= 0.72f;
 
@@ -899,7 +1035,7 @@ namespace BasketballManager.Simulation
             }
         }
 
-        private float CalculateFgChance(Player attacker, Player defender, ShotType shotType, bool isTransition = false)
+        private float CalculateFgChance(MatchTeamSnapshot offense, MatchTeamSnapshot defense, Player attacker, Player defender, ShotType shotType, bool isTransition = false)
         {
             float offAttr = 60f;
             float defAttr = 60f;
@@ -940,11 +1076,11 @@ namespace BasketballManager.Simulation
 
             float chance = shotType switch
             {
-                ShotType.ThreePoint => 0.35f + delta + transitionBoost,
-                ShotType.TwoPoint => 0.45f + delta + transitionBoost,
-                ShotType.Layup => 0.55f + delta + transitionBoost,
-                ShotType.CloseShot => 0.58f + delta + transitionBoost,
-                ShotType.Post => 0.50f + delta,
+                ShotType.ThreePoint => (0.35f + delta + transitionBoost) * offense.StyleProfile.SpacingModifier * offense.StyleProfile.ThreeGravity / defense.StyleProfile.SwitchDefense,
+                ShotType.TwoPoint => (0.45f + delta + transitionBoost) * offense.StyleProfile.SpacingModifier / defense.StyleProfile.SwitchDefense,
+                ShotType.Layup => (0.55f + delta + transitionBoost) * offense.StyleProfile.RimPressure / defense.StyleProfile.RimProtection,
+                ShotType.CloseShot => (0.58f + delta + transitionBoost) * offense.StyleProfile.RimPressure / defense.StyleProfile.RimProtection,
+                ShotType.Post => (0.50f + delta) / defense.StyleProfile.RimProtection,
                 _ => 0.40f
             };
 
@@ -1161,7 +1297,7 @@ namespace BasketballManager.Simulation
             int mins = offense.PlayerStatsById[assister.Id].Minutes;
             if (mins < 18) passBonus -= 0.04f;
 
-            float assistChance = baseAssistChance + modifier - penalty + passBonus;
+            float assistChance = (baseAssistChance + modifier - penalty + passBonus) * offense.StyleProfile.AssistModifier;
             assistChance = Mathf.Clamp(assistChance, 0.25f, 0.90f);
 
             if (_random.Chance(assistChance))
@@ -1213,6 +1349,9 @@ namespace BasketballManager.Simulation
         {
             float teamOffWeight = 0;
             float teamDefWeight = 0;
+
+            float offStyleMod = offense.StyleProfile.OffensiveReboundModifier;
+            float defStyleMod = defense.StyleProfile.DefensiveReboundModifier;
 
             var offWeights = new float[offense.RotationPlayers.Count];
             for (int i = 0; i < offense.RotationPlayers.Count; i++)
@@ -1361,6 +1500,9 @@ namespace BasketballManager.Simulation
                 defWeights[i] = w;
                 teamDefWeight += w;
             }
+
+            teamOffWeight *= offStyleMod;
+            teamDefWeight *= defStyleMod;
 
             if (teamOffWeight + teamDefWeight == 0) return (null, false);
 

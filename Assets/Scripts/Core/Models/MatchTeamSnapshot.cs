@@ -13,6 +13,22 @@ namespace BasketballManager.Core.Models
         public int Points { get; set; }
     }
 
+    public class TeamStyleProfile
+    {
+        public float PaceModifier { get; set; } = 1.0f;
+        public float SpacingModifier { get; set; } = 1.0f;
+        public float ThreeGravity { get; set; } = 1.0f;
+        public float RimPressure { get; set; } = 1.0f;
+        public float AssistModifier { get; set; } = 1.0f;
+        public float TurnoverControl { get; set; } = 1.0f;
+        public float OffensiveReboundModifier { get; set; } = 1.0f;
+        public float DefensiveReboundModifier { get; set; } = 1.0f;
+        public float SwitchDefense { get; set; } = 1.0f;
+        public float RimProtection { get; set; } = 1.0f;
+        public float FoulPressure { get; set; } = 1.0f;
+        public float TransitionModifier { get; set; } = 1.0f;
+    }
+
     public class MatchTeamSnapshot
     {
         public Team Team { get; set; }
@@ -25,5 +41,6 @@ namespace BasketballManager.Core.Models
         public Dictionary<int, PlayerGameState> PlayerGameStates { get; set; } = new Dictionary<int, PlayerGameState>();
         public int ConsecutiveTeamThreeMisses { get; set; }
         public bool HasTransitionOpportunity { get; set; }
+        public TeamStyleProfile StyleProfile { get; set; } = new TeamStyleProfile();
     }
 }

@@ -359,7 +359,10 @@ namespace BasketballManager.UI.Screens
             var simulator = new MatchSimulator();
             var config = new MatchConfig();
             
-            var result = simulator.Simulate(homeTeam, homePlayers, awayTeam, awayPlayers, config);
+            var result = simulator.Simulate(
+                homeTeam, homePlayers, new Dictionary<int, SimulationPlayerProfile>(),
+                awayTeam, awayPlayers, new Dictionary<int, SimulationPlayerProfile>(),
+                config);
             
             var text = $"{result.HomeTeamName} {result.HomeScore} - {result.AwayScore} {result.AwayTeamName}\n";
             text += $"每节: {string.Join("-", result.HomeQuarterScores)} | {string.Join("-", result.AwayQuarterScores)}\n";

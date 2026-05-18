@@ -9,8 +9,10 @@ namespace BasketballManager.Simulation
         public MatchSimulationReport Run(
             Team homeTeam,
             IReadOnlyList<Player> homePlayers,
+            IReadOnlyDictionary<int, SimulationPlayerProfile> homeProfiles,
             Team awayTeam,
             IReadOnlyList<Player> awayPlayers,
+            IReadOnlyDictionary<int, SimulationPlayerProfile> awayProfiles,
             int games,
             int baseSeed)
         {
@@ -60,7 +62,7 @@ namespace BasketballManager.Simulation
             {
                 config.Seed = baseSeed + i;
                 var simulator = new MatchSimulator();
-                var result = simulator.Simulate(homeTeam, homePlayers, awayTeam, awayPlayers, config);
+                var result = simulator.Simulate(homeTeam, homePlayers, homeProfiles, awayTeam, awayPlayers, awayProfiles, config);
 
                 if (result.HomeScore > result.AwayScore)
                 {
@@ -134,6 +136,12 @@ namespace BasketballManager.Simulation
                         statLine.FreeThrowsMade += ps.FreeThrowsMade;
                         statLine.FreeThrowAttempts += ps.FreeThrowsAttempted;
                     }
+                }
+                
+                if (i == games - 1)
+                {
+                    report.HomeStyleProfile = result.HomeStyleProfile;
+                    report.AwayStyleProfile = result.AwayStyleProfile;
                 }
             }
 

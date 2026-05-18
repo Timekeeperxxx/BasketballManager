@@ -28,6 +28,7 @@ namespace BasketballManager.App
             var databaseManager = new DatabaseManager();
             var teamRepository = new TeamRepository(databaseManager);
             var playerRepository = new PlayerRepository(databaseManager);
+            var profileRepository = new SimulationProfileRepository(databaseManager);
 
             var screen = GetComponent<MainScreen>();
             if (screen == null)
@@ -35,7 +36,7 @@ namespace BasketballManager.App
                 screen = gameObject.AddComponent<MainScreen>();
             }
 
-            screen.Initialize(databaseManager, teamRepository, playerRepository);
+            screen.Initialize(databaseManager, teamRepository, playerRepository, profileRepository);
         }
     }
 }
