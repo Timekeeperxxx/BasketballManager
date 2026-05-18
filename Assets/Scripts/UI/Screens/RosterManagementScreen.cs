@@ -82,7 +82,7 @@ namespace BasketballManager.UI.Screens
             editorLayout.padding = new RectOffset(12, 12, 12, 12);
             editorLayout.spacing = 10f;
             editorLayout.childControlWidth = true;
-            editorLayout.childControlHeight = false;
+            editorLayout.childControlHeight = true;
             editorLayout.childForceExpandWidth = true;
             editorLayout.childForceExpandHeight = false;
             editorContent.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
@@ -343,7 +343,7 @@ namespace BasketballManager.UI.Screens
             layout.padding = new RectOffset(12, 12, 12, 12);
             layout.spacing = 8f;
             layout.childControlWidth = true;
-            layout.childControlHeight = false;
+            layout.childControlHeight = true;
             layout.childForceExpandWidth = true;
             layout.childForceExpandHeight = false;
             section.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
@@ -399,6 +399,7 @@ namespace BasketballManager.UI.Screens
             var layout = rowObject.AddComponent<HorizontalLayoutGroup>();
             layout.spacing = 12f;
             layout.childControlWidth = true;
+            layout.childControlHeight = true;
             layout.childForceExpandWidth = false;
             layout.childForceExpandHeight = false;
             layout.childAlignment = TextAnchor.MiddleLeft;

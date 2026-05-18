@@ -218,8 +218,9 @@ namespace BasketballManager.UI.Screens
             var homePlayers = _playerRepository.GetPlayersByTeamId(_homeTeam.Id);
             var awayPlayers = _playerRepository.GetPlayersByTeamId(_awayTeam.Id);
 
+            int randomBaseSeed = UnityEngine.Random.Range(0, 1000000);
             var runner = new MatchSimulationBatchRunner();
-            var report = runner.Run(_homeTeam, homePlayers, _awayTeam, awayPlayers, 100, 10000);
+            var report = runner.Run(_homeTeam, homePlayers, _awayTeam, awayPlayers, 100, randomBaseSeed);
 
             RenderBatchReport(report);
         }
