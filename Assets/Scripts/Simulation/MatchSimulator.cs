@@ -757,6 +757,23 @@ namespace BasketballManager.Simulation
             return 0.82f;
         }
 
+        private float GetSecondaryBallHandlerAssistBoost(Player candidate, MatchTeamSnapshot offense)
+        {
+            float handlerScore =
+                candidate.Attributes.Passing * 0.40f
+              + candidate.Tendencies.PassTendency * 0.35f
+              + candidate.Attributes.BallHandle * 0.25f;
+
+            int rank = offense.PlaymakerRoleRankByPlayerId.TryGetValue(candidate.Id, out var r) ? r : 99;
+
+            if (rank == 2 && handlerScore >= 72f) return 1.12f;
+            if (rank == 3 && handlerScore >= 70f) return 1.10f;
+            if (rank >= 4 && handlerScore >= 76f) return 1.08f;
+            if (rank >= 4 && handlerScore >= 70f) return 1.04f;
+
+            return 1.0f;
+        }
+
         private Player SelectAssisterCandidate(MatchTeamSnapshot offense, Player initiator, Player finisher, ShotType shotType)
         {
             var candidates = offense.RotationPlayers.Where(p => p.Id != finisher.Id).ToList();
@@ -777,6 +794,7 @@ namespace BasketballManager.Simulation
                           candidate.Attributes.OffensiveConsistency * 0.20f;
 
                 w *= GetPlaymakerAssistBoost(candidate, offense);
+                w *= GetSecondaryBallHandlerAssistBoost(candidate, offense);
 
                 if (candidate.Id == initiator.Id)
                 {
@@ -804,13 +822,13 @@ namespace BasketballManager.Simulation
 
                 if (candidate.Id != initiator.Id)
                 {
-                    if (candidate.Attributes.Passing < 65 && candidate.Tendencies.PassTendency < 65 && candidate.Attributes.BallHandle < 70)
+                    if (candidate.Attributes.Passing < 62 && candidate.Tendencies.PassTendency < 62 && candidate.Attributes.BallHandle < 68)
                     {
-                        w *= 0.55f;
+                        w *= 0.85f;
                     }
-                    else if (candidate.Attributes.ThreePoint >= 80 && candidate.Tendencies.ThreeTendency >= 80 && candidate.Tendencies.PassTendency < 65)
+                    else if (candidate.Attributes.ThreePoint >= 80 && candidate.Tendencies.ThreeTendency >= 80 && candidate.Tendencies.PassTendency < 62)
                     {
-                        w *= 0.60f;
+                        w *= 0.88f;
                     }
                 }
 
