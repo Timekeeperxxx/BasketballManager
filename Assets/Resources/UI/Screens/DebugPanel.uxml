@@ -1,0 +1,60 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="project://database/Assets/Resources/UI/Theme/theme.uss" />
+    <Style src="project://database/Assets/Resources/UI/Screens/DebugPanel.uss" />
+    <ui:VisualElement name="debug-screen" class="screen-page debug-screen">
+
+        <!-- 顶栏 -->
+        <ui:VisualElement class="page-topbar">
+            <ui:Button name="btn-back" text="← 返回主菜单" class="btn btn--back" />
+            <ui:VisualElement class="page-topbar__title-block">
+                <ui:Label text="调试模式" class="h2" />
+                <ui:Label text="单场比赛模拟 · 批量 100 场测试 · 用于核对模拟引擎数据" class="caption" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- 比赛设置 -->
+        <ui:VisualElement class="card debug-settings">
+            <ui:Label text="比赛设置" class="card-title" />
+
+            <ui:VisualElement class="teams-row">
+                <ui:VisualElement class="team-card team-card--home">
+                    <ui:Label text="主队" class="team-card__role" />
+                    <ui:VisualElement class="team-card__picker">
+                        <ui:Button name="btn-home-prev" text="◀" class="team-card__arrow" />
+                        <ui:VisualElement class="team-card__info">
+                            <ui:Label name="home-name" text="—" class="team-card__name" />
+                            <ui:Label name="home-sub" text="" class="team-card__sub" />
+                        </ui:VisualElement>
+                        <ui:Button name="btn-home-next" text="▶" class="team-card__arrow" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <ui:Button name="btn-swap" text="⇄" class="btn swap-btn" />
+
+                <ui:VisualElement class="team-card team-card--away">
+                    <ui:Label text="客队" class="team-card__role" />
+                    <ui:VisualElement class="team-card__picker">
+                        <ui:Button name="btn-away-prev" text="◀" class="team-card__arrow" />
+                        <ui:VisualElement class="team-card__info">
+                            <ui:Label name="away-name" text="—" class="team-card__name" />
+                            <ui:Label name="away-sub" text="" class="team-card__sub" />
+                        </ui:VisualElement>
+                        <ui:Button name="btn-away-next" text="▶" class="team-card__arrow" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement class="actions-row">
+                <ui:Button name="btn-sim" text="▶ 模拟比赛" class="btn btn--primary debug-action" />
+                <ui:Button name="btn-batch" text="▶ 批量测试 100 场" class="btn debug-action debug-action--batch" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- 结果区 -->
+        <ui:ScrollView name="result-scroll" class="result-scroll">
+            <ui:VisualElement name="result-content" class="result-content">
+                <ui:Label name="result-empty" text="选择主客队后点击模拟。" class="muted caption result-empty" />
+            </ui:VisualElement>
+        </ui:ScrollView>
+    </ui:VisualElement>
+</ui:UXML>

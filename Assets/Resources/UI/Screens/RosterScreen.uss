@@ -1,0 +1,357 @@
+.roster-screen {
+    background-color: var(--bg-base);
+}
+
+/* ===== 主体两栏 ===== */
+.roster-main {
+    flex-direction: row;
+    flex-grow: 1;
+}
+
+/* ===== 左侧：球队选择器 + 阵容 ===== */
+.roster-left {
+    width: 400px;
+    min-width: 400px;
+    margin-right: 12px;
+    flex-direction: column;
+}
+
+/* ===== 自定义球队选择器（带搜索） ===== */
+.team-picker {
+    margin-bottom: 12px;
+    flex-shrink: 0;
+    flex-direction: column;
+}
+
+.team-picker__label {
+    color: var(--text-secondary);
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+.team-picker__trigger {
+    flex-direction: row;
+    align-items: center;
+    background-color: rgb(31, 38, 45);
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+    border-top-color: rgb(48, 54, 61);
+    border-right-color: rgb(48, 54, 61);
+    border-bottom-color: rgb(48, 54, 61);
+    border-left-color: rgb(48, 54, 61);
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    border-bottom-left-radius: 4px;
+    border-bottom-right-radius: 4px;
+    padding-left: 12px;
+    padding-right: 12px;
+    min-height: 36px;
+}
+
+.team-picker__trigger:hover {
+    border-top-color: rgb(68, 76, 86);
+    border-right-color: rgb(68, 76, 86);
+    border-bottom-color: rgb(68, 76, 86);
+    border-left-color: rgb(68, 76, 86);
+}
+
+.team-picker__current {
+    flex-grow: 1;
+    color: rgb(230, 237, 243);
+    font-size: 14px;
+    -unity-text-align: middle-left;
+}
+
+.team-picker__arrow {
+    color: rgb(139, 148, 158);
+    font-size: 14px;
+    -unity-font-style: bold;
+    margin-left: 8px;
+}
+
+/* popup 现在是 .roster-left 的子元素：top 从卡片顶（内边距外）算起 */
+.team-picker__popup {
+    position: absolute;
+    top: 72px;
+    left: 16px;
+    right: 16px;
+    background-color: rgb(22, 27, 34);
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+    border-top-color: rgb(48, 54, 61);
+    border-right-color: rgb(48, 54, 61);
+    border-bottom-color: rgb(48, 54, 61);
+    border-left-color: rgb(48, 54, 61);
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    border-bottom-left-radius: 4px;
+    border-bottom-right-radius: 4px;
+    padding-top: 8px;
+    padding-right: 8px;
+    padding-bottom: 8px;
+    padding-left: 8px;
+    height: 320px;
+}
+
+.team-picker__popup--hidden {
+    display: none;
+}
+
+.team-picker__search {
+    margin-bottom: 8px;
+    flex-shrink: 0;
+}
+
+.team-picker__list {
+    flex-grow: 1;
+}
+
+.team-picker__list .unity-list-view__item {
+    height: 32px;
+    padding-left: 8px;
+    padding-right: 8px;
+    color: rgb(230, 237, 243);
+    -unity-text-align: middle-left;
+    font-size: 13px;
+}
+
+.roster-roster-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    flex-shrink: 0;
+}
+
+.roster-players {
+    flex-grow: 1;
+}
+
+.roster-players .unity-list-view__item {
+    height: 36px;
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
+.roster-player-row {
+    flex-direction: row;
+    align-items: center;
+    flex-grow: 1;
+    height: 100%;
+}
+
+.roster-player-row__jersey {
+    width: 36px;
+    min-width: 36px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-right;
+    margin-right: 8px;
+}
+
+.roster-player-row__name {
+    flex-grow: 1;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.roster-player-row__pos {
+    width: 36px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    -unity-text-align: middle-right;
+}
+
+/* ===== 右侧 ===== */
+.roster-right {
+    flex-grow: 1;
+    flex-direction: column;
+}
+
+/* ===== Hero 头 ===== */
+.player-hero {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-shrink: 0;
+}
+
+.player-hero__number {
+    width: 72px;
+    height: 72px;
+    background-color: var(--bg-elevated);
+    border-top-color: var(--accent);
+    border-right-color: var(--accent);
+    border-bottom-color: var(--accent);
+    border-left-color: var(--accent);
+    border-top-width: 2px;
+    border-right-width: 2px;
+    border-bottom-width: 2px;
+    border-left-width: 2px;
+    border-top-left-radius: 36px;
+    border-top-right-radius: 36px;
+    border-bottom-left-radius: 36px;
+    border-bottom-right-radius: 36px;
+    align-items: center;
+    justify-content: center;
+    margin-right: 16px;
+}
+
+.player-hero__number-text {
+    font-size: 26px;
+    -unity-font-style: bold;
+    color: var(--text-primary);
+}
+
+.player-hero__info {
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.player-hero__name {
+    font-size: 24px;
+    -unity-font-style: bold;
+    color: var(--text-primary);
+}
+
+.player-hero__sub {
+    margin-top: 4px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.player-hero__overall {
+    width: 96px;
+    align-items: center;
+}
+
+.player-hero__overall-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    -unity-font-style: bold;
+}
+
+.player-hero__overall-value {
+    font-size: 36px;
+    -unity-font-style: bold;
+    color: var(--accent);
+}
+
+/* ===== Tabs（沿用 SeasonScreen 已建的视觉，独立写一份） ===== */
+.roster-screen .tabs {
+    flex-direction: row;
+    align-items: center;
+    background-color: var(--bg-surface);
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    padding-left: 8px;
+    padding-right: 8px;
+    flex-shrink: 0;
+    border-bottom-width: 1px;
+    border-bottom-color: var(--border);
+}
+
+.roster-screen .tab {
+    height: 40px;
+    min-width: 120px;
+    padding-left: 20px;
+    padding-right: 20px;
+    background-color: rgba(0, 0, 0, 0);
+    border-top-width: 0;
+    border-right-width: 0;
+    border-bottom-width: 2px;
+    border-left-width: 0;
+    border-bottom-color: rgba(0, 0, 0, 0);
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    color: var(--text-secondary);
+    font-size: 14px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.roster-screen .tab:hover {
+    color: var(--text-primary);
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+.roster-screen .tab--active {
+    color: var(--text-primary);
+    border-bottom-color: var(--accent);
+}
+
+.roster-screen .tab-content {
+    flex-grow: 1;
+    background-color: var(--bg-surface);
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+.roster-tab-content {
+    padding-top: 0;
+    padding-right: 0;
+    padding-bottom: 0;
+    padding-left: 0;
+}
+
+.roster-tab-content > .unity-scroll-view__content-container {
+    padding-top: 16px;
+    padding-right: 16px;
+    padding-bottom: 16px;
+    padding-left: 16px;
+}
+
+.roster-screen .tab-page {
+    flex-grow: 1;
+    flex-direction: column;
+}
+
+.roster-screen .tab-page--hidden {
+    display: none;
+}
+
+/* ===== 基础信息：两列网格 ===== */
+.roster-fields__row {
+    flex-direction: row;
+    margin-bottom: 8px;
+}
+
+.roster-field {
+    flex-grow: 1;
+    flex-basis: 0;
+    margin-right: 12px;
+}
+
+.roster-fields__row > .roster-field:last-child {
+    margin-right: 0;
+}
+
+/* ===== 能力 & 倾向：双列 =====
+ * 注意：.roster-screen .tab-page 把 flex-direction 设为 column（specificity 0,0,2,0），
+ * 必须用同等或更高 specificity 的选择器把这两页强制改回 row。 */
+.roster-screen .tab-page.roster-stats {
+    flex-direction: row;
+    align-items: flex-start;
+}
+
+.roster-stats__col {
+    flex-grow: 1;
+    flex-basis: 0;
+    flex-shrink: 1;
+    flex-direction: column;
+}
+
+.roster-stats__col:first-child {
+    margin-right: 16px;
+}
+
+.roster-stat {
+    margin-bottom: 6px;
+}

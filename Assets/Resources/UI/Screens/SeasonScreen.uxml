@@ -1,0 +1,107 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="project://database/Assets/Resources/UI/Theme/theme.uss" />
+    <Style src="project://database/Assets/Resources/UI/Screens/SeasonScreen.uss" />
+    <ui:VisualElement name="season-screen" class="screen-page season-screen">
+
+        <!-- 顶栏：返回 + 赛季信息 + 操作按钮 -->
+        <ui:VisualElement class="page-topbar">
+            <ui:Button name="btn-back" text="← 返回主菜单" class="btn btn--back" />
+            <ui:VisualElement class="page-topbar__title-block">
+                <ui:Label text="赛季模式" class="h2" />
+                <ui:Label name="season-name" text="" class="caption" />
+            </ui:VisualElement>
+            <ui:VisualElement class="page-topbar__actions">
+                <ui:Button name="btn-new" text="创建新赛季" class="btn topbar-btn" />
+                <ui:Button name="btn-sim-next" text="模拟下一场" class="btn btn--primary topbar-btn" />
+                <ui:Button name="btn-sim-all" text="模拟剩余" class="btn topbar-btn" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- 一级 tab 条 -->
+        <ui:VisualElement class="tabs">
+            <ui:Button name="tab-overview"  text="总  览"   class="tab tab--active" />
+            <ui:Button name="tab-standings" text="积  分  榜" class="tab" />
+            <ui:Button name="tab-schedule"  text="赛  程"   class="tab" />
+            <ui:Button name="tab-data"      text="数  据"   class="tab" />
+        </ui:VisualElement>
+
+        <!-- tab 内容容器 -->
+        <ui:VisualElement name="tab-content" class="tab-content">
+
+            <!-- ============ 总览 ============ -->
+            <ui:VisualElement name="page-overview" class="tab-page">
+                <ui:VisualElement class="card overview__last-card">
+                    <ui:Label text="最近一场" class="card-title" />
+                    <ui:Label name="ov-last-headline" text="尚未模拟任何比赛。" class="overview__last-headline muted" />
+                    <ui:Label name="ov-last-meta"     text=""                   class="overview__last-meta" />
+                </ui:VisualElement>
+
+                <ui:VisualElement class="overview__row">
+                    <ui:VisualElement class="card overview__recent-card">
+                        <ui:Label text="近期比赛" class="card-title" />
+                        <ui:VisualElement name="ov-recent-list" class="overview__recent-list" />
+                        <ui:Label name="ov-recent-empty" text="还没有已完成的比赛。" class="muted caption" />
+                    </ui:VisualElement>
+
+                    <ui:VisualElement class="card overview__standout-card">
+                        <ui:Label text="突出表现" class="card-title" />
+                        <ui:VisualElement name="ov-standout-list" class="overview__standout-list" />
+                        <ui:Label name="ov-standout-empty" text="还没有可统计的球员数据。" class="muted caption" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- ============ 积分榜 ============ -->
+            <ui:VisualElement name="page-standings" class="tab-page tab-page--hidden">
+                <ui:VisualElement class="card card--fill">
+                    <ui:VisualElement class="card-header">
+                        <ui:Label text="积分榜" class="card-title" />
+                        <ui:Label name="standings-count" text="" class="caption" />
+                    </ui:VisualElement>
+                    <ui:MultiColumnListView name="standings" show-foldout-header="false" reorderable="false" show-border="false" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- ============ 赛程 ============ -->
+            <ui:VisualElement name="page-schedule" class="tab-page tab-page--hidden">
+                <ui:VisualElement class="card card--fill">
+                    <ui:VisualElement class="card-header">
+                        <ui:Label text="赛程" class="card-title" />
+                        <ui:Label name="schedule-count" text="" class="caption" />
+                    </ui:VisualElement>
+                    <ui:MultiColumnListView name="schedule" show-foldout-header="false" reorderable="false" show-border="false" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- ============ 数据 ============ -->
+            <ui:VisualElement name="page-data" class="tab-page tab-page--hidden">
+                <!-- 二级 tab -->
+                <ui:VisualElement class="tabs tabs--sub">
+                    <ui:Button name="subtab-players" text="球  员" class="tab tab--sub tab--active" />
+                    <ui:Button name="subtab-teams"   text="球  队" class="tab tab--sub" />
+                </ui:VisualElement>
+
+                <ui:VisualElement name="subpage-players" class="tab-page">
+                    <ui:VisualElement class="card card--fill">
+                        <ui:VisualElement class="card-header">
+                            <ui:Label text="球员场均数据" class="card-title" />
+                            <ui:Label name="players-count" text="" class="caption" />
+                        </ui:VisualElement>
+                        <ui:MultiColumnListView name="players-stats" show-foldout-header="false" reorderable="false" show-border="false" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <ui:VisualElement name="subpage-teams" class="tab-page tab-page--hidden">
+                    <ui:VisualElement class="card card--fill">
+                        <ui:VisualElement class="card-header">
+                            <ui:Label text="球队数据" class="card-title" />
+                            <ui:Label name="teams-count" text="" class="caption" />
+                        </ui:VisualElement>
+                        <ui:MultiColumnListView name="teams-stats" show-foldout-header="false" reorderable="false" show-border="false" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

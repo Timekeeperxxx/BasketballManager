@@ -68,12 +68,113 @@ namespace BasketballManager.Database
             connection.Open();
             SetForeignKeys(connection, true);
 
+            // 兼容旧 db：build_unity_database.py 生成的 db 没有 season_* 表，
+            // 这里在不破坏 teams / players 数据的前提下按需补建。
+            EnsureSeasonTables(connection);
+
             if (!HasManagedSchema(connection))
             {
                 throw new InvalidOperationException(BuildSchemaMismatchMessage());
             }
 
             _initialized = true;
+        }
+
+        // 老 db 没有赛季相关表时按需补建（保留现有 teams / players 数据）。
+        private static void EnsureSeasonTables(SqliteConnection connection)
+        {
+            bool needSeasons = !TableExists(connection, "seasons");
+            bool needSeasonTeams = !TableExists(connection, "season_teams");
+            bool needSeasonGames = !TableExists(connection, "season_games");
+            bool needSeasonPlayerStats = !TableExists(connection, "season_player_stats");
+
+            if (!needSeasons && !needSeasonTeams && !needSeasonGames && !needSeasonPlayerStats) return;
+
+            using var transaction = connection.BeginTransaction();
+
+            if (needSeasons)
+            {
+                ExecuteNonQuery(connection, transaction, @"
+CREATE TABLE seasons (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'IN_PROGRESS',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);");
+            }
+
+            if (needSeasonTeams)
+            {
+                ExecuteNonQuery(connection, transaction, @"
+CREATE TABLE season_teams (
+    season_id INTEGER NOT NULL,
+    team_id TEXT NOT NULL,
+    wins INTEGER NOT NULL DEFAULT 0,
+    losses INTEGER NOT NULL DEFAULT 0,
+    points_for INTEGER NOT NULL DEFAULT 0,
+    points_against INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (season_id, team_id),
+    FOREIGN KEY (season_id) REFERENCES seasons (id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (team_id) REFERENCES teams (id) ON UPDATE CASCADE ON DELETE CASCADE
+);");
+                ExecuteNonQuery(connection, transaction, "CREATE INDEX IF NOT EXISTS idx_season_teams_season ON season_teams (season_id);");
+            }
+
+            if (needSeasonGames)
+            {
+                ExecuteNonQuery(connection, transaction, @"
+CREATE TABLE season_games (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    season_id INTEGER NOT NULL,
+    day INTEGER NOT NULL,
+    home_team_id TEXT NOT NULL,
+    away_team_id TEXT NOT NULL,
+    home_score INTEGER NOT NULL DEFAULT 0,
+    away_score INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'SCHEDULED',
+    winner_team_id TEXT,
+    played_at TEXT,
+    FOREIGN KEY (season_id) REFERENCES seasons (id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (home_team_id) REFERENCES teams (id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (away_team_id) REFERENCES teams (id) ON UPDATE CASCADE ON DELETE CASCADE
+);");
+                ExecuteNonQuery(connection, transaction, "CREATE INDEX IF NOT EXISTS idx_season_games_season_day ON season_games (season_id, day);");
+                ExecuteNonQuery(connection, transaction, "CREATE INDEX IF NOT EXISTS idx_season_games_status ON season_games (season_id, status);");
+            }
+
+            if (needSeasonPlayerStats)
+            {
+                ExecuteNonQuery(connection, transaction, @"
+CREATE TABLE season_player_stats (
+    season_id INTEGER NOT NULL,
+    player_id INTEGER NOT NULL,
+    team_id TEXT NOT NULL,
+    games_played INTEGER NOT NULL DEFAULT 0,
+    minutes INTEGER NOT NULL DEFAULT 0,
+    points INTEGER NOT NULL DEFAULT 0,
+    rebounds INTEGER NOT NULL DEFAULT 0,
+    offensive_rebounds INTEGER NOT NULL DEFAULT 0,
+    assists INTEGER NOT NULL DEFAULT 0,
+    steals INTEGER NOT NULL DEFAULT 0,
+    blocks INTEGER NOT NULL DEFAULT 0,
+    turnovers INTEGER NOT NULL DEFAULT 0,
+    fouls INTEGER NOT NULL DEFAULT 0,
+    field_goals_made INTEGER NOT NULL DEFAULT 0,
+    field_goals_attempted INTEGER NOT NULL DEFAULT 0,
+    three_pointers_made INTEGER NOT NULL DEFAULT 0,
+    three_pointers_attempted INTEGER NOT NULL DEFAULT 0,
+    free_throws_made INTEGER NOT NULL DEFAULT 0,
+    free_throws_attempted INTEGER NOT NULL DEFAULT 0,
+    plus_minus INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (season_id, player_id),
+    FOREIGN KEY (season_id) REFERENCES seasons (id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (player_id) REFERENCES players (id) ON UPDATE CASCADE ON DELETE CASCADE
+);");
+                ExecuteNonQuery(connection, transaction, "CREATE INDEX IF NOT EXISTS idx_season_player_stats_team ON season_player_stats (season_id, team_id);");
+            }
+
+            transaction.Commit();
+            Debug.Log("[Database] Season tables auto-created on existing db (没有破坏现有 teams / players 数据).");
         }
 
         public SqliteConnection OpenConnection()
@@ -117,6 +218,10 @@ namespace BasketballManager.Database
                 && TableExists(connection, "player_attributes")
                 && TableExists(connection, "player_tendencies")
                 && TableExists(connection, "player_simulation_profiles")
+                && TableExists(connection, "seasons")
+                && TableExists(connection, "season_teams")
+                && TableExists(connection, "season_games")
+                && TableExists(connection, "season_player_stats")
                 && HasColumn(connection, "teams", "id")
                 && HasColumn(connection, "teams", "era")
                 && HasColumn(connection, "teams", "is_current")
@@ -138,6 +243,11 @@ namespace BasketballManager.Database
             SetForeignKeys(connection, false);
 
             using var transaction = connection.BeginTransaction();
+            // 先删赛季相关表（被引用方在前）。
+            ExecuteNonQuery(connection, transaction, "DROP TABLE IF EXISTS season_player_stats;");
+            ExecuteNonQuery(connection, transaction, "DROP TABLE IF EXISTS season_games;");
+            ExecuteNonQuery(connection, transaction, "DROP TABLE IF EXISTS season_teams;");
+            ExecuteNonQuery(connection, transaction, "DROP TABLE IF EXISTS seasons;");
             ExecuteNonQuery(connection, transaction, "DROP TABLE IF EXISTS player_simulation_profiles;");
             ExecuteNonQuery(connection, transaction, "DROP TABLE IF EXISTS player_tendencies;");
             ExecuteNonQuery(connection, transaction, "DROP TABLE IF EXISTS player_attributes;");
@@ -230,6 +340,81 @@ CREATE TABLE player_simulation_profiles (
     FOREIGN KEY (player_id) REFERENCES players (id) ON UPDATE CASCADE ON DELETE CASCADE
 );");
 
+            // 赛季容器表：name + 创建时间 + 状态。
+            ExecuteNonQuery(connection, transaction, @"
+CREATE TABLE seasons (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'IN_PROGRESS',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);");
+
+            // 赛季参赛队伍 + 实时累计战绩 / 得失分。
+            ExecuteNonQuery(connection, transaction, @"
+CREATE TABLE season_teams (
+    season_id INTEGER NOT NULL,
+    team_id TEXT NOT NULL,
+    wins INTEGER NOT NULL DEFAULT 0,
+    losses INTEGER NOT NULL DEFAULT 0,
+    points_for INTEGER NOT NULL DEFAULT 0,
+    points_against INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (season_id, team_id),
+    FOREIGN KEY (season_id) REFERENCES seasons (id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (team_id) REFERENCES teams (id) ON UPDATE CASCADE ON DELETE CASCADE
+);");
+
+            ExecuteNonQuery(connection, transaction, "CREATE INDEX idx_season_teams_season ON season_teams (season_id);");
+
+            // 赛程表：每场比赛一行，含主客队、day、状态、最终比分。
+            ExecuteNonQuery(connection, transaction, @"
+CREATE TABLE season_games (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    season_id INTEGER NOT NULL,
+    day INTEGER NOT NULL,
+    home_team_id TEXT NOT NULL,
+    away_team_id TEXT NOT NULL,
+    home_score INTEGER NOT NULL DEFAULT 0,
+    away_score INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'SCHEDULED',
+    winner_team_id TEXT,
+    played_at TEXT,
+    FOREIGN KEY (season_id) REFERENCES seasons (id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (home_team_id) REFERENCES teams (id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (away_team_id) REFERENCES teams (id) ON UPDATE CASCADE ON DELETE CASCADE
+);");
+
+            ExecuteNonQuery(connection, transaction, "CREATE INDEX idx_season_games_season_day ON season_games (season_id, day);");
+            ExecuteNonQuery(connection, transaction, "CREATE INDEX idx_season_games_status ON season_games (season_id, status);");
+
+            // 赛季球员累计数据（按 season × player 聚合）。
+            ExecuteNonQuery(connection, transaction, @"
+CREATE TABLE season_player_stats (
+    season_id INTEGER NOT NULL,
+    player_id INTEGER NOT NULL,
+    team_id TEXT NOT NULL,
+    games_played INTEGER NOT NULL DEFAULT 0,
+    minutes INTEGER NOT NULL DEFAULT 0,
+    points INTEGER NOT NULL DEFAULT 0,
+    rebounds INTEGER NOT NULL DEFAULT 0,
+    offensive_rebounds INTEGER NOT NULL DEFAULT 0,
+    assists INTEGER NOT NULL DEFAULT 0,
+    steals INTEGER NOT NULL DEFAULT 0,
+    blocks INTEGER NOT NULL DEFAULT 0,
+    turnovers INTEGER NOT NULL DEFAULT 0,
+    fouls INTEGER NOT NULL DEFAULT 0,
+    field_goals_made INTEGER NOT NULL DEFAULT 0,
+    field_goals_attempted INTEGER NOT NULL DEFAULT 0,
+    three_pointers_made INTEGER NOT NULL DEFAULT 0,
+    three_pointers_attempted INTEGER NOT NULL DEFAULT 0,
+    free_throws_made INTEGER NOT NULL DEFAULT 0,
+    free_throws_attempted INTEGER NOT NULL DEFAULT 0,
+    plus_minus INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (season_id, player_id),
+    FOREIGN KEY (season_id) REFERENCES seasons (id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (player_id) REFERENCES players (id) ON UPDATE CASCADE ON DELETE CASCADE
+);");
+
+            ExecuteNonQuery(connection, transaction, "CREATE INDEX idx_season_player_stats_team ON season_player_stats (season_id, team_id);");
 
             transaction.Commit();
             SetForeignKeys(connection, true);

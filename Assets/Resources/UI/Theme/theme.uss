@@ -1,0 +1,467 @@
+/* =============================================================
+ * Basketball Manager — Theme & Component Styles
+ * 仅使用 Unity 6 USS 明确支持的属性，所有 shorthand 都用 longhand。
+ * ============================================================= */
+
+:root {
+    /* 颜色 */
+    --bg-base: #0d1117;
+    --bg-surface: #161b22;
+    --bg-surface-2: #1f262d;
+    --bg-elevated: #242c36;
+
+    --border: #30363d;
+    --border-strong: #444c56;
+
+    --text-primary: rgb(230, 237, 243);
+    --text-secondary: rgb(139, 148, 158);
+    --text-muted: rgb(110, 118, 129);
+    --text-on-accent: rgb(255, 255, 255);
+
+    --accent: #3b82f6;
+    --accent-hover: #4c8ef7;
+    --accent-pressed: #2563eb;
+    --accent-team: #ea580c;
+
+    --success: #22c55e;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+
+    /* 间距 */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+
+    /* 字号 */
+    --font-size-caption: 12px;
+    --font-size-body: 14px;
+    --font-size-body-lg: 16px;
+    --font-size-h3: 18px;
+    --font-size-h2: 22px;
+    --font-size-h1: 28px;
+
+    /* 圆角 */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+}
+
+/* ---------- 全局重置 ---------- */
+.unity-base-text-field__input,
+.unity-text-element,
+Label {
+    color: rgb(230, 237, 243);
+}
+
+/* ---------- 通用页面骨架 ---------- */
+.screen-page {
+    flex-grow: 1;
+    padding-top: 24px;
+    padding-right: 24px;
+    padding-bottom: 24px;
+    padding-left: 24px;
+}
+
+.page-topbar {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-shrink: 0;
+}
+
+.page-topbar__title-block {
+    margin-left: 12px;
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.page-topbar__actions {
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.page-topbar__actions .topbar-btn {
+    margin-left: 8px;
+    width: 140px;
+    min-width: 140px;
+    flex-shrink: 0;
+}
+
+/* ---------- 排版 ---------- */
+.h1 {
+    font-size: 28px;
+    -unity-font-style: bold;
+    color: rgb(230, 237, 243);
+}
+
+.h2 {
+    font-size: 22px;
+    -unity-font-style: bold;
+    color: rgb(230, 237, 243);
+}
+
+.h3 {
+    font-size: 18px;
+    -unity-font-style: bold;
+    color: rgb(230, 237, 243);
+}
+
+.body {
+    font-size: 14px;
+    color: rgb(230, 237, 243);
+}
+
+.body-lg {
+    font-size: 16px;
+    color: rgb(230, 237, 243);
+}
+
+.caption {
+    font-size: 12px;
+    color: rgb(139, 148, 158);
+}
+
+.muted {
+    color: rgb(139, 148, 158);
+}
+
+.success-text { color: rgb(34, 197, 94); }
+.danger-text { color: rgb(239, 68, 68); }
+.warning-text { color: rgb(245, 158, 11); }
+
+/* ---------- 卡片 / 面板 ---------- */
+.card {
+    background-color: rgb(22, 27, 34);
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+    border-top-color: rgb(48, 54, 61);
+    border-right-color: rgb(48, 54, 61);
+    border-bottom-color: rgb(48, 54, 61);
+    border-left-color: rgb(48, 54, 61);
+    padding-top: 16px;
+    padding-right: 16px;
+    padding-bottom: 16px;
+    padding-left: 16px;
+}
+
+.card-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.card-title {
+    font-size: 18px;
+    -unity-font-style: bold;
+    color: rgb(230, 237, 243);
+}
+
+.divider {
+    height: 1px;
+    background-color: rgb(48, 54, 61);
+    margin-top: 8px;
+    margin-bottom: 8px;
+}
+
+/* ---------- 按钮 ---------- */
+.btn {
+    height: 36px;
+    min-width: 96px;
+    padding-left: 12px;
+    padding-right: 12px;
+    background-color: rgb(31, 38, 45);
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+    border-top-color: rgb(48, 54, 61);
+    border-right-color: rgb(48, 54, 61);
+    border-bottom-color: rgb(48, 54, 61);
+    border-left-color: rgb(48, 54, 61);
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    border-bottom-left-radius: 4px;
+    border-bottom-right-radius: 4px;
+    color: rgb(230, 237, 243);
+    font-size: 14px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.btn:hover {
+    background-color: rgb(36, 44, 54);
+    border-top-color: rgb(68, 76, 86);
+    border-right-color: rgb(68, 76, 86);
+    border-bottom-color: rgb(68, 76, 86);
+    border-left-color: rgb(68, 76, 86);
+}
+
+.btn--primary {
+    background-color: rgb(59, 130, 246);
+    border-top-color: rgb(59, 130, 246);
+    border-right-color: rgb(59, 130, 246);
+    border-bottom-color: rgb(59, 130, 246);
+    border-left-color: rgb(59, 130, 246);
+    color: rgb(255, 255, 255);
+}
+
+.btn--primary:hover {
+    background-color: rgb(76, 142, 247);
+    border-top-color: rgb(76, 142, 247);
+    border-right-color: rgb(76, 142, 247);
+    border-bottom-color: rgb(76, 142, 247);
+    border-left-color: rgb(76, 142, 247);
+}
+
+.btn--primary:active {
+    background-color: rgb(37, 99, 235);
+}
+
+.btn--ghost {
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.btn--ghost:hover {
+    background-color: rgb(31, 38, 45);
+}
+
+.btn--danger {
+    background-color: rgb(239, 68, 68);
+    border-top-color: rgb(239, 68, 68);
+    border-right-color: rgb(239, 68, 68);
+    border-bottom-color: rgb(239, 68, 68);
+    border-left-color: rgb(239, 68, 68);
+    color: rgb(255, 255, 255);
+}
+
+.btn--lg {
+    height: 56px;
+    min-width: 240px;
+    font-size: 18px;
+}
+
+.btn--sm {
+    height: 28px;
+    min-width: 64px;
+    font-size: 12px;
+}
+
+.btn--icon {
+    min-width: 36px;
+    width: 36px;
+    height: 36px;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.btn--back {
+    background-color: rgba(0, 0, 0, 0);
+    border-top-width: 0;
+    border-right-width: 0;
+    border-bottom-width: 0;
+    border-left-width: 0;
+    color: rgb(139, 148, 158);
+    -unity-text-align: middle-left;
+    min-width: 80px;
+}
+
+.btn--back:hover {
+    color: rgb(230, 237, 243);
+}
+
+/* ---------- 表单 ---------- */
+/* 覆盖 Unity 默认浅色主题 —— 所有 input / dropdown / popup 强制深色 */
+.unity-base-text-field__input,
+.unity-base-popup-field__input,
+.unity-text-field__input,
+.unity-integer-field__input,
+.unity-float-field__input,
+.unity-long-field__input,
+.unity-double-field__input,
+.unity-popup-field__input,
+.unity-enum-field__input,
+.unity-base-dropdown__input,
+.unity-text-element__input {
+    background-color: rgb(31, 38, 45);
+    border-top-color: rgb(48, 54, 61);
+    border-right-color: rgb(48, 54, 61);
+    border-bottom-color: rgb(48, 54, 61);
+    border-left-color: rgb(48, 54, 61);
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    border-bottom-left-radius: 4px;
+    border-bottom-right-radius: 4px;
+    color: rgb(230, 237, 243);
+    padding-left: 8px;
+    padding-right: 8px;
+    min-height: 32px;
+}
+
+.unity-base-text-field__input:focus,
+.unity-base-popup-field__input:focus,
+.unity-text-field__input:focus,
+.unity-integer-field__input:focus,
+.unity-float-field__input:focus,
+.unity-popup-field__input:focus,
+.unity-enum-field__input:focus,
+.unity-base-dropdown__input:focus {
+    border-top-color: rgb(59, 130, 246);
+    border-right-color: rgb(59, 130, 246);
+    border-bottom-color: rgb(59, 130, 246);
+    border-left-color: rgb(59, 130, 246);
+}
+
+/* Dropdown 箭头 & label 颜色 */
+.unity-base-popup-field__arrow,
+.unity-popup-field__arrow {
+    -unity-background-image-tint-color: rgb(139, 148, 158);
+}
+
+.unity-base-popup-field__text,
+.unity-popup-field__text {
+    color: rgb(230, 237, 243);
+}
+
+.unity-base-field__label {
+    color: rgb(139, 148, 158);
+    font-size: 12px;
+}
+
+/* 下拉菜单弹层（点开 DropdownField 后展开的列表） */
+.unity-base-dropdown__container-outer,
+.unity-base-dropdown {
+    background-color: rgb(22, 27, 34);
+    border-top-color: rgb(48, 54, 61);
+    border-right-color: rgb(48, 54, 61);
+    border-bottom-color: rgb(48, 54, 61);
+    border-left-color: rgb(48, 54, 61);
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+}
+
+.unity-base-dropdown__item {
+    background-color: rgb(22, 27, 34);
+    color: rgb(230, 237, 243);
+    padding-left: 8px;
+    padding-right: 8px;
+    min-height: 28px;
+}
+
+.unity-base-dropdown__item:hover {
+    background-color: rgb(31, 38, 45);
+}
+
+.unity-base-dropdown__item--checked {
+    background-color: rgb(36, 44, 54);
+}
+
+/* ---------- 表格 ---------- */
+.unity-multi-column-header__column {
+    background-color: rgb(31, 38, 45);
+    color: rgb(139, 148, 158);
+    -unity-font-style: bold;
+}
+
+/* MultiColumnListView 隔行底色：默认是亮白色，覆盖为深色微调 */
+.unity-collection-view__item--alternative-background {
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+.unity-collection-view__item {
+    color: rgb(230, 237, 243);
+}
+
+/* ListView / CollectionView hover & 选中态：覆盖 Unity 默认浅灰 */
+.unity-collection-view__item:hover {
+    background-color: rgba(59, 130, 246, 0.10);
+}
+
+.unity-collection-view__item--selected,
+.unity-collection-view__item:checked {
+    background-color: rgba(59, 130, 246, 0.20);
+    color: rgb(230, 237, 243);
+}
+
+.unity-collection-view:focus .unity-collection-view__item--selected,
+.unity-collection-view:focus .unity-collection-view__item:checked {
+    background-color: rgba(59, 130, 246, 0.28);
+}
+
+/* 防止 Unity 内置主题用浅色描边/前景覆盖文字 */
+.unity-collection-view__item--selected .unity-text-element,
+.unity-collection-view__item--selected Label {
+    color: rgb(230, 237, 243);
+}
+
+.table-cell {
+    -unity-text-align: middle-left;
+    padding-left: 8px;
+    padding-right: 8px;
+    font-size: 14px;
+    color: rgb(230, 237, 243);
+}
+
+.table-cell--num {
+    -unity-text-align: middle-right;
+    color: rgb(230, 237, 243);
+}
+
+.table-cell--center {
+    -unity-text-align: middle-center;
+}
+
+.table-cell--pos { color: rgb(34, 197, 94); }
+.table-cell--neg { color: rgb(239, 68, 68); }
+
+/* ---------- Chip / Pill ---------- */
+.chip {
+    flex-direction: row;
+    align-items: center;
+    padding-left: 12px;
+    padding-right: 12px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    background-color: rgb(31, 38, 45);
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    border-bottom-left-radius: 4px;
+    border-bottom-right-radius: 4px;
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+    border-top-color: rgb(48, 54, 61);
+    border-right-color: rgb(48, 54, 61);
+    border-bottom-color: rgb(48, 54, 61);
+    border-left-color: rgb(48, 54, 61);
+    margin-right: 8px;
+}
+
+.chip__label {
+    font-size: 12px;
+    color: rgb(139, 148, 158);
+    margin-right: 8px;
+}
+
+.chip__value {
+    font-size: 14px;
+    color: rgb(230, 237, 243);
+    -unity-font-style: bold;
+}

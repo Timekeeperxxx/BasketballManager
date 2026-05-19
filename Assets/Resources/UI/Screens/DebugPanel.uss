@@ -1,0 +1,280 @@
+.debug-screen {
+    background-color: var(--bg-base);
+}
+
+/* ===== 比赛设置 ===== */
+.debug-settings {
+    flex-shrink: 0;
+    margin-bottom: 12px;
+}
+
+.teams-row {
+    flex-direction: row;
+    align-items: stretch;
+    margin-top: 8px;
+    margin-bottom: 12px;
+}
+
+.team-card {
+    flex-grow: 1;
+    flex-basis: 0;
+    background-color: var(--bg-surface-2);
+    border-top-color: var(--border);
+    border-right-color: var(--border);
+    border-bottom-color: var(--border);
+    border-left-color: var(--border);
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    padding-top: 12px;
+    padding-right: 12px;
+    padding-bottom: 12px;
+    padding-left: 12px;
+}
+
+.team-card--home {
+    border-top-color: rgb(59, 130, 246);
+    border-right-color: rgb(59, 130, 246);
+    border-bottom-color: rgb(59, 130, 246);
+    border-left-color: rgb(59, 130, 246);
+}
+
+.team-card--away {
+    border-top-color: rgb(234, 88, 12);
+    border-right-color: rgb(234, 88, 12);
+    border-bottom-color: rgb(234, 88, 12);
+    border-left-color: rgb(234, 88, 12);
+}
+
+.team-card__role {
+    font-size: 12px;
+    -unity-font-style: bold;
+    color: rgb(139, 148, 158);
+    margin-bottom: 8px;
+    -unity-text-align: middle-center;
+}
+
+.team-card__picker {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.team-card__arrow {
+    width: 48px;
+    min-width: 48px;
+    height: 56px;
+    background-color: rgba(0, 0, 0, 0);
+    border-top-width: 0;
+    border-right-width: 0;
+    border-bottom-width: 0;
+    border-left-width: 0;
+    color: rgb(139, 148, 158);
+    font-size: 22px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.team-card__arrow:hover {
+    color: rgb(230, 237, 243);
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.team-card__info {
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.team-card__name {
+    font-size: 22px;
+    -unity-font-style: bold;
+    color: rgb(230, 237, 243);
+    -unity-text-align: middle-center;
+    white-space: normal;
+}
+
+.team-card__sub {
+    margin-top: 4px;
+    font-size: 13px;
+    color: rgb(139, 148, 158);
+    -unity-text-align: middle-center;
+}
+
+.swap-btn {
+    width: 56px;
+    min-width: 56px;
+    margin-left: 12px;
+    margin-right: 12px;
+    -unity-text-align: middle-center;
+    -unity-font-style: bold;
+    font-size: 22px;
+}
+
+/* ===== 动作按钮行 ===== */
+.actions-row {
+    flex-direction: row;
+    justify-content: flex-end;
+}
+
+.debug-action {
+    width: 200px;
+    min-width: 200px;
+    margin-left: 12px;
+}
+
+.debug-action--batch {
+    background-color: rgb(234, 88, 12);
+    border-top-color: rgb(234, 88, 12);
+    border-right-color: rgb(234, 88, 12);
+    border-bottom-color: rgb(234, 88, 12);
+    border-left-color: rgb(234, 88, 12);
+    color: rgb(255, 255, 255);
+}
+
+.debug-action--batch:hover {
+    background-color: rgb(247, 110, 30);
+    border-top-color: rgb(247, 110, 30);
+    border-right-color: rgb(247, 110, 30);
+    border-bottom-color: rgb(247, 110, 30);
+    border-left-color: rgb(247, 110, 30);
+}
+
+/* ===== 结果区 ===== */
+.result-scroll {
+    flex-grow: 1;
+}
+
+.result-content {
+    flex-direction: column;
+}
+
+.result-content .card {
+    margin-bottom: 12px;
+}
+
+.result-empty {
+    -unity-text-align: middle-center;
+    margin-top: 32px;
+}
+
+/* ===== 比分头部 ===== */
+.score-headline {
+    font-size: 28px;
+    -unity-font-style: bold;
+    color: rgb(230, 237, 243);
+    -unity-text-align: middle-center;
+}
+
+.score-quarters {
+    margin-top: 8px;
+    font-size: 14px;
+    color: rgb(139, 148, 158);
+    -unity-text-align: middle-center;
+}
+
+.batch-headline {
+    font-size: 22px;
+    -unity-font-style: bold;
+    color: rgb(230, 237, 243);
+    -unity-text-align: middle-center;
+}
+
+.batch-meta {
+    margin-top: 6px;
+    font-size: 13px;
+    color: rgb(139, 148, 158);
+    -unity-text-align: middle-center;
+}
+
+.batch-record,
+.batch-avg {
+    margin-top: 8px;
+    font-size: 18px;
+    -unity-font-style: bold;
+    color: rgb(230, 237, 243);
+    -unity-text-align: middle-center;
+}
+
+/* ===== 三列统计行 ===== */
+.stat-row {
+    flex-direction: row;
+    align-items: center;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(48, 54, 61);
+}
+
+.stat-row__home,
+.stat-row__away {
+    width: 110px;
+    -unity-text-align: middle-center;
+    color: rgb(230, 237, 243);
+    font-size: 14px;
+}
+
+.stat-row__home {
+    -unity-text-align: middle-right;
+    color: rgb(96, 165, 250);
+    -unity-font-style: bold;
+}
+
+.stat-row__away {
+    -unity-text-align: middle-left;
+    color: rgb(251, 146, 60);
+    -unity-font-style: bold;
+}
+
+.stat-row__label {
+    flex-grow: 1;
+    color: rgb(139, 148, 158);
+    font-size: 13px;
+    -unity-text-align: middle-center;
+}
+
+/* ===== 警告 ===== */
+.warning-card {
+    background-color: rgba(239, 68, 68, 0.15);
+    border-top-color: rgb(239, 68, 68);
+    border-right-color: rgb(239, 68, 68);
+    border-bottom-color: rgb(239, 68, 68);
+    border-left-color: rgb(239, 68, 68);
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    padding-top: 12px;
+    padding-right: 12px;
+    padding-bottom: 12px;
+    padding-left: 12px;
+    margin-bottom: 12px;
+}
+
+.warning-line {
+    color: rgb(252, 165, 165);
+    font-size: 13px;
+    -unity-text-align: middle-center;
+}
+
+/* ===== 球员表 ===== */
+.players-row {
+    flex-direction: column;
+}
+
+.players-card {
+    flex-grow: 0;
+}
+
+.players-card .unity-multi-column-list-view {
+    flex-grow: 0;
+    height: 360px;
+}

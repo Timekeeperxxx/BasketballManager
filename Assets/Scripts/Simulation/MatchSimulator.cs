@@ -92,6 +92,24 @@ namespace BasketballManager.Simulation
                 result.AwayScore = awaySnapshot.TeamStats.Points;
             }
 
+            // 加时赛：4 节结束若平分，每节 5 分钟 OT，直到分出胜负。
+            // 安全护栏 maxOvertimes 防止极端配对持续平局造成的无限循环。
+            const int maxOvertimes = 5;
+            int overtimes = 0;
+            while (homeSnapshot.TeamStats.Points == awaySnapshot.TeamStats.Points && overtimes < maxOvertimes)
+            {
+                overtimes++;
+                int otStartHome = homeSnapshot.TeamStats.Points;
+                int otStartAway = awaySnapshot.TeamStats.Points;
+
+                SimulateOvertimePeriod(homeSnapshot, awaySnapshot, homePlayers, awayPlayers, homeProfiles, awayProfiles, config, gamePace);
+
+                result.HomeQuarterScores.Add(homeSnapshot.TeamStats.Points - otStartHome);
+                result.AwayQuarterScores.Add(awaySnapshot.TeamStats.Points - otStartAway);
+                result.HomeScore = homeSnapshot.TeamStats.Points;
+                result.AwayScore = awaySnapshot.TeamStats.Points;
+            }
+
             result.HomeTeamStats = homeSnapshot.TeamStats;
             result.AwayTeamStats = awaySnapshot.TeamStats;
             result.HomePlayerStats = homeSnapshot.PlayerStatsById.Values.ToList();
@@ -102,8 +120,9 @@ namespace BasketballManager.Simulation
 
             result.HomeStyleProfile = homeSnapshot.StyleProfile;
             result.AwayStyleProfile = awaySnapshot.StyleProfile;
-            
-            result.WinnerTeamId = result.HomeScore > result.AwayScore ? result.HomeTeamId : result.AwayTeamId;
+
+            // 加时跑完仍平（极小概率撞 maxOvertimes 上限），按主队胜处理避免空 WinnerTeamId。
+            result.WinnerTeamId = result.HomeScore >= result.AwayScore ? result.HomeTeamId : result.AwayTeamId;
 
             ValidateResult(result);
 
@@ -154,6 +173,70 @@ namespace BasketballManager.Simulation
             }
 
             return snapshot;
+        }
+
+        // 跑一节 5 分钟加时赛：复用第 4 节末段 lineup，让 Coach AI 调度一次再上场。
+        private void SimulateOvertimePeriod(
+            MatchTeamSnapshot home, MatchTeamSnapshot away,
+            IReadOnlyList<Player> homePlayers, IReadOnlyList<Player> awayPlayers,
+            IReadOnlyDictionary<int, SimulationPlayerProfile> homeProfiles,
+            IReadOnlyDictionary<int, SimulationPlayerProfile> awayProfiles,
+            MatchConfig config, float gamePace)
+        {
+            const int overtimeMinutes = 5;
+
+            // 常规一节 stint 数与 stint 时长，用来推算加时段的 possession 数（按 5/4 比例放大）。
+            int stintsPerQuarter = home.Rotation.StintsPerQuarter;
+            int totalStintsRegular = config.QuarterCount * stintsPerQuarter;
+            float regularStintMinutes = home.Rotation.StintDurationMinutes;
+            if (regularStintMinutes <= 0f) regularStintMinutes = 4f;
+
+            float avgPossPerStint = (config.MinPossessionsPerTeam + config.MaxPossessionsPerTeam) * 0.5f * gamePace / totalStintsRegular;
+            float otAvgPoss = avgPossPerStint * (overtimeMinutes / regularStintMinutes);
+
+            // 用最后一个常规 stint 的 lineup 作为加时初始名单（最后一段通常是主力收尾），
+            // 然后过一次教练 AI 处理犯规 ≥5 / 撞 ceiling 的强制下场。
+            var homeLastStint = home.Rotation.Stints[home.Rotation.Stints.Count - 1];
+            var awayLastStint = away.Rotation.Stints[away.Rotation.Stints.Count - 1];
+
+            var homeOtStint = new RotationStint
+            {
+                QuarterIndex = config.QuarterCount,    // 标记为"第 5 节"（仅供日志/调试）
+                StintIndexInQuarter = 0,
+                StartMinute = 0f,
+                DurationMinutes = overtimeMinutes,
+                Lineup = new List<Player>(homeLastStint.Lineup),
+            };
+            var awayOtStint = new RotationStint
+            {
+                QuarterIndex = config.QuarterCount,
+                StintIndexInQuarter = 0,
+                StartMinute = 0f,
+                DurationMinutes = overtimeMinutes,
+                Lineup = new List<Player>(awayLastStint.Lineup),
+            };
+
+            int diff = home.TeamStats.Points - away.TeamStats.Points;
+            _scheduler.AdjustLineup(homeOtStint, home, diff, homePlayers, homeProfiles, _random);
+            _scheduler.AdjustLineup(awayOtStint, away, -diff, awayPlayers, awayProfiles, _random);
+
+            home.CurrentLineup = homeOtStint.Lineup;
+            away.CurrentLineup = awayOtStint.Lineup;
+
+            foreach (var p in homeOtStint.Lineup)
+                home.PlayerStatsById[p.Id].Minutes += overtimeMinutes;
+            foreach (var p in awayOtStint.Lineup)
+                away.PlayerStatsById[p.Id].Minutes += overtimeMinutes;
+
+            // possession 数沿用 ±15% 随机扰动。
+            int possessions = Mathf.Max(1, Mathf.RoundToInt(_random.Range(otAvgPoss * 0.85f, otAvgPoss * 1.15f)));
+            // quarterIndex 传 config.QuarterCount - 1 让加时套用第 4 节末段的进攻强度调整逻辑。
+            int qIdx = Mathf.Max(0, config.QuarterCount - 1);
+            for (int i = 0; i < possessions; i++)
+            {
+                SimulatePossession(home, away, qIdx);
+                SimulatePossession(away, home, qIdx);
+            }
         }
 
         private void PrepareForSimulation(
@@ -1192,13 +1275,14 @@ namespace BasketballManager.Simulation
             var weights = new float[candidates.Count];
             float totalWeight = 0;
 
+            // stint 模型下，5 人在场都参与助攻竞争。mpg-based 项（旧版 mpg×0.45 +
+             // mpg<12/18 衰减）已移除：mpg 通过决定球员"上多少 stint"已经影响总助攻数，
+             // 单回合权重再乘 mpg 因子会让主控被双重 boost、第二/第三球员被吞助攻。
             for (int i = 0; i < candidates.Count; i++)
             {
                 var candidate = candidates[i];
-                float mpg = offense.GetSourceMpg(candidate.Id);
 
-                float w = mpg * 0.45f +
-                          candidate.Attributes.Passing * 2.10f +
+                float w = candidate.Attributes.Passing * 2.10f +
                           candidate.Tendencies.PassTendency * 1.70f +
                           candidate.Attributes.BallHandle * 0.30f +
                           candidate.Attributes.OffensiveConsistency * 0.20f;
@@ -1215,16 +1299,16 @@ namespace BasketballManager.Simulation
 
                 if (candidate.Position == BasketballManager.Core.Enums.Position.PG) w *= 1.10f;
 
-                if (candidate.Position == BasketballManager.Core.Enums.Position.C && 
-                    candidate.Attributes.Passing >= 85 && 
+                if (candidate.Position == BasketballManager.Core.Enums.Position.C &&
+                    candidate.Attributes.Passing >= 85 &&
                     candidate.Tendencies.PassTendency >= 80 &&
                     candidate.Attributes.OffensiveConsistency >= 82)
                 {
                     w *= 1.45f;
                 }
 
-                if (candidate.Position == BasketballManager.Core.Enums.Position.PF && 
-                    candidate.Attributes.Passing >= 78 && 
+                if (candidate.Position == BasketballManager.Core.Enums.Position.PF &&
+                    candidate.Attributes.Passing >= 78 &&
                     candidate.Tendencies.PassTendency >= 75)
                 {
                     w *= 1.25f;
@@ -1241,9 +1325,6 @@ namespace BasketballManager.Simulation
                         w *= 0.88f;
                     }
                 }
-
-                if (mpg < 12) w *= 0.35f;
-                else if (mpg < 18) w *= 0.65f;
 
                 weights[i] = w;
                 totalWeight += w;
@@ -1285,9 +1366,8 @@ namespace BasketballManager.Simulation
                 passBonus += 0.03f;
             }
 
-            float assisterMpg = offense.GetSourceMpg(assister.Id);
-            if (assisterMpg < 18) passBonus -= 0.04f;
-
+            // 之前根据 mpg<18 减 0.04 passBonus 的逻辑已移除：助攻"成功率"应当看
+             // assister 的传球能力而不是球队角色（mpg 已在出场 stint 数上体现）。
             float assistChance = (baseAssistChance + modifier - penalty + passBonus) * offense.StyleProfile.AssistModifier;
             assistChance = Mathf.Clamp(assistChance, 0.25f, 0.90f);
 

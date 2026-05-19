@@ -1,0 +1,9 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="project://database/Assets/Resources/UI/Theme/theme.uss" />
+    <Style src="project://database/Assets/Resources/UI/Shell/AppShell.uss" />
+    <ui:VisualElement name="app-root" class="app-root">
+        <ui:VisualElement name="screen-host" class="screen-host" picking-mode="Position" />
+        <ui:Button name="btn-debug" text="调  试" class="debug-fab" />
+        <ui:VisualElement name="overlay-host" class="overlay-host" picking-mode="Ignore" />
+    </ui:VisualElement>
+</ui:UXML>

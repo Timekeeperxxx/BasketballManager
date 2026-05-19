@@ -1,4 +1,5 @@
 using BasketballManager.Database;
+using BasketballManager.Seasons;
 using BasketballManager.UI.Screens;
 using UnityEngine;
 
@@ -29,6 +30,8 @@ namespace BasketballManager.App
             var teamRepository = new TeamRepository(databaseManager);
             var playerRepository = new PlayerRepository(databaseManager);
             var profileRepository = new SimulationProfileRepository(databaseManager);
+            var seasonRepository = new SeasonRepository(databaseManager);
+            var seasonService = new SeasonService(teamRepository, playerRepository, profileRepository, seasonRepository);
 
             var screen = GetComponent<MainScreen>();
             if (screen == null)
@@ -36,7 +39,7 @@ namespace BasketballManager.App
                 screen = gameObject.AddComponent<MainScreen>();
             }
 
-            screen.Initialize(databaseManager, teamRepository, playerRepository, profileRepository);
+            screen.Initialize(databaseManager, teamRepository, playerRepository, profileRepository, seasonRepository, seasonService);
         }
     }
 }

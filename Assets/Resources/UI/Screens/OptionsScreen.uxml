@@ -1,0 +1,25 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="project://database/Assets/Resources/UI/Theme/theme.uss" />
+    <Style src="project://database/Assets/Resources/UI/Screens/OptionsScreen.uss" />
+    <ui:VisualElement name="options-screen" class="screen-page options-screen">
+        <ui:VisualElement class="page-topbar">
+            <ui:Button name="btn-back" text="← 返回主菜单" class="btn btn--back" />
+            <ui:VisualElement class="page-topbar__title-block">
+                <ui:Label text="游戏选项" class="h2" />
+                <ui:Label text="管理你的球队与比赛设置" class="caption" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement class="options-list">
+
+            <ui:VisualElement name="option-roster" class="option-row">
+                <ui:VisualElement class="option-row__main">
+                    <ui:Label text="编辑阵容名单" class="option-row__title" />
+                    <ui:Label text="查看和修改各支球队的球员属性、出手倾向。" class="option-row__desc" />
+                </ui:VisualElement>
+                <ui:Button name="btn-roster" text="打开 →" class="btn" />
+            </ui:VisualElement>
+
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

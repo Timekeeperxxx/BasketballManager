@@ -1,0 +1,113 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="project://database/Assets/Resources/UI/Theme/theme.uss" />
+    <Style src="project://database/Assets/Resources/UI/Screens/RosterScreen.uss" />
+    <ui:VisualElement name="roster-screen" class="screen-page roster-screen">
+
+        <!-- 顶栏 -->
+        <ui:VisualElement class="page-topbar">
+            <ui:Button name="btn-back" text="← 返回选项" class="btn btn--back" />
+            <ui:VisualElement class="page-topbar__title-block">
+                <ui:Label text="编辑阵容名单" class="h2" />
+                <ui:Label name="save-status" text="字段失焦自动保存。" class="caption" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- 主体两栏 -->
+        <ui:VisualElement class="roster-main">
+
+            <!-- 左侧：球队 + 阵容 -->
+            <ui:VisualElement class="card roster-left">
+
+                <!-- 自定义带搜索的球队选择器 -->
+                <ui:VisualElement class="team-picker">
+                    <ui:Label text="球队" class="team-picker__label" />
+                    <ui:VisualElement name="team-picker-trigger" class="team-picker__trigger" focusable="true">
+                        <ui:Label name="team-picker-current" text="选择球队" class="team-picker__current" />
+                        <ui:Label text="▾" class="team-picker__arrow" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <ui:VisualElement class="roster-roster-header">
+                    <ui:Label text="阵容" class="card-title" />
+                    <ui:Label name="roster-count" text="" class="caption" />
+                </ui:VisualElement>
+                <ui:ListView name="players-list" class="roster-players" show-border="false" />
+
+                <!-- 球队搜索弹层（必须是 roster-left 的最后一个子元素，保证渲染在 players-list 之上） -->
+                <ui:VisualElement name="team-picker-popup" class="team-picker__popup team-picker__popup--hidden">
+                    <ui:TextField name="team-picker-search" class="team-picker__search" />
+                    <ui:ListView name="team-picker-list" class="team-picker__list" show-border="false" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- 右侧：球员编辑器 -->
+            <ui:VisualElement class="roster-right">
+
+                <!-- Hero 头 -->
+                <ui:VisualElement class="card player-hero">
+                    <ui:VisualElement name="hero-number" class="player-hero__number">
+                        <ui:Label name="hero-jersey" text="--" class="player-hero__number-text" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="player-hero__info">
+                        <ui:Label name="hero-name" text="—" class="player-hero__name" />
+                        <ui:Label name="hero-sub" text="" class="player-hero__sub" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="player-hero__overall">
+                        <ui:Label text="OVR" class="player-hero__overall-label" />
+                        <ui:Label name="hero-overall" text="--" class="player-hero__overall-value" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <!-- Tabs -->
+                <ui:VisualElement class="tabs">
+                    <ui:Button name="tab-basic" text="基础信息" class="tab tab--active" />
+                    <ui:Button name="tab-attr"  text="能力属性" class="tab" />
+                    <ui:Button name="tab-tend"  text="球员倾向" class="tab" />
+                </ui:VisualElement>
+
+                <!-- Tab 内容 -->
+                <ui:ScrollView name="tab-content" class="tab-content roster-tab-content">
+
+                    <!-- ===== 基础信息 ===== -->
+                    <ui:VisualElement name="page-basic" class="tab-page roster-fields">
+                        <ui:VisualElement class="roster-fields__row">
+                            <ui:TextField name="field-firstname" label="名" class="roster-field" />
+                            <ui:TextField name="field-lastname"  label="姓" class="roster-field" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="roster-fields__row">
+                            <ui:DropdownField name="field-nameorder" label="姓名顺序" class="roster-field" />
+                            <ui:DropdownField name="field-position"  label="位置"     class="roster-field" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="roster-fields__row">
+                            <ui:DropdownField name="field-secpos"  label="第二位置"   class="roster-field" />
+                            <ui:IntegerField  name="field-jersey"  label="球衣号"     class="roster-field" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="roster-fields__row">
+                            <ui:IntegerField name="field-height" label="身高 (cm)" class="roster-field" />
+                            <ui:IntegerField name="field-weight" label="体重 (kg)" class="roster-field" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="roster-fields__row">
+                            <ui:IntegerField name="field-age" label="年龄" class="roster-field" />
+                            <ui:VisualElement class="roster-field" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+
+                    <!-- ===== 能力属性（代码注入两列） ===== -->
+                    <ui:VisualElement name="page-attr" class="tab-page tab-page--hidden roster-stats">
+                        <ui:VisualElement name="attr-col1" class="roster-stats__col" />
+                        <ui:VisualElement name="attr-col2" class="roster-stats__col" />
+                    </ui:VisualElement>
+
+                    <!-- ===== 球员倾向（代码注入两列） ===== -->
+                    <ui:VisualElement name="page-tend" class="tab-page tab-page--hidden roster-stats">
+                        <ui:VisualElement name="tend-col1" class="roster-stats__col" />
+                        <ui:VisualElement name="tend-col2" class="roster-stats__col" />
+                    </ui:VisualElement>
+
+                </ui:ScrollView>
+
+            </ui:VisualElement>
+
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

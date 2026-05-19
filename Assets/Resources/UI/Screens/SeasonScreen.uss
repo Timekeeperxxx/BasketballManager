@@ -1,0 +1,199 @@
+.season-screen {
+    background-color: var(--bg-base);
+}
+
+/* ---------- 一级 tab 条 ---------- */
+.tabs {
+    flex-direction: row;
+    align-items: center;
+    background-color: var(--bg-surface);
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    padding-left: 8px;
+    padding-right: 8px;
+    flex-shrink: 0;
+    border-bottom-width: 1px;
+    border-bottom-color: var(--border);
+}
+
+.tab {
+    height: 44px;
+    min-width: 120px;
+    padding-left: 20px;
+    padding-right: 20px;
+    background-color: rgba(0, 0, 0, 0);
+    border-top-width: 0;
+    border-right-width: 0;
+    border-bottom-width: 2px;
+    border-left-width: 0;
+    border-bottom-color: rgba(0, 0, 0, 0);
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    color: var(--text-secondary);
+    font-size: 14px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    margin: 0;
+}
+
+.tab:hover {
+    color: var(--text-primary);
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+.tab--active {
+    color: var(--text-primary);
+    border-bottom-color: var(--accent);
+}
+
+/* 二级 tab：颜色淡一点 + 小一些 */
+.tabs--sub {
+    background-color: var(--bg-surface-2);
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    margin-bottom: 12px;
+}
+
+.tab--sub {
+    height: 36px;
+    min-width: 96px;
+    font-size: 13px;
+}
+
+/* ---------- tab 内容 ---------- */
+.tab-content {
+    flex-grow: 1;
+    background-color: var(--bg-surface);
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    padding-top: 16px;
+    padding-right: 16px;
+    padding-bottom: 16px;
+    padding-left: 16px;
+}
+
+.tab-page {
+    flex-grow: 1;
+    flex-direction: column;
+}
+
+.tab-page--hidden {
+    display: none;
+}
+
+.card--fill {
+    flex-grow: 1;
+}
+
+.season-screen .unity-multi-column-list-view {
+    flex-grow: 1;
+}
+
+/* ---------- 总览页 ---------- */
+.overview__last-card {
+    flex-shrink: 0;
+    margin-bottom: 12px;
+}
+
+.overview__last-headline {
+    font-size: 22px;
+    -unity-font-style: bold;
+    color: var(--text-primary);
+}
+
+.overview__last-meta {
+    margin-top: 4px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.overview__row {
+    flex-direction: row;
+    flex-grow: 1;
+}
+
+.overview__recent-card {
+    flex-grow: 1;
+    flex-basis: 0;
+    margin-right: 12px;
+}
+
+.overview__standout-card {
+    flex-grow: 1;
+    flex-basis: 0;
+}
+
+.overview__recent-list,
+.overview__standout-list {
+    flex-grow: 1;
+    margin-top: 4px;
+}
+
+.recent-row {
+    flex-direction: row;
+    align-items: center;
+    padding-top: 6px;
+    padding-bottom: 6px;
+    border-bottom-width: 1px;
+    border-bottom-color: var(--border);
+}
+
+.recent-row__day {
+    width: 36px;
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+
+.recent-row__teams {
+    flex-grow: 1;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.recent-row__score {
+    color: var(--text-primary);
+    -unity-font-style: bold;
+    font-size: 14px;
+    width: 80px;
+    -unity-text-align: middle-right;
+}
+
+.standout-row {
+    flex-direction: row;
+    align-items: center;
+    padding-top: 6px;
+    padding-bottom: 6px;
+    border-bottom-width: 1px;
+    border-bottom-color: var(--border);
+}
+
+.standout-row__label {
+    width: 60px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    -unity-font-style: bold;
+}
+
+.standout-row__player {
+    flex-grow: 1;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.standout-row__team {
+    color: var(--text-secondary);
+    font-size: 12px;
+    margin-right: 8px;
+}
+
+.standout-row__value {
+    width: 64px;
+    color: var(--accent);
+    -unity-font-style: bold;
+    font-size: 14px;
+    -unity-text-align: middle-right;
+}
