@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using BasketballManager.Core.Models;
 using BasketballManager.Database;
@@ -68,6 +69,41 @@ namespace BasketballManager.Seasons
             return count;
         }
 
+        /// <summary>
+        /// 常规赛是否全部打完（phase='REGULAR' 且无剩余 SCHEDULED 对局）。
+        /// </summary>
+        public bool IsRegularSeasonComplete(int seasonId)
+        {
+            var season = _seasonRepository.GetSeasonById(seasonId);
+            if (season == null || season.Phase != "REGULAR") return false;
+            return _seasonRepository.GetNextScheduledGame(seasonId) == null;
+        }
+
+        /// <summary>
+        /// 按积分榜前N名（最多8队）初始化季后赛，生成系列赛对阵与对局。
+        /// </summary>
+        public void StartPlayoffs(int seasonId)
+        {
+            var standings = _seasonRepository.GetStandings(seasonId);
+            int n = Math.Min(8, standings.Count);
+            if (n < 2) return;
+
+            var series = new List<PlayoffSeries>();
+            for (int i = 0; i < n / 2; i++)
+            {
+                series.Add(new PlayoffSeries
+                {
+                    SeasonId = seasonId,
+                    Round = 1,
+                    Seed1 = i + 1,
+                    Seed2 = n - i,
+                    Team1Id = standings[i].TeamId,
+                    Team2Id = standings[n - 1 - i].TeamId,
+                });
+            }
+            _seasonRepository.InitializePlayoffs(seasonId, series);
+        }
+
         // -------- 内部 --------
 
         private MatchResult SimulateOne(int seasonId, SeasonGame game, bool enablePlayByPlay = false)
@@ -91,8 +127,19 @@ namespace BasketballManager.Seasons
 
             _seasonRepository.SaveGameResult(game.Id, result);
             _seasonRepository.SaveGamePlayerStats(game.Id, result);
-            _seasonRepository.UpdateStandings(seasonId, result);
-            _seasonRepository.UpdatePlayerStats(seasonId, result);
+
+            if (game.Phase == "PLAYOFF")
+            {
+                bool seriesComplete = _seasonRepository.UpdatePlayoffSeries(game.SeriesId, result);
+                _seasonRepository.UpdatePlayoffPlayerStats(seasonId, result);
+                if (seriesComplete)
+                    _seasonRepository.TryAdvancePlayoffRound(seasonId);
+            }
+            else
+            {
+                _seasonRepository.UpdateStandings(seasonId, result);
+                _seasonRepository.UpdatePlayerStats(seasonId, result);
+            }
 
             return result;
         }

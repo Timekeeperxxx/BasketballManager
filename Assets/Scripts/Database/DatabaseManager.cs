@@ -71,6 +71,8 @@ namespace BasketballManager.Database
             // 兼容旧 db：build_unity_database.py 生成的 db 没有 season_* 表，
             // 这里在不破坏 teams / players 数据的前提下按需补建。
             EnsureSeasonTables(connection);
+            EnsurePlayoffColumns(connection);
+            EnsurePlayoffTables(connection);
             EnsurePlayerIsCurrentColumn(connection);
             EnsurePlayerNamedViews(connection);
 
@@ -286,6 +288,67 @@ CREATE TABLE game_player_stats (
             Debug.Log("[Database] Season tables auto-created on existing db (没有破坏现有 teams / players 数据).");
         }
 
+        private static void EnsurePlayoffColumns(SqliteConnection connection)
+        {
+            using var transaction = connection.BeginTransaction();
+            if (!HasColumn(connection, "seasons", "phase"))
+                ExecuteNonQuery(connection, transaction, "ALTER TABLE seasons ADD COLUMN phase TEXT NOT NULL DEFAULT 'REGULAR';");
+            if (!HasColumn(connection, "season_games", "phase"))
+                ExecuteNonQuery(connection, transaction, "ALTER TABLE season_games ADD COLUMN phase TEXT NOT NULL DEFAULT 'REGULAR';");
+            if (!HasColumn(connection, "season_games", "series_id"))
+                ExecuteNonQuery(connection, transaction, "ALTER TABLE season_games ADD COLUMN series_id INTEGER;");
+            transaction.Commit();
+        }
+
+        private static void EnsurePlayoffTables(SqliteConnection connection)
+        {
+            using var transaction = connection.BeginTransaction();
+            ExecuteNonQuery(connection, transaction, @"
+CREATE TABLE IF NOT EXISTS playoff_series (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    season_id INTEGER NOT NULL,
+    round INTEGER NOT NULL,
+    seed1 INTEGER NOT NULL,
+    seed2 INTEGER NOT NULL,
+    team1_id TEXT NOT NULL,
+    team2_id TEXT NOT NULL,
+    team1_wins INTEGER NOT NULL DEFAULT 0,
+    team2_wins INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'IN_PROGRESS',
+    winner_team_id TEXT,
+    FOREIGN KEY (season_id) REFERENCES seasons (id) ON UPDATE CASCADE ON DELETE CASCADE
+);");
+            ExecuteNonQuery(connection, transaction, "CREATE INDEX IF NOT EXISTS idx_playoff_series_season_round ON playoff_series (season_id, round);");
+            ExecuteNonQuery(connection, transaction, @"
+CREATE TABLE IF NOT EXISTS playoff_player_stats (
+    season_id INTEGER NOT NULL,
+    player_id INTEGER NOT NULL,
+    team_id TEXT NOT NULL,
+    games_played INTEGER NOT NULL DEFAULT 0,
+    minutes INTEGER NOT NULL DEFAULT 0,
+    points INTEGER NOT NULL DEFAULT 0,
+    rebounds INTEGER NOT NULL DEFAULT 0,
+    offensive_rebounds INTEGER NOT NULL DEFAULT 0,
+    assists INTEGER NOT NULL DEFAULT 0,
+    steals INTEGER NOT NULL DEFAULT 0,
+    blocks INTEGER NOT NULL DEFAULT 0,
+    turnovers INTEGER NOT NULL DEFAULT 0,
+    fouls INTEGER NOT NULL DEFAULT 0,
+    field_goals_made INTEGER NOT NULL DEFAULT 0,
+    field_goals_attempted INTEGER NOT NULL DEFAULT 0,
+    three_pointers_made INTEGER NOT NULL DEFAULT 0,
+    three_pointers_attempted INTEGER NOT NULL DEFAULT 0,
+    free_throws_made INTEGER NOT NULL DEFAULT 0,
+    free_throws_attempted INTEGER NOT NULL DEFAULT 0,
+    plus_minus INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (season_id, player_id),
+    FOREIGN KEY (season_id) REFERENCES seasons (id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (player_id) REFERENCES players (id) ON UPDATE CASCADE ON DELETE CASCADE
+);");
+            ExecuteNonQuery(connection, transaction, "CREATE INDEX IF NOT EXISTS idx_playoff_player_stats_team ON playoff_player_stats (season_id, team_id);");
+            transaction.Commit();
+        }
+
         public SqliteConnection OpenConnection()
         {
             Initialize();
@@ -354,6 +417,8 @@ CREATE TABLE game_player_stats (
 
             using var transaction = connection.BeginTransaction();
             // 先删赛季相关表（被引用方在前）。
+            ExecuteNonQuery(connection, transaction, "DROP TABLE IF EXISTS playoff_player_stats;");
+            ExecuteNonQuery(connection, transaction, "DROP TABLE IF EXISTS playoff_series;");
             ExecuteNonQuery(connection, transaction, "DROP TABLE IF EXISTS game_player_stats;");
             ExecuteNonQuery(connection, transaction, "DROP TABLE IF EXISTS season_player_stats;");
             ExecuteNonQuery(connection, transaction, "DROP TABLE IF EXISTS season_games;");
@@ -452,12 +517,13 @@ CREATE TABLE player_simulation_profiles (
     FOREIGN KEY (player_id) REFERENCES players (id) ON UPDATE CASCADE ON DELETE CASCADE
 );");
 
-            // 赛季容器表：name + 创建时间 + 状态。
+            // 赛季容器表：name + 创建时间 + 状态 + 阶段。
             ExecuteNonQuery(connection, transaction, @"
 CREATE TABLE seasons (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'IN_PROGRESS',
+    phase TEXT NOT NULL DEFAULT 'REGULAR',
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );");
 
@@ -477,7 +543,7 @@ CREATE TABLE season_teams (
 
             ExecuteNonQuery(connection, transaction, "CREATE INDEX idx_season_teams_season ON season_teams (season_id);");
 
-            // 赛程表：每场比赛一行，含主客队、day、状态、最终比分。
+            // 赛程表：每场比赛一行，含主客队、day、状态、最终比分、阶段与系列赛id。
             ExecuteNonQuery(connection, transaction, @"
 CREATE TABLE season_games (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -490,6 +556,8 @@ CREATE TABLE season_games (
     status TEXT NOT NULL DEFAULT 'SCHEDULED',
     winner_team_id TEXT,
     played_at TEXT,
+    phase TEXT NOT NULL DEFAULT 'REGULAR',
+    series_id INTEGER,
     FOREIGN KEY (season_id) REFERENCES seasons (id) ON UPDATE CASCADE ON DELETE CASCADE,
     FOREIGN KEY (home_team_id) REFERENCES teams (id) ON UPDATE CASCADE ON DELETE CASCADE,
     FOREIGN KEY (away_team_id) REFERENCES teams (id) ON UPDATE CASCADE ON DELETE CASCADE
@@ -556,6 +624,51 @@ CREATE TABLE game_player_stats (
     FOREIGN KEY (game_id) REFERENCES season_games (id) ON UPDATE CASCADE ON DELETE CASCADE
 );");
             ExecuteNonQuery(connection, transaction, "CREATE INDEX idx_game_player_stats_team ON game_player_stats (game_id, team_id);");
+
+            ExecuteNonQuery(connection, transaction, @"
+CREATE TABLE playoff_series (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    season_id INTEGER NOT NULL,
+    round INTEGER NOT NULL,
+    seed1 INTEGER NOT NULL,
+    seed2 INTEGER NOT NULL,
+    team1_id TEXT NOT NULL,
+    team2_id TEXT NOT NULL,
+    team1_wins INTEGER NOT NULL DEFAULT 0,
+    team2_wins INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'IN_PROGRESS',
+    winner_team_id TEXT,
+    FOREIGN KEY (season_id) REFERENCES seasons (id) ON UPDATE CASCADE ON DELETE CASCADE
+);");
+            ExecuteNonQuery(connection, transaction, "CREATE INDEX idx_playoff_series_season_round ON playoff_series (season_id, round);");
+
+            ExecuteNonQuery(connection, transaction, @"
+CREATE TABLE playoff_player_stats (
+    season_id INTEGER NOT NULL,
+    player_id INTEGER NOT NULL,
+    team_id TEXT NOT NULL,
+    games_played INTEGER NOT NULL DEFAULT 0,
+    minutes INTEGER NOT NULL DEFAULT 0,
+    points INTEGER NOT NULL DEFAULT 0,
+    rebounds INTEGER NOT NULL DEFAULT 0,
+    offensive_rebounds INTEGER NOT NULL DEFAULT 0,
+    assists INTEGER NOT NULL DEFAULT 0,
+    steals INTEGER NOT NULL DEFAULT 0,
+    blocks INTEGER NOT NULL DEFAULT 0,
+    turnovers INTEGER NOT NULL DEFAULT 0,
+    fouls INTEGER NOT NULL DEFAULT 0,
+    field_goals_made INTEGER NOT NULL DEFAULT 0,
+    field_goals_attempted INTEGER NOT NULL DEFAULT 0,
+    three_pointers_made INTEGER NOT NULL DEFAULT 0,
+    three_pointers_attempted INTEGER NOT NULL DEFAULT 0,
+    free_throws_made INTEGER NOT NULL DEFAULT 0,
+    free_throws_attempted INTEGER NOT NULL DEFAULT 0,
+    plus_minus INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (season_id, player_id),
+    FOREIGN KEY (season_id) REFERENCES seasons (id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (player_id) REFERENCES players (id) ON UPDATE CASCADE ON DELETE CASCADE
+);");
+            ExecuteNonQuery(connection, transaction, "CREATE INDEX idx_playoff_player_stats_team ON playoff_player_stats (season_id, team_id);");
 
             ExecuteNonQuery(connection, transaction, @"
 CREATE VIEW IF NOT EXISTS player_attributes_named AS

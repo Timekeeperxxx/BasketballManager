@@ -14,6 +14,7 @@
                 <ui:Button name="btn-new" text="创建新赛季" class="btn topbar-btn" />
                 <ui:Button name="btn-sim-next" text="模拟下一场" class="btn btn--primary topbar-btn" />
                 <ui:Button name="btn-sim-all" text="模拟剩余" class="btn topbar-btn" />
+                <ui:Button name="btn-start-playoffs" text="开始季后赛" class="btn btn--primary topbar-btn" />
             </ui:VisualElement>
         </ui:VisualElement>
 
@@ -70,11 +71,17 @@
                         <ui:Label name="schedule-count" text="" class="caption" />
                     </ui:VisualElement>
                     <ui:MultiColumnListView name="schedule" show-foldout-header="false" reorderable="false" show-border="false" />
+                    <ui:VisualElement name="bracket-container" class="bracket-container" />
                 </ui:VisualElement>
             </ui:VisualElement>
 
             <!-- ============ 数据 ============ -->
             <ui:VisualElement name="page-data" class="tab-page tab-page--hidden">
+                <!-- 相位切换（常规赛/季后赛，仅季后赛阶段可见） -->
+                <ui:VisualElement name="stats-phase-row" class="tabs tabs--sub">
+                    <ui:Button name="statphase-regular" text="常  规  赛" class="tab tab--sub tab--active" />
+                    <ui:Button name="statphase-playoff" text="季  后  赛" class="tab tab--sub" />
+                </ui:VisualElement>
                 <!-- 二级 tab -->
                 <ui:VisualElement class="tabs tabs--sub">
                     <ui:Button name="subtab-players" text="球  员" class="tab tab--sub tab--active" />

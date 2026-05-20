@@ -8,6 +8,7 @@ namespace BasketballManager.Core.Models
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public string Status { get; set; } = "IN_PROGRESS";   // IN_PROGRESS / FINISHED
+        public string Phase { get; set; } = "REGULAR";        // REGULAR | PLAYOFF
         public string CreatedAt { get; set; } = string.Empty;
     }
 }

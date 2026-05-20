@@ -73,6 +73,18 @@ namespace BasketballManager.UI.Screens
         private readonly Dictionary<string, VisualElement> _subTabPages = new Dictionary<string, VisualElement>();
         private string _currentSubTab = "players";
 
+        // ---------- 顶栏按钮缓存 ----------
+        private Button _btnSimNext;
+        private Button _btnSimAll;
+
+        // ---------- 季后赛 ----------
+        private Button _btnStartPlayoffs;
+        private VisualElement _bracketContainer;
+        private VisualElement _statsPhaseRow;
+        private Button _statsPhaseRegularBtn;
+        private Button _statsPhasePlayoffBtn;
+        private string _statsPhase = "REGULAR";
+
         // ---------- overview ----------
         private Label _ovLastHeadline, _ovLastMeta;
         private VisualElement _ovRecentList, _ovStandoutList;
@@ -112,8 +124,24 @@ namespace BasketballManager.UI.Screens
             // 顶栏
             Root.Q<Button>("btn-back").clicked += () => OnBackClicked?.Invoke();
             Root.Q<Button>("btn-new").clicked += OnCreateNewSeason;
-            Root.Q<Button>("btn-sim-next").clicked += OnSimulateNext;
-            Root.Q<Button>("btn-sim-all").clicked += OnSimulateAllRemaining;
+            _btnSimNext = Root.Q<Button>("btn-sim-next");
+            _btnSimAll  = Root.Q<Button>("btn-sim-all");
+            _btnSimNext.clicked += OnSimulateNext;
+            _btnSimAll.clicked  += OnSimulateAllRemaining;
+
+            _btnStartPlayoffs = Root.Q<Button>("btn-start-playoffs");
+            _btnStartPlayoffs.clicked += OnStartPlayoffs;
+            _btnStartPlayoffs.style.display = DisplayStyle.None;
+
+            _bracketContainer = Root.Q<VisualElement>("bracket-container");
+            _bracketContainer.style.display = DisplayStyle.None;
+
+            _statsPhaseRow      = Root.Q<VisualElement>("stats-phase-row");
+            _statsPhaseRegularBtn = Root.Q<Button>("statphase-regular");
+            _statsPhasePlayoffBtn = Root.Q<Button>("statphase-playoff");
+            _statsPhaseRegularBtn.clicked += () => SwitchStatsPhase("REGULAR");
+            _statsPhasePlayoffBtn.clicked += () => SwitchStatsPhase("PLAYOFF");
+            _statsPhaseRow.style.display = DisplayStyle.None;
 
             _seasonNameLabel = Root.Q<Label>("season-name");
 
@@ -282,16 +310,44 @@ namespace BasketballManager.UI.Screens
         {
             CacheTeamNames();
             _currentSeason = _seasonRepository?.GetLatestSeason();
-
             _seasonNameLabel.text = _currentSeason != null ? _currentSeason.Name : "—";
+            UpdateTopBarButtons();
             RefreshCurrentTab();
         }
 
         private void RefreshAfterSim()
         {
-            // 比赛模拟后所有 tab 数据都可能变了，但只刷当前可见的，
-            // 切换到其他 tab 时会再次拉取。
+            if (_currentSeason != null)
+                _currentSeason = _seasonRepository?.GetSeasonById(_currentSeason.Id) ?? _currentSeason;
+            UpdateTopBarButtons();
             RefreshCurrentTab();
+        }
+
+        private void UpdateTopBarButtons()
+        {
+            if (_currentSeason == null)
+            {
+                _btnStartPlayoffs.style.display = DisplayStyle.None;
+                _statsPhaseRow.style.display    = DisplayStyle.None;
+                return;
+            }
+
+            bool finished        = _currentSeason.Status == "FINISHED";
+            bool isPlayoff       = _currentSeason.Phase == "PLAYOFF";
+            bool regularComplete = !isPlayoff && _seasonService.IsRegularSeasonComplete(_currentSeason.Id);
+
+            // "开始季后赛"：常规赛已结束 + 未进入季后赛
+            _btnStartPlayoffs.style.display = (regularComplete && !finished)
+                ? DisplayStyle.Flex : DisplayStyle.None;
+
+            // 模拟按钮：未结束 且 不处于"等待开始季后赛"状态
+            bool canSim = !finished && !(regularComplete && !isPlayoff);
+            _btnSimNext.style.display = canSim ? DisplayStyle.Flex : DisplayStyle.None;
+            _btnSimAll.style.display  = canSim ? DisplayStyle.Flex : DisplayStyle.None;
+
+            // stats 相位切换：仅季后赛阶段显示
+            _statsPhaseRow.style.display = isPlayoff ? DisplayStyle.Flex : DisplayStyle.None;
+            if (!isPlayoff) _statsPhase = "REGULAR";
         }
 
         // ============================================================
@@ -495,12 +551,96 @@ namespace BasketballManager.UI.Screens
 
         private void RefreshSchedule()
         {
-            _schedule.Clear();
-            if (_currentSeason != null) _schedule.AddRange(_seasonRepository.GetSeasonGames(_currentSeason.Id));
-            int played = _schedule.Count(g => g.Status == "PLAYED");
-            _scheduleCount.text = _schedule.Count > 0 ? $"{played} / {_schedule.Count} 场" : "";
-            _scheduleView.itemsSource = _schedule;
-            _scheduleView.Rebuild();
+            if (_currentSeason != null && _currentSeason.Phase == "PLAYOFF")
+            {
+                _scheduleView.style.display    = DisplayStyle.None;
+                _bracketContainer.style.display = DisplayStyle.Flex;
+                var all = _seasonRepository.GetSeasonGames(_currentSeason.Id);
+                int pp = all.Count(g => g.Phase == "PLAYOFF" && g.Status == "PLAYED");
+                int pt = all.Count(g => g.Phase == "PLAYOFF" && g.Status != "CANCELLED");
+                _scheduleCount.text = $"季后赛 {pp}/{pt} 场";
+                RefreshBracket(_currentSeason.Id);
+            }
+            else
+            {
+                _scheduleView.style.display    = DisplayStyle.Flex;
+                _bracketContainer.style.display = DisplayStyle.None;
+                _schedule.Clear();
+                if (_currentSeason != null) _schedule.AddRange(_seasonRepository.GetSeasonGames(_currentSeason.Id));
+                int played = _schedule.Count(g => g.Status == "PLAYED");
+                _scheduleCount.text = _schedule.Count > 0 ? $"{played} / {_schedule.Count} 场" : "";
+                _scheduleView.itemsSource = _schedule;
+                _scheduleView.Rebuild();
+            }
+        }
+
+        private void RefreshBracket(int seasonId)
+        {
+            _bracketContainer.Clear();
+            var allSeries = _seasonRepository.GetPlayoffSeries(seasonId);
+            if (allSeries.Count == 0) return;
+
+            int maxRound = allSeries.Max(s => s.Round);
+            var byRound = allSeries.GroupBy(s => s.Round).OrderBy(g => g.Key);
+            foreach (var roundGroup in byRound)
+            {
+                var title = new Label(GetRoundName(roundGroup.Key, maxRound));
+                title.AddToClassList("bracket-round-title");
+                _bracketContainer.Add(title);
+                foreach (var series in roundGroup)
+                    _bracketContainer.Add(BuildSeriesRow(series));
+            }
+        }
+
+        private static string GetRoundName(int round, int maxRound)
+        {
+            if (round == maxRound)      return "总  决  赛";
+            if (round == maxRound - 1)  return maxRound <= 2 ? "首  轮" : "半  决  赛";
+            return "首  轮";
+        }
+
+        private VisualElement BuildSeriesRow(PlayoffSeries series)
+        {
+            var row = new VisualElement();
+            row.AddToClassList("series-row");
+
+            var seed1 = new Label($"({series.Seed1})");
+            seed1.AddToClassList("series-row__seed");
+            row.Add(seed1);
+
+            var team1 = new Label(series.Team1Name);
+            team1.AddToClassList("series-row__team");
+            if (series.Status == "COMPLETE" && series.WinnerTeamId == series.Team1Id)
+                team1.AddToClassList("series-row__winner");
+            row.Add(team1);
+
+            var rec1 = new Label(series.Team1Wins.ToString());
+            rec1.AddToClassList("series-row__record");
+            row.Add(rec1);
+
+            var vs = new Label("-");
+            vs.AddToClassList("series-row__vs");
+            row.Add(vs);
+
+            var rec2 = new Label(series.Team2Wins.ToString());
+            rec2.AddToClassList("series-row__record");
+            row.Add(rec2);
+
+            var team2 = new Label(series.Team2Name);
+            team2.AddToClassList("series-row__team");
+            if (series.Status == "COMPLETE" && series.WinnerTeamId == series.Team2Id)
+                team2.AddToClassList("series-row__winner");
+            row.Add(team2);
+
+            var seed2 = new Label($"({series.Seed2})");
+            seed2.AddToClassList("series-row__seed");
+            row.Add(seed2);
+
+            var status = new Label(series.Status == "COMPLETE" ? "完成" : "进行中");
+            status.AddToClassList("series-row__status");
+            row.Add(status);
+
+            return row;
         }
 
         // ============================================================
@@ -532,10 +672,36 @@ namespace BasketballManager.UI.Screens
         private void RefreshPlayerStats()
         {
             _playerStats.Clear();
-            _playerStats.AddRange(GatherAllPlayerStats().OrderByDescending(s => s.PointsPerGame));
+            var src = _statsPhase == "PLAYOFF"
+                ? GatherAllPlayerPlayoffStats()
+                : GatherAllPlayerStats();
+            _playerStats.AddRange(src.OrderByDescending(s => s.PointsPerGame));
             _playersCount.text = _playerStats.Count > 0 ? $"{_playerStats.Count} 名球员" : "";
             _playersView.itemsSource = _playerStats;
             _playersView.Rebuild();
+        }
+
+        private List<SeasonPlayerStat> GatherAllPlayerPlayoffStats()
+        {
+            var list = new List<SeasonPlayerStat>();
+            if (_currentSeason == null) return list;
+            foreach (var t in _seasonRepository.GetSeasonTeams(_currentSeason.Id))
+            {
+                foreach (var s in _seasonRepository.GetPlayerPlayoffStats(_currentSeason.Id, t.Id))
+                    if (s.GamesPlayed > 0) list.Add(s);
+            }
+            return list;
+        }
+
+        private void SwitchStatsPhase(string phase)
+        {
+            if (_statsPhase == phase) return;
+            _statsPhase = phase;
+            _statsPhaseRegularBtn.RemoveFromClassList("tab--active");
+            _statsPhasePlayoffBtn.RemoveFromClassList("tab--active");
+            if (phase == "REGULAR") _statsPhaseRegularBtn.AddToClassList("tab--active");
+            else _statsPhasePlayoffBtn.AddToClassList("tab--active");
+            RefreshCurrentSubTab();
         }
 
         // ============================================================
@@ -612,6 +778,14 @@ namespace BasketballManager.UI.Screens
         {
             if (_currentSeason == null || _isSimulating) return;
             StartCoroutine(SimulateAllRemainingCoroutine());
+        }
+
+        private void OnStartPlayoffs()
+        {
+            if (_currentSeason == null || _isSimulating) return;
+            _seasonService.StartPlayoffs(_currentSeason.Id);
+            _statsPhase = "REGULAR";
+            RefreshFromLatestSeason();
         }
 
         private void OnScheduleRowSelected(IEnumerable<object> items)

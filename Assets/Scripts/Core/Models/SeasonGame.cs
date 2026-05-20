@@ -12,8 +12,10 @@ namespace BasketballManager.Core.Models
         public string AwayTeamId { get; set; } = string.Empty;
         public int HomeScore { get; set; }
         public int AwayScore { get; set; }
-        public string Status { get; set; } = "SCHEDULED";      // SCHEDULED / PLAYED
+        public string Status { get; set; } = "SCHEDULED";      // SCHEDULED / PLAYED / CANCELLED
         public string WinnerTeamId { get; set; } = string.Empty;
         public string PlayedAt { get; set; } = string.Empty;
+        public string Phase { get; set; } = "REGULAR";        // REGULAR | PLAYOFF
+        public int SeriesId { get; set; } = 0;
     }
 }
