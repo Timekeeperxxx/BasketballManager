@@ -71,6 +71,8 @@ namespace BasketballManager.Database
             // 兼容旧 db：build_unity_database.py 生成的 db 没有 season_* 表，
             // 这里在不破坏 teams / players 数据的前提下按需补建。
             EnsureSeasonTables(connection);
+            EnsurePlayerIsCurrentColumn(connection);
+            EnsurePlayerNamedViews(connection);
 
             if (!HasManagedSchema(connection))
             {
@@ -80,6 +82,81 @@ namespace BasketballManager.Database
             _initialized = true;
         }
 
+        // 老 db 没有 players.is_current 列时按需补加，并用所属球队 is_current 回填。
+        private static void EnsurePlayerIsCurrentColumn(SqliteConnection connection)
+        {
+            if (HasColumn(connection, "players", "is_current")) return;
+
+            using var transaction = connection.BeginTransaction();
+            ExecuteNonQuery(connection, transaction, "ALTER TABLE players ADD COLUMN is_current INTEGER NOT NULL DEFAULT 0;");
+            ExecuteNonQuery(connection, transaction, @"
+UPDATE players
+SET is_current = COALESCE((SELECT is_current FROM teams WHERE teams.id = players.team_id), 0);");
+            transaction.Commit();
+            Debug.Log("[Database] 已为 players 表补加 is_current 列，并按所属球队回填初值。");
+        }
+
+        // 确保 player_attributes_named / player_tendencies_named 视图 + INSTEAD OF UPDATE 触发器存在。
+        private static void EnsurePlayerNamedViews(SqliteConnection connection)
+        {
+            using var transaction = connection.BeginTransaction();
+            ExecuteNonQuery(connection, transaction, @"
+CREATE VIEW IF NOT EXISTS player_attributes_named AS
+SELECT p.id AS player_id, p.first_name, p.last_name, p.team_id,
+       a.two_point, a.three_point, a.layup, a.close_shot, a.post_scoring, a.free_throw,
+       a.passing, a.ball_handle, a.drive, a.draw_foul, a.offensive_consistency,
+       a.perimeter_defense, a.interior_defense, a.steal, a.block,
+       a.offensive_rebound, a.defensive_rebound, a.defensive_consistency,
+       a.speed, a.strength, a.stamina
+FROM player_attributes a
+JOIN players p ON p.id = a.player_id;");
+            ExecuteNonQuery(connection, transaction, @"
+CREATE VIEW IF NOT EXISTS player_tendencies_named AS
+SELECT p.id AS player_id, p.first_name, p.last_name, p.team_id,
+       t.shot_tendency, t.three_tendency, t.two_point_tendency, t.drive_tendency,
+       t.post_tendency, t.close_shot_tendency, t.pass_tendency, t.draw_foul_tendency,
+       t.steal_tendency, t.block_tendency, t.foul_tendency, t.help_defense_tendency,
+       t.offensive_rebound_tendency, t.defensive_rebound_tendency
+FROM player_tendencies t
+JOIN players p ON p.id = t.player_id;");
+            ExecuteNonQuery(connection, transaction, @"
+CREATE TRIGGER IF NOT EXISTS trg_attr_named_update
+INSTEAD OF UPDATE ON player_attributes_named
+BEGIN
+    UPDATE player_attributes SET
+        two_point = NEW.two_point, three_point = NEW.three_point,
+        layup = NEW.layup, close_shot = NEW.close_shot, post_scoring = NEW.post_scoring,
+        free_throw = NEW.free_throw, passing = NEW.passing, ball_handle = NEW.ball_handle,
+        drive = NEW.drive, draw_foul = NEW.draw_foul, offensive_consistency = NEW.offensive_consistency,
+        perimeter_defense = NEW.perimeter_defense, interior_defense = NEW.interior_defense,
+        steal = NEW.steal, block = NEW.block,
+        offensive_rebound = NEW.offensive_rebound, defensive_rebound = NEW.defensive_rebound,
+        defensive_consistency = NEW.defensive_consistency,
+        speed = NEW.speed, strength = NEW.strength, stamina = NEW.stamina
+    WHERE player_id = OLD.player_id;
+    UPDATE players SET first_name = NEW.first_name, last_name = NEW.last_name
+    WHERE id = OLD.player_id;
+END;");
+            ExecuteNonQuery(connection, transaction, @"
+CREATE TRIGGER IF NOT EXISTS trg_tend_named_update
+INSTEAD OF UPDATE ON player_tendencies_named
+BEGIN
+    UPDATE player_tendencies SET
+        shot_tendency = NEW.shot_tendency, three_tendency = NEW.three_tendency,
+        two_point_tendency = NEW.two_point_tendency, drive_tendency = NEW.drive_tendency,
+        post_tendency = NEW.post_tendency, close_shot_tendency = NEW.close_shot_tendency,
+        pass_tendency = NEW.pass_tendency, draw_foul_tendency = NEW.draw_foul_tendency,
+        steal_tendency = NEW.steal_tendency, block_tendency = NEW.block_tendency,
+        foul_tendency = NEW.foul_tendency, help_defense_tendency = NEW.help_defense_tendency,
+        offensive_rebound_tendency = NEW.offensive_rebound_tendency,
+        defensive_rebound_tendency = NEW.defensive_rebound_tendency
+    WHERE player_id = OLD.player_id;
+    UPDATE players SET first_name = NEW.first_name, last_name = NEW.last_name
+    WHERE id = OLD.player_id;
+END;");
+            transaction.Commit();
+        }
+
         // 老 db 没有赛季相关表时按需补建（保留现有 teams / players 数据）。
         private static void EnsureSeasonTables(SqliteConnection connection)
         {
@@ -87,8 +164,9 @@ namespace BasketballManager.Database
             bool needSeasonTeams = !TableExists(connection, "season_teams");
             bool needSeasonGames = !TableExists(connection, "season_games");
             bool needSeasonPlayerStats = !TableExists(connection, "season_player_stats");
+            bool needGamePlayerStats = !TableExists(connection, "game_player_stats");
 
-            if (!needSeasons && !needSeasonTeams && !needSeasonGames && !needSeasonPlayerStats) return;
+            if (!needSeasons && !needSeasonTeams && !needSeasonGames && !needSeasonPlayerStats && !needGamePlayerStats) return;
 
             using var transaction = connection.BeginTransaction();
 
@@ -173,6 +251,37 @@ CREATE TABLE season_player_stats (
                 ExecuteNonQuery(connection, transaction, "CREATE INDEX IF NOT EXISTS idx_season_player_stats_team ON season_player_stats (season_id, team_id);");
             }
 
+            if (needGamePlayerStats)
+            {
+                ExecuteNonQuery(connection, transaction, @"
+CREATE TABLE game_player_stats (
+    game_id INTEGER NOT NULL,
+    player_id INTEGER NOT NULL,
+    team_id TEXT NOT NULL,
+    player_name TEXT NOT NULL DEFAULT '',
+    position TEXT NOT NULL DEFAULT '',
+    minutes INTEGER NOT NULL DEFAULT 0,
+    points INTEGER NOT NULL DEFAULT 0,
+    rebounds INTEGER NOT NULL DEFAULT 0,
+    offensive_rebounds INTEGER NOT NULL DEFAULT 0,
+    assists INTEGER NOT NULL DEFAULT 0,
+    steals INTEGER NOT NULL DEFAULT 0,
+    blocks INTEGER NOT NULL DEFAULT 0,
+    turnovers INTEGER NOT NULL DEFAULT 0,
+    fouls INTEGER NOT NULL DEFAULT 0,
+    field_goals_made INTEGER NOT NULL DEFAULT 0,
+    field_goals_attempted INTEGER NOT NULL DEFAULT 0,
+    three_pointers_made INTEGER NOT NULL DEFAULT 0,
+    three_pointers_attempted INTEGER NOT NULL DEFAULT 0,
+    free_throws_made INTEGER NOT NULL DEFAULT 0,
+    free_throws_attempted INTEGER NOT NULL DEFAULT 0,
+    plus_minus INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (game_id, player_id),
+    FOREIGN KEY (game_id) REFERENCES season_games (id) ON UPDATE CASCADE ON DELETE CASCADE
+);");
+                ExecuteNonQuery(connection, transaction, "CREATE INDEX IF NOT EXISTS idx_game_player_stats_team ON game_player_stats (game_id, team_id);");
+            }
+
             transaction.Commit();
             Debug.Log("[Database] Season tables auto-created on existing db (没有破坏现有 teams / players 数据).");
         }
@@ -230,6 +339,7 @@ CREATE TABLE season_player_stats (
                 && HasColumn(connection, "players", "last_name")
                 && HasColumn(connection, "players", "name_order")
                 && HasColumn(connection, "players", "secondary_position")
+                && HasColumn(connection, "players", "is_current")
                 && !HasColumn(connection, "players", "display_name")
                 && !HasColumn(connection, "players", "nationality")
                 && !HasColumn(connection, "players", "region_type")
@@ -244,6 +354,7 @@ CREATE TABLE season_player_stats (
 
             using var transaction = connection.BeginTransaction();
             // 先删赛季相关表（被引用方在前）。
+            ExecuteNonQuery(connection, transaction, "DROP TABLE IF EXISTS game_player_stats;");
             ExecuteNonQuery(connection, transaction, "DROP TABLE IF EXISTS season_player_stats;");
             ExecuteNonQuery(connection, transaction, "DROP TABLE IF EXISTS season_games;");
             ExecuteNonQuery(connection, transaction, "DROP TABLE IF EXISTS season_teams;");
@@ -277,6 +388,7 @@ CREATE TABLE players (
     age INTEGER NOT NULL,
     jersey_number INTEGER,
     overall INTEGER NOT NULL DEFAULT 70,
+    is_current INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (team_id) REFERENCES teams (id) ON UPDATE CASCADE ON DELETE CASCADE
 );");
 
@@ -415,6 +527,90 @@ CREATE TABLE season_player_stats (
 );");
 
             ExecuteNonQuery(connection, transaction, "CREATE INDEX idx_season_player_stats_team ON season_player_stats (season_id, team_id);");
+
+            // 每场比赛的球员数据（per-game box score）。
+            ExecuteNonQuery(connection, transaction, @"
+CREATE TABLE game_player_stats (
+    game_id INTEGER NOT NULL,
+    player_id INTEGER NOT NULL,
+    team_id TEXT NOT NULL,
+    player_name TEXT NOT NULL DEFAULT '',
+    position TEXT NOT NULL DEFAULT '',
+    minutes INTEGER NOT NULL DEFAULT 0,
+    points INTEGER NOT NULL DEFAULT 0,
+    rebounds INTEGER NOT NULL DEFAULT 0,
+    offensive_rebounds INTEGER NOT NULL DEFAULT 0,
+    assists INTEGER NOT NULL DEFAULT 0,
+    steals INTEGER NOT NULL DEFAULT 0,
+    blocks INTEGER NOT NULL DEFAULT 0,
+    turnovers INTEGER NOT NULL DEFAULT 0,
+    fouls INTEGER NOT NULL DEFAULT 0,
+    field_goals_made INTEGER NOT NULL DEFAULT 0,
+    field_goals_attempted INTEGER NOT NULL DEFAULT 0,
+    three_pointers_made INTEGER NOT NULL DEFAULT 0,
+    three_pointers_attempted INTEGER NOT NULL DEFAULT 0,
+    free_throws_made INTEGER NOT NULL DEFAULT 0,
+    free_throws_attempted INTEGER NOT NULL DEFAULT 0,
+    plus_minus INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (game_id, player_id),
+    FOREIGN KEY (game_id) REFERENCES season_games (id) ON UPDATE CASCADE ON DELETE CASCADE
+);");
+            ExecuteNonQuery(connection, transaction, "CREATE INDEX idx_game_player_stats_team ON game_player_stats (game_id, team_id);");
+
+            ExecuteNonQuery(connection, transaction, @"
+CREATE VIEW IF NOT EXISTS player_attributes_named AS
+SELECT p.id AS player_id, p.first_name, p.last_name, p.team_id,
+       a.two_point, a.three_point, a.layup, a.close_shot, a.post_scoring, a.free_throw,
+       a.passing, a.ball_handle, a.drive, a.draw_foul, a.offensive_consistency,
+       a.perimeter_defense, a.interior_defense, a.steal, a.block,
+       a.offensive_rebound, a.defensive_rebound, a.defensive_consistency,
+       a.speed, a.strength, a.stamina
+FROM player_attributes a
+JOIN players p ON p.id = a.player_id;");
+            ExecuteNonQuery(connection, transaction, @"
+CREATE VIEW IF NOT EXISTS player_tendencies_named AS
+SELECT p.id AS player_id, p.first_name, p.last_name, p.team_id,
+       t.shot_tendency, t.three_tendency, t.two_point_tendency, t.drive_tendency,
+       t.post_tendency, t.close_shot_tendency, t.pass_tendency, t.draw_foul_tendency,
+       t.steal_tendency, t.block_tendency, t.foul_tendency, t.help_defense_tendency,
+       t.offensive_rebound_tendency, t.defensive_rebound_tendency
+FROM player_tendencies t
+JOIN players p ON p.id = t.player_id;");
+            ExecuteNonQuery(connection, transaction, @"
+CREATE TRIGGER IF NOT EXISTS trg_attr_named_update
+INSTEAD OF UPDATE ON player_attributes_named
+BEGIN
+    UPDATE player_attributes SET
+        two_point = NEW.two_point, three_point = NEW.three_point,
+        layup = NEW.layup, close_shot = NEW.close_shot, post_scoring = NEW.post_scoring,
+        free_throw = NEW.free_throw, passing = NEW.passing, ball_handle = NEW.ball_handle,
+        drive = NEW.drive, draw_foul = NEW.draw_foul, offensive_consistency = NEW.offensive_consistency,
+        perimeter_defense = NEW.perimeter_defense, interior_defense = NEW.interior_defense,
+        steal = NEW.steal, block = NEW.block,
+        offensive_rebound = NEW.offensive_rebound, defensive_rebound = NEW.defensive_rebound,
+        defensive_consistency = NEW.defensive_consistency,
+        speed = NEW.speed, strength = NEW.strength, stamina = NEW.stamina
+    WHERE player_id = OLD.player_id;
+    UPDATE players SET first_name = NEW.first_name, last_name = NEW.last_name
+    WHERE id = OLD.player_id;
+END;");
+            ExecuteNonQuery(connection, transaction, @"
+CREATE TRIGGER IF NOT EXISTS trg_tend_named_update
+INSTEAD OF UPDATE ON player_tendencies_named
+BEGIN
+    UPDATE player_tendencies SET
+        shot_tendency = NEW.shot_tendency, three_tendency = NEW.three_tendency,
+        two_point_tendency = NEW.two_point_tendency, drive_tendency = NEW.drive_tendency,
+        post_tendency = NEW.post_tendency, close_shot_tendency = NEW.close_shot_tendency,
+        pass_tendency = NEW.pass_tendency, draw_foul_tendency = NEW.draw_foul_tendency,
+        steal_tendency = NEW.steal_tendency, block_tendency = NEW.block_tendency,
+        foul_tendency = NEW.foul_tendency, help_defense_tendency = NEW.help_defense_tendency,
+        offensive_rebound_tendency = NEW.offensive_rebound_tendency,
+        defensive_rebound_tendency = NEW.defensive_rebound_tendency
+    WHERE player_id = OLD.player_id;
+    UPDATE players SET first_name = NEW.first_name, last_name = NEW.last_name
+    WHERE id = OLD.player_id;
+END;");
 
             transaction.Commit();
             SetForeignKeys(connection, true);

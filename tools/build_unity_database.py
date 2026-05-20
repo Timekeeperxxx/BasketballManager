@@ -40,6 +40,7 @@ def create_schema(conn: sqlite3.Connection) -> None:
             age INTEGER NOT NULL,
             jersey_number INTEGER,
             overall INTEGER NOT NULL DEFAULT 70,
+            is_current INTEGER NOT NULL DEFAULT 0,
 
             FOREIGN KEY (team_id) REFERENCES teams (id) ON UPDATE CASCADE ON DELETE CASCADE
         );
@@ -115,6 +116,68 @@ def create_schema(conn: sqlite3.Connection) -> None:
         PRAGMA foreign_keys = ON;
         """
     )
+    # 便于直接在 DB 浏览器里认人——JOIN 出姓名，不冗余存储。
+    conn.executescript(
+        """
+        DROP VIEW IF EXISTS player_attributes_named;
+        CREATE VIEW player_attributes_named AS
+        SELECT p.id AS player_id, p.first_name, p.last_name, p.team_id,
+               a.two_point, a.three_point, a.layup, a.close_shot, a.post_scoring, a.free_throw,
+               a.passing, a.ball_handle, a.drive, a.draw_foul, a.offensive_consistency,
+               a.perimeter_defense, a.interior_defense, a.steal, a.block,
+               a.offensive_rebound, a.defensive_rebound, a.defensive_consistency,
+               a.speed, a.strength, a.stamina
+        FROM player_attributes a
+        JOIN players p ON p.id = a.player_id;
+
+        DROP VIEW IF EXISTS player_tendencies_named;
+        CREATE VIEW player_tendencies_named AS
+        SELECT p.id AS player_id, p.first_name, p.last_name, p.team_id,
+               t.shot_tendency, t.three_tendency, t.two_point_tendency, t.drive_tendency,
+               t.post_tendency, t.close_shot_tendency, t.pass_tendency, t.draw_foul_tendency,
+               t.steal_tendency, t.block_tendency, t.foul_tendency, t.help_defense_tendency,
+               t.offensive_rebound_tendency, t.defensive_rebound_tendency
+        FROM player_tendencies t
+        JOIN players p ON p.id = t.player_id;
+
+        DROP TRIGGER IF EXISTS trg_attr_named_update;
+        CREATE TRIGGER trg_attr_named_update
+        INSTEAD OF UPDATE ON player_attributes_named
+        BEGIN
+            UPDATE player_attributes SET
+                two_point = NEW.two_point, three_point = NEW.three_point,
+                layup = NEW.layup, close_shot = NEW.close_shot, post_scoring = NEW.post_scoring,
+                free_throw = NEW.free_throw, passing = NEW.passing, ball_handle = NEW.ball_handle,
+                drive = NEW.drive, draw_foul = NEW.draw_foul, offensive_consistency = NEW.offensive_consistency,
+                perimeter_defense = NEW.perimeter_defense, interior_defense = NEW.interior_defense,
+                steal = NEW.steal, block = NEW.block,
+                offensive_rebound = NEW.offensive_rebound, defensive_rebound = NEW.defensive_rebound,
+                defensive_consistency = NEW.defensive_consistency,
+                speed = NEW.speed, strength = NEW.strength, stamina = NEW.stamina
+            WHERE player_id = OLD.player_id;
+            UPDATE players SET first_name = NEW.first_name, last_name = NEW.last_name
+            WHERE id = OLD.player_id;
+        END;
+
+        DROP TRIGGER IF EXISTS trg_tend_named_update;
+        CREATE TRIGGER trg_tend_named_update
+        INSTEAD OF UPDATE ON player_tendencies_named
+        BEGIN
+            UPDATE player_tendencies SET
+                shot_tendency = NEW.shot_tendency, three_tendency = NEW.three_tendency,
+                two_point_tendency = NEW.two_point_tendency, drive_tendency = NEW.drive_tendency,
+                post_tendency = NEW.post_tendency, close_shot_tendency = NEW.close_shot_tendency,
+                pass_tendency = NEW.pass_tendency, draw_foul_tendency = NEW.draw_foul_tendency,
+                steal_tendency = NEW.steal_tendency, block_tendency = NEW.block_tendency,
+                foul_tendency = NEW.foul_tendency, help_defense_tendency = NEW.help_defense_tendency,
+                offensive_rebound_tendency = NEW.offensive_rebound_tendency,
+                defensive_rebound_tendency = NEW.defensive_rebound_tendency
+            WHERE player_id = OLD.player_id;
+            UPDATE players SET first_name = NEW.first_name, last_name = NEW.last_name
+            WHERE id = OLD.player_id;
+        END;
+        """
+    )
 
 
 def insert_team(conn: sqlite3.Connection, team: dict) -> None:
@@ -127,14 +190,14 @@ def insert_team(conn: sqlite3.Connection, team: dict) -> None:
     )
 
 
-def insert_player_base(conn: sqlite3.Connection, player_id: int, player: dict) -> None:
+def insert_player_base(conn: sqlite3.Connection, player_id: int, player: dict, team_is_current: int = 0) -> None:
     secondary = player.get("secondary_position", "")
     conn.execute(
         """
         INSERT INTO players (
             id, team_id, first_name, last_name, name_order,
-            position, secondary_position, height_cm, weight_kg, age, jersey_number, overall
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            position, secondary_position, height_cm, weight_kg, age, jersey_number, overall, is_current
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             player_id,
@@ -149,6 +212,7 @@ def insert_player_base(conn: sqlite3.Connection, player_id: int, player: dict) -
             player["age"],
             player["jersey_number"],
             player["overall"],
+            int(player.get("is_current", team_is_current)),
         ),
     )
 
@@ -300,10 +364,10 @@ def make_player(
 
 def get_teams() -> list[dict]:
     return [
-        {"id": "warriors_2022", "name": "Golden State Warriors", "city": "Golden State", "era": 2022, "is_current": 0},
-        {"id": "nuggets_2023", "name": "Denver Nuggets", "city": "Denver", "era": 2023, "is_current": 0},
-        {"id": "celtics_2024", "name": "Boston Celtics", "city": "Boston", "era": 2024, "is_current": 0},
-        {"id": "thunder_2025", "name": "Oklahoma City Thunder", "city": "Oklahoma City", "era": 2025, "is_current": 0},
+        {"id": "warriors_2022", "name": "2022 Golden State Warriors", "city": "Golden State", "era": 2022, "is_current": 0},
+        {"id": "nuggets_2023", "name": "2023 Denver Nuggets", "city": "Denver", "era": 2023, "is_current": 0},
+        {"id": "celtics_2024", "name": "2024 Boston Celtics", "city": "Boston", "era": 2024, "is_current": 0},
+        {"id": "thunder_2025", "name": "2025 Oklahoma City Thunder", "city": "Oklahoma City", "era": 2025, "is_current": 0},
         {"id": "warriors_2017", "name": "2017 Golden State Warriors", "city": "Golden State", "era": 2017, "is_current": 0},
         {"id": "lakers_2020", "name": "2020 Los Angeles Lakers", "city": "Los Angeles", "era": 2020, "is_current": 0},
         {"id": "bucks_2021", "name": "2021 Milwaukee Bucks", "city": "Milwaukee", "era": 2021, "is_current": 0},
@@ -728,12 +792,15 @@ def seed_data(conn: sqlite3.Connection) -> tuple[int, int]:
     teams = get_teams()
     players = get_players()
 
+    team_is_current = {t["id"]: int(t.get("is_current", 0)) for t in teams}
+
     for team in teams:
         insert_team(conn, team)
 
     next_player_id = 1000
     for player in players:
-        insert_player_base(conn, next_player_id, player)
+        tc = team_is_current.get(player["team_id"], 0)
+        insert_player_base(conn, next_player_id, player, team_is_current=tc)
         insert_player_attributes(conn, next_player_id, player["attributes"])
         insert_player_tendencies(conn, next_player_id, player["tendencies"])
         next_player_id += 1
@@ -757,7 +824,8 @@ def seed_data(conn: sqlite3.Connection) -> tuple[int, int]:
                     jersey_number=0,
                     overall=70
                 )
-                insert_player_base(conn, player_id, hp)
+                tc = team_is_current.get(hp["team_id"], 0)
+                insert_player_base(conn, player_id, hp, team_is_current=tc)
                 insert_player_attributes(conn, player_id, hp["attributes"])
                 insert_player_tendencies(conn, player_id, hp["tendencies"])
                 hist_players_count += 1

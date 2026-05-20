@@ -28,5 +28,7 @@ namespace BasketballManager.Core.Models
         public Dictionary<BasketballManager.Core.Enums.Position, string> AwayStarters { get; set; } = new Dictionary<BasketballManager.Core.Enums.Position, string>();
         
         public string WinnerTeamId { get; set; } = string.Empty;
+
+        public List<PlayByPlayEvent> PlayByPlay { get; set; } = new List<PlayByPlayEvent>();
     }
 }

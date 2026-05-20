@@ -88,7 +88,7 @@
                         </ui:VisualElement>
                         <ui:VisualElement class="roster-fields__row">
                             <ui:IntegerField name="field-age" label="年龄" class="roster-field" />
-                            <ui:VisualElement class="roster-field" />
+                            <ui:DropdownField name="field-status" label="球员状态" class="roster-field" />
                         </ui:VisualElement>
                     </ui:VisualElement>
 

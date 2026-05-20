@@ -18,6 +18,7 @@ namespace BasketballManager.Core.Models
         public int Age;
         public int JerseyNumber;
         public int Overall;
+        public bool IsCurrent;
         public PlayerAttributes Attributes = new PlayerAttributes();
         public PlayerTendencies Tendencies = new PlayerTendencies();
 

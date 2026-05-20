@@ -52,8 +52,12 @@ namespace BasketballManager.UI.Screens
 
         // 基础信息字段
         private TextField _fFirstName, _fLastName;
-        private DropdownField _fNameOrder, _fPosition, _fSecPos;
+        private DropdownField _fNameOrder, _fPosition, _fSecPos, _fStatus;
         private IntegerField _fJersey, _fHeight, _fWeight, _fAge;
+
+        // 状态下拉项
+        private const string STATUS_CURRENT = "现役球员";
+        private const string STATUS_HISTORICAL = "历史球员";
 
         // 能力 / 倾向字段——按 setter 索引
         private readonly List<IntegerField> _attrFields = new List<IntegerField>();
@@ -147,6 +151,7 @@ namespace BasketballManager.UI.Screens
             _fHeight    = Root.Q<IntegerField>("field-height");
             _fWeight    = Root.Q<IntegerField>("field-weight");
             _fAge       = Root.Q<IntegerField>("field-age");
+            _fStatus    = Root.Q<DropdownField>("field-status");
 
             // 下拉选项
             _fNameOrder.choices = Enum.GetNames(typeof(NameOrder)).ToList();
@@ -154,6 +159,7 @@ namespace BasketballManager.UI.Screens
             var secPosOptions = new List<string> { SEC_POS_EMPTY };
             secPosOptions.AddRange(Enum.GetNames(typeof(Position)));
             _fSecPos.choices = secPosOptions;
+            _fStatus.choices = new List<string> { STATUS_HISTORICAL, STATUS_CURRENT };
 
             // 注册基础信息回调
             _fFirstName.RegisterValueChangedCallback(evt => Mutate(p => p.FirstName = evt.newValue?.Trim() ?? string.Empty));
@@ -201,6 +207,7 @@ namespace BasketballManager.UI.Screens
             _fHeight.RegisterValueChangedCallback(evt => Mutate(p => p.HeightCm     = evt.newValue));
             _fWeight.RegisterValueChangedCallback(evt => Mutate(p => p.WeightKg     = evt.newValue));
             _fAge.RegisterValueChangedCallback   (evt => Mutate(p => p.Age          = evt.newValue));
+            _fStatus.RegisterValueChangedCallback(evt => Mutate(p => p.IsCurrent    = evt.newValue == STATUS_CURRENT));
 
             // 能力（21）&倾向（14）字段：注入到两列
             BuildAttributeFields();
@@ -461,6 +468,7 @@ namespace BasketballManager.UI.Screens
                 _fHeight.SetValueWithoutNotify(p.HeightCm);
                 _fWeight.SetValueWithoutNotify(p.WeightKg);
                 _fAge.SetValueWithoutNotify(p.Age);
+                _fStatus.SetValueWithoutNotify(p.IsCurrent ? STATUS_CURRENT : STATUS_HISTORICAL);
 
                 foreach (var f in _attrFields)
                 {
@@ -494,6 +502,7 @@ namespace BasketballManager.UI.Screens
                 _fHeight.SetValueWithoutNotify(0);
                 _fWeight.SetValueWithoutNotify(0);
                 _fAge.SetValueWithoutNotify(0);
+                _fStatus.SetValueWithoutNotify(STATUS_HISTORICAL);
                 foreach (var f in _attrFields) f.SetValueWithoutNotify(0);
                 foreach (var f in _tendFields) f.SetValueWithoutNotify(0);
             }

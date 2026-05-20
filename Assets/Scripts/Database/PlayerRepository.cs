@@ -72,7 +72,8 @@ SET
     weight_kg = @weightKg,
     age = @age,
     jersey_number = @jerseyNumber,
-    overall = @overall
+    overall = @overall,
+    is_current = @isCurrent
 WHERE id = @id;";
                 AddPlayerParameters(playerCommand, player);
                 playerCommand.ExecuteNonQuery();
@@ -132,6 +133,7 @@ SELECT
     p.age,
     COALESCE(p.jersey_number, 0) AS jersey_number,
     p.overall,
+    COALESCE(p.is_current, 0) AS is_current,
     COALESCE(a.two_point, 60) AS two_point,
     COALESCE(a.three_point, 60) AS three_point,
     COALESCE(a.layup, 60) AS layup,
@@ -190,6 +192,7 @@ LEFT JOIN player_tendencies t ON t.player_id = p.id
                 Age = ReadInt(reader["age"]),
                 JerseyNumber = ReadInt(reader["jersey_number"]),
                 Overall = ReadInt(reader["overall"]),
+                IsCurrent = ReadInt(reader["is_current"]) != 0,
                 Attributes = new PlayerAttributes
                 {
                     TwoPoint = ReadInt(reader["two_point"]),
@@ -251,6 +254,7 @@ LEFT JOIN player_tendencies t ON t.player_id = p.id
             command.Parameters.AddWithValue("@age", player.Age);
             command.Parameters.AddWithValue("@jerseyNumber", player.JerseyNumber);
             command.Parameters.AddWithValue("@overall", player.Overall);
+            command.Parameters.AddWithValue("@isCurrent", player.IsCurrent ? 1 : 0);
         }
 
         private static void AddAttributeParameters(SqliteCommand command, Player player)

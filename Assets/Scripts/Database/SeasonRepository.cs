@@ -320,7 +320,121 @@ ORDER BY sps.points DESC, sps.player_id ASC;";
             return stats;
         }
 
+        /// <summary>
+        /// 保存单场比赛的球员 box score（写入 game_player_stats）。
+        /// </summary>
+        public void SaveGamePlayerStats(int gameId, MatchResult result)
+        {
+            using var connection = _databaseManager.OpenConnection();
+            using var transaction = connection.BeginTransaction();
+
+            SaveTeamGameStats(connection, transaction, gameId, result.HomeTeamId, result.HomePlayerStats);
+            SaveTeamGameStats(connection, transaction, gameId, result.AwayTeamId, result.AwayPlayerStats);
+
+            transaction.Commit();
+        }
+
+        /// <summary>
+        /// 查询指定比赛中某支球队的球员 box score。
+        /// </summary>
+        public List<PlayerBoxScore> GetGamePlayerStats(int gameId, string teamId)
+        {
+            var stats = new List<PlayerBoxScore>();
+            using var connection = _databaseManager.OpenConnection();
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = @"
+SELECT player_id, team_id, player_name, position,
+       minutes, points, rebounds, offensive_rebounds,
+       assists, steals, blocks, turnovers, fouls,
+       field_goals_made, field_goals_attempted,
+       three_pointers_made, three_pointers_attempted,
+       free_throws_made, free_throws_attempted,
+       plus_minus
+FROM game_player_stats
+WHERE game_id = @game_id AND team_id = @team_id
+ORDER BY points DESC, player_id ASC;";
+            cmd.Parameters.AddWithValue("@game_id", gameId);
+            cmd.Parameters.AddWithValue("@team_id", teamId);
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                var orb = ReadInt(reader["offensive_rebounds"]);
+                var reb = ReadInt(reader["rebounds"]);
+                stats.Add(new PlayerBoxScore
+                {
+                    PlayerId              = ReadInt(reader["player_id"]),
+                    TeamId                = reader["team_id"].ToString() ?? string.Empty,
+                    PlayerName            = reader["player_name"].ToString() ?? string.Empty,
+                    Position              = reader["position"].ToString() ?? string.Empty,
+                    Minutes               = ReadInt(reader["minutes"]),
+                    Points                = ReadInt(reader["points"]),
+                    OffensiveRebounds     = orb,
+                    DefensiveRebounds     = reb - orb,
+                    Assists               = ReadInt(reader["assists"]),
+                    Steals                = ReadInt(reader["steals"]),
+                    Blocks                = ReadInt(reader["blocks"]),
+                    Turnovers             = ReadInt(reader["turnovers"]),
+                    Fouls                 = ReadInt(reader["fouls"]),
+                    FieldGoalsMade        = ReadInt(reader["field_goals_made"]),
+                    FieldGoalsAttempted   = ReadInt(reader["field_goals_attempted"]),
+                    ThreePointersMade     = ReadInt(reader["three_pointers_made"]),
+                    ThreePointersAttempted = ReadInt(reader["three_pointers_attempted"]),
+                    FreeThrowsMade        = ReadInt(reader["free_throws_made"]),
+                    FreeThrowsAttempted   = ReadInt(reader["free_throws_attempted"]),
+                    PlusMinus             = ReadInt(reader["plus_minus"]),
+                });
+            }
+            return stats;
+        }
+
         // -------- helpers --------
+
+        private static void SaveTeamGameStats(SqliteConnection connection, SqliteTransaction transaction, int gameId, string teamId, List<PlayerBoxScore> players)
+        {
+            foreach (var p in players)
+            {
+                if (p.Minutes <= 0) continue;
+                using var cmd = connection.CreateCommand();
+                cmd.Transaction = transaction;
+                cmd.CommandText = @"
+INSERT OR REPLACE INTO game_player_stats (
+    game_id, player_id, team_id, player_name, position,
+    minutes, points, rebounds, offensive_rebounds,
+    assists, steals, blocks, turnovers, fouls,
+    field_goals_made, field_goals_attempted,
+    three_pointers_made, three_pointers_attempted,
+    free_throws_made, free_throws_attempted,
+    plus_minus
+) VALUES (
+    @game_id, @player_id, @team_id, @player_name, @position,
+    @minutes, @points, @rebounds, @oreb,
+    @assists, @steals, @blocks, @turnovers, @fouls,
+    @fgm, @fga, @tpm, @tpa, @ftm, @fta, @pm
+);";
+                cmd.Parameters.AddWithValue("@game_id", gameId);
+                cmd.Parameters.AddWithValue("@player_id", p.PlayerId);
+                cmd.Parameters.AddWithValue("@team_id", teamId);
+                cmd.Parameters.AddWithValue("@player_name", p.PlayerName);
+                cmd.Parameters.AddWithValue("@position", p.Position);
+                cmd.Parameters.AddWithValue("@minutes", p.Minutes);
+                cmd.Parameters.AddWithValue("@points", p.Points);
+                cmd.Parameters.AddWithValue("@rebounds", p.Rebounds);
+                cmd.Parameters.AddWithValue("@oreb", p.OffensiveRebounds);
+                cmd.Parameters.AddWithValue("@assists", p.Assists);
+                cmd.Parameters.AddWithValue("@steals", p.Steals);
+                cmd.Parameters.AddWithValue("@blocks", p.Blocks);
+                cmd.Parameters.AddWithValue("@turnovers", p.Turnovers);
+                cmd.Parameters.AddWithValue("@fouls", p.Fouls);
+                cmd.Parameters.AddWithValue("@fgm", p.FieldGoalsMade);
+                cmd.Parameters.AddWithValue("@fga", p.FieldGoalsAttempted);
+                cmd.Parameters.AddWithValue("@tpm", p.ThreePointersMade);
+                cmd.Parameters.AddWithValue("@tpa", p.ThreePointersAttempted);
+                cmd.Parameters.AddWithValue("@ftm", p.FreeThrowsMade);
+                cmd.Parameters.AddWithValue("@fta", p.FreeThrowsAttempted);
+                cmd.Parameters.AddWithValue("@pm", p.PlusMinus);
+                cmd.ExecuteNonQuery();
+            }
+        }
 
         private static void UpsertTeamPlayerStats(SqliteConnection connection, SqliteTransaction transaction, int seasonId, string teamId, List<PlayerBoxScore> players)
         {

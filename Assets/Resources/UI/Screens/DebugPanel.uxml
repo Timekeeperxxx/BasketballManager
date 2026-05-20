@@ -14,39 +14,44 @@
 
         <!-- 比赛设置 -->
         <ui:VisualElement class="card debug-settings">
-            <ui:Label text="比赛设置" class="card-title" />
-
-            <ui:VisualElement class="teams-row">
-                <ui:VisualElement class="team-card team-card--home">
-                    <ui:Label text="主队" class="team-card__role" />
-                    <ui:VisualElement class="team-card__picker">
-                        <ui:Button name="btn-home-prev" text="◀" class="team-card__arrow" />
-                        <ui:VisualElement class="team-card__info">
-                            <ui:Label name="home-name" text="—" class="team-card__name" />
-                            <ui:Label name="home-sub" text="" class="team-card__sub" />
-                        </ui:VisualElement>
-                        <ui:Button name="btn-home-next" text="▶" class="team-card__arrow" />
-                    </ui:VisualElement>
-                </ui:VisualElement>
-
-                <ui:Button name="btn-swap" text="⇄" class="btn swap-btn" />
-
-                <ui:VisualElement class="team-card team-card--away">
-                    <ui:Label text="客队" class="team-card__role" />
-                    <ui:VisualElement class="team-card__picker">
-                        <ui:Button name="btn-away-prev" text="◀" class="team-card__arrow" />
-                        <ui:VisualElement class="team-card__info">
-                            <ui:Label name="away-name" text="—" class="team-card__name" />
-                            <ui:Label name="away-sub" text="" class="team-card__sub" />
-                        </ui:VisualElement>
-                        <ui:Button name="btn-away-next" text="▶" class="team-card__arrow" />
-                    </ui:VisualElement>
-                </ui:VisualElement>
+            <ui:VisualElement name="settings-header" class="settings-header">
+                <ui:Label text="比赛设置" class="card-title" />
+                <ui:Button name="btn-settings-toggle" text="▲ 收起" class="settings-toggle-btn" />
             </ui:VisualElement>
 
-            <ui:VisualElement class="actions-row">
-                <ui:Button name="btn-sim" text="▶ 模拟比赛" class="btn btn--primary debug-action" />
-                <ui:Button name="btn-batch" text="▶ 批量测试 100 场" class="btn debug-action debug-action--batch" />
+            <ui:VisualElement name="settings-body">
+                <ui:VisualElement class="teams-row">
+                    <ui:VisualElement class="team-card team-card--home">
+                        <ui:Label text="主队" class="team-card__role" />
+                        <ui:VisualElement class="team-card__picker">
+                            <ui:Button name="btn-home-prev" text="◀" class="team-card__arrow" />
+                            <ui:VisualElement class="team-card__info">
+                                <ui:Label name="home-name" text="—" class="team-card__name" />
+                                <ui:Label name="home-sub" text="" class="team-card__sub" />
+                            </ui:VisualElement>
+                            <ui:Button name="btn-home-next" text="▶" class="team-card__arrow" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+
+                    <ui:Button name="btn-swap" text="⇄" class="btn swap-btn" />
+
+                    <ui:VisualElement class="team-card team-card--away">
+                        <ui:Label text="客队" class="team-card__role" />
+                        <ui:VisualElement class="team-card__picker">
+                            <ui:Button name="btn-away-prev" text="◀" class="team-card__arrow" />
+                            <ui:VisualElement class="team-card__info">
+                                <ui:Label name="away-name" text="—" class="team-card__name" />
+                                <ui:Label name="away-sub" text="" class="team-card__sub" />
+                            </ui:VisualElement>
+                            <ui:Button name="btn-away-next" text="▶" class="team-card__arrow" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <ui:VisualElement class="actions-row">
+                    <ui:Button name="btn-sim" text="▶ 模拟比赛" class="btn btn--primary debug-action" />
+                    <ui:Button name="btn-batch" text="▶ 批量测试 100 场" class="btn debug-action debug-action--batch" />
+                </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>
 

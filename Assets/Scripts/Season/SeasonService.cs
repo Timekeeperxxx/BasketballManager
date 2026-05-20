@@ -43,12 +43,12 @@ namespace BasketballManager.Seasons
         /// <summary>
         /// 模拟当前赛季下一场未打的比赛，返回结果（赛程已打完则返回 null）。
         /// </summary>
-        public MatchResult SimulateNextGame(int seasonId)
+        public MatchResult SimulateNextGame(int seasonId, bool enablePlayByPlay = false)
         {
             var nextGame = _seasonRepository.GetNextScheduledGame(seasonId);
             if (nextGame == null) return null;
 
-            return SimulateOne(seasonId, nextGame);
+            return SimulateOne(seasonId, nextGame, enablePlayByPlay);
         }
 
         /// <summary>
@@ -70,7 +70,7 @@ namespace BasketballManager.Seasons
 
         // -------- 内部 --------
 
-        private MatchResult SimulateOne(int seasonId, SeasonGame game)
+        private MatchResult SimulateOne(int seasonId, SeasonGame game, bool enablePlayByPlay = false)
         {
             var teams = _teamRepository.GetAllTeams();
             Team home = null, away = null;
@@ -86,10 +86,11 @@ namespace BasketballManager.Seasons
             var allProfiles = _profileRepository.GetAllProfiles();
 
             var simulator = new MatchSimulator();
-            var config = new MatchConfig();
+            var config = new MatchConfig { EnablePlayByPlay = enablePlayByPlay };
             var result = simulator.Simulate(home, homePlayers, allProfiles, away, awayPlayers, allProfiles, config);
 
             _seasonRepository.SaveGameResult(game.Id, result);
+            _seasonRepository.SaveGamePlayerStats(game.Id, result);
             _seasonRepository.UpdateStandings(seasonId, result);
             _seasonRepository.UpdatePlayerStats(seasonId, result);
 

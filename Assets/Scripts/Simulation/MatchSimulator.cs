@@ -20,6 +20,17 @@ namespace BasketballManager.Simulation
         private SimulationRandom _random;
         private readonly RotationScheduler _scheduler = new RotationScheduler();
 
+        // Play-by-play state (only populated when EnablePlayByPlay is true)
+        private List<PlayByPlayEvent> _pbp;
+        private int _curQuarter;
+        private int _clockSec;
+        private MatchTeamSnapshot _homeSnap;
+        private MatchTeamSnapshot _awaySnap;
+        // Scoring run & milestone tracking
+        private int _homeRunScore;
+        private int _awayRunScore;
+        private HashSet<string> _milestonesFired;
+
         public MatchResult Simulate(
             Team homeTeam,
             IReadOnlyList<Player> homePlayers,
@@ -30,9 +41,15 @@ namespace BasketballManager.Simulation
             MatchConfig config)
         {
             _random = config.UseFixedSeed ? new SimulationRandom(config.Seed) : new SimulationRandom();
+            _pbp = config.EnablePlayByPlay ? new List<PlayByPlayEvent>() : null;
+            _homeRunScore = 0;
+            _awayRunScore = 0;
+            _milestonesFired = config.EnablePlayByPlay ? new HashSet<string>() : null;
 
             var homeSnapshot = CreateSnapshot(homeTeam, homePlayers, homeProfiles);
             var awaySnapshot = CreateSnapshot(awayTeam, awayPlayers, awayProfiles);
+            _homeSnap = homeSnapshot;
+            _awaySnap = awaySnapshot;
 
             var result = new MatchResult
             {
@@ -53,8 +70,13 @@ namespace BasketballManager.Simulation
 
             for (int q = 0; q < config.QuarterCount; q++)
             {
+                _curQuarter = q + 1;
+                _clockSec = 720;
+
                 int quarterStartHome = homeSnapshot.TeamStats.Points;
                 int quarterStartAway = awaySnapshot.TeamStats.Points;
+
+                LogQuarterStart(q, config.QuarterCount);
 
                 for (int s = 0; s < stintsPerQuarter; s++)
                 {
@@ -64,9 +86,15 @@ namespace BasketballManager.Simulation
 
                     if (stintIdx > 0)
                     {
+                        var prevHomeLineup = new System.Collections.Generic.List<Player>(homeSnapshot.CurrentLineup);
+                        var prevAwayLineup = new System.Collections.Generic.List<Player>(awaySnapshot.CurrentLineup);
+
                         int diff = homeSnapshot.TeamStats.Points - awaySnapshot.TeamStats.Points;
                         _scheduler.AdjustLineup(homeStint, homeSnapshot, diff, homePlayers, homeProfiles, _random);
                         _scheduler.AdjustLineup(awayStint, awaySnapshot, -diff, awayPlayers, awayProfiles, _random);
+
+                        LogSubstitutions(prevHomeLineup, homeStint.Lineup, homeSnapshot.Team.Name);
+                        LogSubstitutions(prevAwayLineup, awayStint.Lineup, awaySnapshot.Team.Name);
                     }
 
                     homeSnapshot.CurrentLineup = homeStint.Lineup;
@@ -79,17 +107,31 @@ namespace BasketballManager.Simulation
                         awaySnapshot.PlayerStatsById[p.Id].Minutes += stintMinutes;
 
                     int stintPossessions = Mathf.Max(1, Mathf.RoundToInt(_random.Range(avgPossPerStint * 0.85f, avgPossPerStint * 1.15f)));
-                    for (int i = 0; i < stintPossessions; i++)
+                    for (int i = 0; i < stintPossessions && _clockSec > 0; i++)
                     {
                         SimulatePossession(homeSnapshot, awaySnapshot, q);
-                        SimulatePossession(awaySnapshot, homeSnapshot, q);
+                        if (_clockSec > 0)
+                            SimulatePossession(awaySnapshot, homeSnapshot, q);
                     }
                 }
 
-                result.HomeQuarterScores.Add(homeSnapshot.TeamStats.Points - quarterStartHome);
-                result.AwayQuarterScores.Add(awaySnapshot.TeamStats.Points - quarterStartAway);
+                // Mop-up：用末节 lineup 继续推进，直到时钟归零
+                while (_clockSec > 0)
+                {
+                    SimulatePossession(homeSnapshot, awaySnapshot, q);
+                    if (_clockSec > 0)
+                        SimulatePossession(awaySnapshot, homeSnapshot, q);
+                }
+
+                int qH = homeSnapshot.TeamStats.Points - quarterStartHome;
+                int qA = awaySnapshot.TeamStats.Points - quarterStartAway;
+                result.HomeQuarterScores.Add(qH);
+                result.AwayQuarterScores.Add(qA);
                 result.HomeScore = homeSnapshot.TeamStats.Points;
                 result.AwayScore = awaySnapshot.TeamStats.Points;
+
+                _clockSec = 0;
+                LogQuarterEnd(q, config.QuarterCount, qH, qA);
             }
 
             // 加时赛：4 节结束若平分，每节 5 分钟 OT，直到分出胜负。
@@ -99,6 +141,14 @@ namespace BasketballManager.Simulation
             while (homeSnapshot.TeamStats.Points == awaySnapshot.TeamStats.Points && overtimes < maxOvertimes)
             {
                 overtimes++;
+                _curQuarter = config.QuarterCount + overtimes;
+                _clockSec = 300;
+                string otLabel = overtimes == 1 ? "双方激战平局，" : $"第 {overtimes} 次加时，";
+                LogEvent(-1, Pick(
+                    $"平局！进入第 {overtimes} 次加时赛，双方势均力敌！",
+                    $"加时赛！{otLabel}5 分钟决出胜负！",
+                    $"平局收场！进入加时！谁能承受压力笑到最后？"));
+
                 int otStartHome = homeSnapshot.TeamStats.Points;
                 int otStartAway = awaySnapshot.TeamStats.Points;
 
@@ -108,6 +158,10 @@ namespace BasketballManager.Simulation
                 result.AwayQuarterScores.Add(awaySnapshot.TeamStats.Points - otStartAway);
                 result.HomeScore = homeSnapshot.TeamStats.Points;
                 result.AwayScore = awaySnapshot.TeamStats.Points;
+
+                _clockSec = 0;
+                if (homeSnapshot.TeamStats.Points != awaySnapshot.TeamStats.Points)
+                    LogEvent(-1,$"加时赛 {overtimes} 结束！{_homeSnap.Team.Name} {homeSnapshot.TeamStats.Points} - {awaySnapshot.TeamStats.Points} {_awaySnap.Team.Name}");
             }
 
             result.HomeTeamStats = homeSnapshot.TeamStats;
@@ -123,6 +177,11 @@ namespace BasketballManager.Simulation
 
             // 加时跑完仍平（极小概率撞 maxOvertimes 上限），按主队胜处理避免空 WinnerTeamId。
             result.WinnerTeamId = result.HomeScore >= result.AwayScore ? result.HomeTeamId : result.AwayTeamId;
+
+            _clockSec = 0;
+            LogGameEnd();
+
+            result.PlayByPlay = _pbp ?? new List<PlayByPlayEvent>();
 
             ValidateResult(result);
 
@@ -232,10 +291,18 @@ namespace BasketballManager.Simulation
             int possessions = Mathf.Max(1, Mathf.RoundToInt(_random.Range(otAvgPoss * 0.85f, otAvgPoss * 1.15f)));
             // quarterIndex 传 config.QuarterCount - 1 让加时套用第 4 节末段的进攻强度调整逻辑。
             int qIdx = Mathf.Max(0, config.QuarterCount - 1);
-            for (int i = 0; i < possessions; i++)
+            for (int i = 0; i < possessions && _clockSec > 0; i++)
             {
                 SimulatePossession(home, away, qIdx);
-                SimulatePossession(away, home, qIdx);
+                if (_clockSec > 0)
+                    SimulatePossession(away, home, qIdx);
+            }
+            // Mop-up：确保加时赛时钟也跑满 300 秒
+            while (_clockSec > 0)
+            {
+                SimulatePossession(home, away, qIdx);
+                if (_clockSec > 0)
+                    SimulatePossession(away, home, qIdx);
             }
         }
 
@@ -427,6 +494,9 @@ namespace BasketballManager.Simulation
 
         private void SimulatePossession(MatchTeamSnapshot offense, MatchTeamSnapshot defense, int quarterIndex)
         {
+            int elapsed = Mathf.RoundToInt(_random.Range(8f, 22f));
+            _clockSec = Mathf.Max(0, _clockSec - elapsed);
+
             bool isTransition = offense.HasTransitionOpportunity;
             offense.HasTransitionOpportunity = false;
 
@@ -442,11 +512,38 @@ namespace BasketballManager.Simulation
                 offStats.Turnovers++;
                 offense.TeamStats.Turnovers++;
 
-                if (_random.Chance(0.5f))
+                bool gotSteal = _random.Chance(0.5f);
+                if (gotSteal)
                 {
                     defStats.Steals++;
                     defense.TeamStats.Steals++;
                     defense.HasTransitionOpportunity = true;
+                }
+                bool offIsHomeTov = IsHome(offense);
+                if (gotSteal)
+                {
+                    string stealDesc = Pick(
+                        $"{defender.GetDisplayName()} 断球！{attacker.GetDisplayName()} 失误，快攻来了！",
+                        $"{attacker.GetDisplayName()} 传球失误，{defender.GetDisplayName()} 抢断！",
+                        $"抢断！{defender.GetDisplayName()} 拦截成功，{attacker.GetDisplayName()} 丢球！",
+                        $"闪电抢断！{defender.GetDisplayName()} 预判到传球路线，将球截下！",
+                        $"{defender.GetDisplayName()} 如影随形，干净利落地从 {attacker.GetDisplayName()} 手中拨球！",
+                        $"球脱手！{defender.GetDisplayName()} 趁虚而入，{attacker.GetDisplayName()} 失去控球！");
+                    LogEvent(defender.JerseyNumber, stealDesc,
+                        Credit(attacker.Id, offIsHomeTov, tov: 1),
+                        Credit(defender.Id, !offIsHomeTov, stl: 1));
+                }
+                else
+                {
+                    string tovDesc = Pick(
+                        $"{attacker.GetDisplayName()} 失误出界",
+                        $"{attacker.GetDisplayName()} 传球失误，球权易手",
+                        $"{attacker.GetDisplayName()} 走步违例",
+                        $"{attacker.GetDisplayName()} 带球撞人，进攻犯规",
+                        $"{attacker.GetDisplayName()} 控球失误，球权转换",
+                        $"{attacker.GetDisplayName()} 翻腕违例，裁判响哨");
+                    LogEvent(attacker.JerseyNumber, tovDesc,
+                        Credit(attacker.Id, offIsHomeTov, tov: 1));
                 }
                 return;
             }
@@ -521,6 +618,9 @@ namespace BasketballManager.Simulation
             var finDefender = SelectMatchedDefender(defense, finisher, shotType);
             var finDefStats = defense.PlayerStatsById[finDefender.Id];
 
+            bool offIsHome = IsHome(offense);
+            bool isThreePt = shotType == ShotType.ThreePoint;
+
             // Block (priority over Foul/And-1)
             float blockChance = CalculateBlockChance(shotType, finisher, finDefender);
             if (_random.Chance(blockChance))
@@ -531,6 +631,25 @@ namespace BasketballManager.Simulation
                 RecordShotResult(offense, finisher, shotType, false, true);
 
                 var (rebounder, isOffensive) = ResolveRebound(offense, defense, shotType);
+                string rebDesc = rebounder != null
+                    ? (isOffensive ? $"，{rebounder.GetDisplayName()} 进攻篮板" : $"，{rebounder.GetDisplayName()} 防守篮板")
+                    : "";
+
+                var blkCredits = new System.Collections.Generic.List<EventStatCredit>();
+                blkCredits.Add(Credit(finisher.Id, offIsHome, fga: 1, fg3a: isThreePt ? 1 : 0));
+                blkCredits.Add(Credit(finDefender.Id, !offIsHome, blk: 1));
+                if (rebounder != null)
+                {
+                    bool rebIsHome = isOffensive ? offIsHome : !offIsHome;
+                    blkCredits.Add(Credit(rebounder.Id, rebIsHome, offReb: isOffensive ? 1 : 0, defReb: isOffensive ? 0 : 1));
+                }
+                string blkDesc = Pick(
+                    $"封盖！{finDefender.GetDisplayName()} 盖掉了 {finisher.GetDisplayName()} 的投篮{rebDesc}",
+                    $"{finDefender.GetDisplayName()} 送出大帽！{finisher.GetDisplayName()} 被封{rebDesc}",
+                    $"{finisher.GetDisplayName()} 的出手被 {finDefender.GetDisplayName()} 拦截{rebDesc}",
+                    $"大帽！{finDefender.GetDisplayName()} 卡位绝妙，{finisher.GetDisplayName()} 的投篮被挡出{rebDesc}",
+                    $"拒绝入内！{finDefender.GetDisplayName()} 护框成功，将 {finisher.GetDisplayName()} 的出手弹飞{rebDesc}");
+                LogEvent(finDefender.JerseyNumber, blkDesc, blkCredits.ToArray());
                 if (isOffensive && rebounder != null && ctx.AllowSecondChanceOnMiss)
                     SimulateSecondChanceAttempt(offense, defense, rebounder, quarterIndex);
                 return;
@@ -540,7 +659,12 @@ namespace BasketballManager.Simulation
             bool isFoul = ResolveFoul(finisher, finDefender, shotType, offense, quarterIndex, out int freeThrows);
             if (isFoul)
             {
-                ResolveFoulOutcome(offense, defense, finisher, finDefender, shotType, freeThrows, ctx.AssistAttributionPlayer);
+                var (foulDesc, foulCredits) = ResolveFoulOutcome(offense, defense, finisher, finDefender, shotType, freeThrows, ctx.AssistAttributionPlayer);
+                LogEvent(finisher.JerseyNumber, foulDesc, foulCredits);
+                int foulPts = 0;
+                foreach (var c in foulCredits) if (c.IsHome == offIsHome) foulPts += c.Pts;
+                UpdateScoringRun(offIsHome, foulPts);
+                if (foulPts > 0) CheckPlayerMilestone(finisher.Id, offIsHome, offense);
                 return;
             }
 
@@ -553,22 +677,99 @@ namespace BasketballManager.Simulation
 
             if (isMade)
             {
+                Player assister = null;
                 if (ctx.AssistAttributionPlayer != null)
-                    ResolveAssist(offense, ctx.AssistAttributionPlayer, finisher, shotType, true);
+                    assister = ResolveAssist(offense, ctx.AssistAttributionPlayer, finisher, shotType, true);
+                string assisterName = assister?.GetDisplayName();
+
+                int finPts = offense.PlayerStatsById[finisher.Id].Points;
+                string madeVerb;
+                if (shotType == ShotType.ThreePoint)
+                    madeVerb = Pick(
+                        "三分命中！",
+                        "远投打进！",
+                        "弧顶三分，空心入网！",
+                        "底角三分，精准命中！",
+                        "从容出手，三分得手！",
+                        "梦幻弧线，三分落袋！");
+                else if (shotType == ShotType.Layup && ctx.IsTransition)
+                    madeVerb = Pick(
+                        "快攻上篮，打进！",
+                        "反击成功！上篮得手！",
+                        "快攻推进，轻松上篮！",
+                        "无人防守，一条龙上篮！");
+                else if (shotType == ShotType.Layup)
+                    madeVerb = Pick(
+                        "上篮打进！",
+                        "切入得分！",
+                        "强行杀入禁区，上篮命中！",
+                        "高抛手腕，上篮打板进！",
+                        "假动作骗过防守，上篮得分！");
+                else if (shotType == ShotType.Post)
+                    madeVerb = Pick(
+                        "低位强打，得手！",
+                        "背身打板命中！",
+                        "转身跳投，命中！",
+                        "低位要位，强力得分！",
+                        "背打造空间，底线命中！");
+                else
+                    madeVerb = Pick(
+                        "投篮命中！",
+                        "急停跳投，打进！",
+                        "中投得分！",
+                        "后撤步中投，命中！",
+                        "高难度出手，竟然打进！",
+                        "急停拔起，干净命中！");
+
+                // Clutch time: Q4 final 2 minutes, margin ≤ 5
+                bool isClutch = _curQuarter >= 4 && _clockSec < 120 &&
+                                Math.Abs(_homeSnap.TeamStats.Points - _awaySnap.TeamStats.Points) <= 5;
+                string clutchPrefix = isClutch ? Pick("关键一球！", "紧要关头！", "压迫性得分！") + " " : "";
+
+                string desc = !string.IsNullOrEmpty(assisterName)
+                    ? $"{clutchPrefix}{assisterName} 传球，{finisher.GetDisplayName()} {madeVerb}（{finPts}分）比分 {ScoreStr()}"
+                    : $"{clutchPrefix}{finisher.GetDisplayName()} {madeVerb}（{finPts}分）比分 {ScoreStr()}";
+
+                var madeCredits = new System.Collections.Generic.List<EventStatCredit>();
+                madeCredits.Add(Credit(finisher.Id, offIsHome, pts: fgPts, fgM: 1, fga: 1, fg3M: isThreePt ? 1 : 0, fg3a: isThreePt ? 1 : 0));
+                if (assister != null)
+                    madeCredits.Add(Credit(assister.Id, offIsHome, ast: 1));
+                LogEvent(finisher.JerseyNumber, desc, madeCredits.ToArray());
+                UpdateScoringRun(offIsHome, fgPts);
+                CheckPlayerMilestone(finisher.Id, offIsHome, offense);
             }
             else
             {
                 var (rebounder, isOffensive) = ResolveRebound(offense, defense, shotType);
+
+                var missCredits = new System.Collections.Generic.List<EventStatCredit>();
+                missCredits.Add(Credit(finisher.Id, offIsHome, fga: 1, fg3a: isThreePt ? 1 : 0));
+                if (rebounder != null)
+                {
+                    bool rebIsHome = isOffensive ? offIsHome : !offIsHome;
+                    missCredits.Add(Credit(rebounder.Id, rebIsHome, offReb: isOffensive ? 1 : 0, defReb: isOffensive ? 0 : 1));
+                }
+                // 有篮板时 missVerb 用逗号收尾，避免「！，」并排
+                bool hasReb = rebounder != null;
+                string missVerb = hasReb
+                    ? Pick("不中，", "打铁，", "出手偏了，", "擦框而出，", "打到后板，")
+                    : Pick("不中！", "打铁！", "出手偏了！", "擦框而出！", "篮筐不买账！");
+                string rebDesc = hasReb
+                    ? (isOffensive ? $"{rebounder.GetDisplayName()} 进攻篮板" : $"{rebounder.GetDisplayName()} 防守篮板")
+                    : "";
+                string shotNameM = ShotTypeChinese(shotType);
+                LogEvent(finisher.JerseyNumber, $"{finisher.GetDisplayName()} {shotNameM}{missVerb}{rebDesc}", missCredits.ToArray());
                 if (isOffensive && rebounder != null && ctx.AllowSecondChanceOnMiss)
                     SimulateSecondChanceAttempt(offense, defense, rebounder, quarterIndex);
             }
         }
 
-        private void ResolveFoulOutcome(
+        private (string desc, EventStatCredit[] credits) ResolveFoulOutcome(
             MatchTeamSnapshot offense, MatchTeamSnapshot defense,
             Player finisher, Player finDefender, ShotType shotType, int freeThrows,
             Player assistAttribution)
         {
+            bool offIsHome = IsHome(offense);
             var finDefStats = defense.PlayerStatsById[finDefender.Id];
 
             float finishQuality = shotType switch
@@ -605,15 +806,41 @@ namespace BasketballManager.Simulation
                 finDefStats.Fouls++;
                 defense.TeamStats.Fouls++;
 
+                bool isThree = shotType == ShotType.ThreePoint;
                 int fgPts = RecordShotResult(offense, finisher, shotType, true, false);
                 ApplyPlusMinus(offense, defense, fgPts);
 
+                Player andOneAssister = null;
                 if (assistAttribution != null)
-                    ResolveAssist(offense, assistAttribution, finisher, shotType, true);
+                    andOneAssister = ResolveAssist(offense, assistAttribution, finisher, shotType, true);
 
                 float ftChance = (finisher.Attributes.FreeThrow / 100f) * 0.85f + 0.05f;
-                int ftPts = RecordFreeThrow(offense, finisher, _random.Chance(ftChance));
+                bool ftHit = _random.Chance(ftChance);
+                int ftPts = RecordFreeThrow(offense, finisher, ftHit);
                 ApplyPlusMinus(offense, defense, ftPts);
+
+                int finPts = offense.PlayerStatsById[finisher.Id].Points;
+                string andOneVerb = Pick(
+                    "AND ONE！带着犯规打进！",
+                    "犯规加命中！AND ONE！",
+                    "硬打！带犯规得分！",
+                    "And One！犯规也阻止不了他！",
+                    "强势！带着防守者完成得分，AND ONE！");
+                string ftResult = ftHit
+                    ? Pick("加罚命中！漂亮的三分打击！", "罚球落入，完美的AND ONE！", "加罚稳稳命中！")
+                    : Pick("加罚不中，但已完成主要得分。", "可惜加罚偏出。");
+                string desc = $"{andOneVerb} {finisher.GetDisplayName()}（{finPts}分）{ftResult} 防守者 {finDefender.GetDisplayName()}，比分 {ScoreStr()}";
+
+                var credits = new System.Collections.Generic.List<EventStatCredit>();
+                credits.Add(Credit(finisher.Id, offIsHome,
+                    pts: fgPts + ftPts, fgM: 1, fga: 1,
+                    fg3M: isThree ? 1 : 0, fg3a: isThree ? 1 : 0,
+                    ftM: ftHit ? 1 : 0, fta: 1));
+                if (andOneAssister != null)
+                    credits.Add(Credit(andOneAssister.Id, offIsHome, ast: 1));
+                credits.Add(Credit(finDefender.Id, !offIsHome, pf: 1));
+
+                return (desc, credits.ToArray());
             }
             else
             {
@@ -621,12 +848,45 @@ namespace BasketballManager.Simulation
                 finDefStats.Fouls++;
                 defense.TeamStats.Fouls++;
 
+                int ftMadeCount = 0;
                 for (int i = 0; i < freeThrows; i++)
                 {
                     float ftChance = (finisher.Attributes.FreeThrow / 100f) * 0.85f + 0.05f;
-                    int ftPts = RecordFreeThrow(offense, finisher, _random.Chance(ftChance));
+                    bool made = _random.Chance(ftChance);
+                    int ftPts = RecordFreeThrow(offense, finisher, made);
                     ApplyPlusMinus(offense, defense, ftPts);
+                    if (made) ftMadeCount++;
                 }
+
+                int finPts = offense.PlayerStatsById[finisher.Id].Points;
+                string foulVerb = Pick(
+                    "裁判吹哨！犯规！",
+                    "哨声响起！",
+                    "吹犯规！",
+                    "吹停！防守犯规！",
+                    "哨声！犯规成立，走上罚球线！");
+                string ftResultDesc = (ftMadeCount, freeThrows) switch
+                {
+                    (2, 2) => "两罚全中！",
+                    (1, 2) => "两罚一中",
+                    (0, 2) => "两罚全失！",
+                    (3, 3) => "三罚全中！",
+                    (2, 3) => "三罚两中",
+                    (1, 3) => "三罚仅一中",
+                    (0, 3) => "三罚全失！",
+                    (1, 1) => "罚球命中！",
+                    (0, 1) => "罚球不中。",
+                    _ => $"罚球 {ftMadeCount}/{freeThrows}"
+                };
+                string desc = $"{foulVerb} {finDefender.GetDisplayName()} 对 {finisher.GetDisplayName()} 犯规，{ftResultDesc}（{finPts}分），比分 {ScoreStr()}";
+
+                var credits = new EventStatCredit[]
+                {
+                    Credit(finisher.Id, offIsHome, pts: ftMadeCount, ftM: ftMadeCount, fta: freeThrows),
+                    Credit(finDefender.Id, !offIsHome, pf: 1)
+                };
+
+                return (desc, credits);
             }
         }
 
@@ -1342,12 +1602,12 @@ namespace BasketballManager.Simulation
             return candidates.Last();
         }
 
-        private void ResolveAssist(MatchTeamSnapshot offense, Player initiator, Player finisher, ShotType shotType, bool made)
+        private Player ResolveAssist(MatchTeamSnapshot offense, Player initiator, Player finisher, ShotType shotType, bool made)
         {
-            if (!made || finisher == null) return;
+            if (!made || finisher == null) return null;
 
             var assister = SelectAssisterCandidate(offense, initiator, finisher, shotType);
-            if (assister == null || assister.Id == finisher.Id) return;
+            if (assister == null || assister.Id == finisher.Id) return null;
 
             float baseAssistChance = GetBaseAssistChance(shotType);
             float modifier = GetAssistedFinisherModifier(finisher, shotType);
@@ -1355,7 +1615,7 @@ namespace BasketballManager.Simulation
 
             float passQuality = assister.Attributes.Passing * 0.60f + assister.Tendencies.PassTendency * 0.40f;
             float passBonus = 0f;
-            
+
             if (passQuality >= 90) passBonus = 0.12f;
             else if (passQuality >= 84) passBonus = 0.09f;
             else if (passQuality >= 78) passBonus = 0.06f;
@@ -1366,8 +1626,6 @@ namespace BasketballManager.Simulation
                 passBonus += 0.03f;
             }
 
-            // 之前根据 mpg<18 减 0.04 passBonus 的逻辑已移除：助攻"成功率"应当看
-             // assister 的传球能力而不是球队角色（mpg 已在出场 stint 数上体现）。
             float assistChance = (baseAssistChance + modifier - penalty + passBonus) * offense.StyleProfile.AssistModifier;
             assistChance = Mathf.Clamp(assistChance, 0.25f, 0.90f);
 
@@ -1375,7 +1633,9 @@ namespace BasketballManager.Simulation
             {
                 offense.PlayerStatsById[assister.Id].Assists++;
                 offense.TeamStats.Assists++;
+                return assister;
             }
+            return null;
         }
 
         private float GetEliteRebounderBoost(Player player, bool defensive)
@@ -1622,6 +1882,226 @@ namespace BasketballManager.Simulation
             if (quarterIndex == 3 && pts < 92) return 1.16f;
 
             return 1.0f;
+        }
+
+        private bool IsHome(MatchTeamSnapshot snap) => snap == _homeSnap;
+
+        private static EventStatCredit Credit(int playerId, bool isHome,
+            int pts = 0, int fgM = 0, int fga = 0, int fg3M = 0, int fg3a = 0,
+            int ftM = 0, int fta = 0, int offReb = 0, int defReb = 0,
+            int ast = 0, int stl = 0, int blk = 0, int tov = 0, int pf = 0)
+        {
+            return new EventStatCredit
+            {
+                PlayerId = playerId, IsHome = isHome,
+                Pts = pts, FgM = fgM, FgA = fga, Fg3M = fg3M, Fg3A = fg3a,
+                FtM = ftM, FtA = fta, OffReb = offReb, DefReb = defReb,
+                Ast = ast, Stl = stl, Blk = blk, Tov = tov, PF = pf
+            };
+        }
+
+        private void LogEvent(int keyJersey, string description, params EventStatCredit[] credits)
+        {
+            if (_pbp == null) return;
+            _pbp.Add(new PlayByPlayEvent
+            {
+                Quarter = _curQuarter,
+                ClockSeconds = _clockSec,
+                JerseyNumber = keyJersey,
+                HomeScore = _homeSnap?.TeamStats.Points ?? 0,
+                AwayScore = _awaySnap?.TeamStats.Points ?? 0,
+                Description = description,
+                Credits = credits.Length > 0 ? credits : null
+            });
+        }
+
+        // 从给定选项里随机选一条
+        private string Pick(params string[] options) => options[_random.Range(0, options.Length)];
+
+        private void LogSubstitutions(
+            System.Collections.Generic.IReadOnlyList<Player> oldLineup,
+            System.Collections.Generic.IReadOnlyList<Player> newLineup,
+            string teamName)
+        {
+            if (_pbp == null) return;
+
+            var oldIds = new System.Collections.Generic.HashSet<int>(oldLineup.Select(p => p.Id));
+            var newIds = new System.Collections.Generic.HashSet<int>(newLineup.Select(p => p.Id));
+
+            var outPlayers = oldLineup.Where(p => !newIds.Contains(p.Id)).ToList();
+            var inPlayers  = newLineup.Where(p => !oldIds.Contains(p.Id)).ToList();
+
+            if (outPlayers.Count == 0 && inPlayers.Count == 0) return;
+
+            var parts = new System.Collections.Generic.List<string>();
+            int pairs = Mathf.Min(outPlayers.Count, inPlayers.Count);
+            for (int i = 0; i < pairs; i++)
+                parts.Add($"{inPlayers[i].GetDisplayName()} 替换 {outPlayers[i].GetDisplayName()}");
+            for (int i = pairs; i < inPlayers.Count; i++)
+                parts.Add($"{inPlayers[i].GetDisplayName()} 上场");
+            for (int i = pairs; i < outPlayers.Count; i++)
+                parts.Add($"{outPlayers[i].GetDisplayName()} 下场");
+
+            LogEvent(-1, $"换人 — {teamName}：{string.Join("，", parts)}");
+        }
+
+        private void LogQuarterStart(int q, int totalQuarters)
+        {
+            // Reset scoring run at each period boundary
+            _homeRunScore = 0;
+            _awayRunScore = 0;
+
+            if (_pbp == null) return;
+            string homeName = _homeSnap.Team.Name;
+            string awayName = _awaySnap.Team.Name;
+            string msg = q switch
+            {
+                0 => Pick(
+                    $"跳球！比赛正式开始！{homeName} 主场迎战 {awayName}！",
+                    $"比赛开始！{homeName} 主场坐阵，{awayName} 发起冲击！"),
+                1 => Pick(
+                    "第二节 开始！",
+                    "第二节登场！替补球员将要接过担子！",
+                    "进入第二节，双方调整轮换！"),
+                2 => Pick(
+                    "下半场！第三节 开球！",
+                    "下半场开始！双方重整旗鼓，第三节！",
+                    "中场休息结束，第三节开始！双方调整策略，重回赛场！"),
+                3 => Pick(
+                    "最后一节！第四节 开始，决战时刻！",
+                    "第四节！最后 12 分钟，全力以赴！",
+                    "进入第四节！胜负将在此决出！",
+                    "最后一节！双方主力全部出动，比赛进入白热化！"),
+                _ => Pick(
+                    $"第 {_curQuarter} 节 开始！",
+                    $"加时赛继续！进入第 {_curQuarter} 节！")
+            };
+            LogEvent(-1, msg);
+        }
+
+        private void LogQuarterEnd(int q, int totalQuarters, int qH, int qA)
+        {
+            if (_pbp == null) return;
+            int h = _homeSnap.TeamStats.Points;
+            int a = _awaySnap.TeamStats.Points;
+            int diff = Math.Abs(h - a);
+            string homeName = _homeSnap.Team.Name;
+            string awayName = _awaySnap.Team.Name;
+
+            string msg;
+            if (q == 1) // halftime
+            {
+                string leader = h > a ? $"{homeName} 领先 {diff} 分" : h < a ? $"{awayName} 领先 {diff} 分" : "双方平分";
+                string tone = diff == 0 ? "势均力敌" : diff <= 5 ? "分差极小" : diff <= 12 ? "尚在追赶范围" : "优势明显";
+                msg = Pick(
+                    $"上半场 结束！{leader}，{homeName} {h} - {a} {awayName}。{tone}，中场休息。",
+                    $"半场哨响！比分 {h}-{a}，{leader}，双方球员回到休息室调整部署。");
+            }
+            else if (q == totalQuarters - 1) // last regular quarter, about to go to OT or end
+            {
+                msg = h == a
+                    ? $"第 {q + 1} 节 结束！比分 {h}-{a} 平！将进入加时赛！"
+                    : $"第 {q + 1} 节 结束 — {homeName} {h} - {a} {awayName}（本节 {qH}-{qA}）";
+            }
+            else
+            {
+                string qLeader = qH > qA ? $"本节 {homeName} 多得 {qH - qA} 分"
+                               : qH < qA ? $"本节 {awayName} 多得 {qA - qH} 分"
+                               : "本节平分";
+                msg = Pick(
+                    $"第 {q + 1} 节 结束 — 比分 {homeName} {h} - {a} {awayName}（本节 {qH}-{qA}）",
+                    $"第 {q + 1} 节结束！{qLeader}，总比分 {h}-{a}。");
+            }
+            LogEvent(-1, msg);
+        }
+
+        private void LogGameEnd()
+        {
+            if (_pbp == null) return;
+            int h = _homeSnap.TeamStats.Points;
+            int a = _awaySnap.TeamStats.Points;
+            string winner = h >= a ? _homeSnap.Team.Name : _awaySnap.Team.Name;
+            string loser  = h >= a ? _awaySnap.Team.Name : _homeSnap.Team.Name;
+            int wPts = Mathf.Max(h, a), lPts = Mathf.Min(h, a);
+            int margin = wPts - lPts;
+            string msg = margin <= 3
+                ? Pick(
+                    $"终场！险胜！{winner} 以 {wPts}-{lPts} 力克 {loser}，惊险 {margin} 分完成逆袭！",
+                    $"比赛结束！{winner} {wPts}-{lPts} 艰难击败 {loser}，仅差 {margin} 分的惊天大战！")
+                : margin <= 10
+                ? Pick(
+                    $"比赛结束！{winner} {wPts} - {lPts} {loser}，{winner} 获胜！",
+                    $"终场哨响！{winner} 以 {wPts}-{lPts} 送走 {loser}，稳定发挥赢得胜利！")
+                : margin >= 25
+                ? Pick(
+                    $"比赛结束！{winner} 大比分 {wPts}-{lPts} 横扫 {loser}，统治全场！",
+                    $"终场！{winner} 完胜！{wPts}-{lPts} 击败 {loser}，领先优势超过 {margin} 分！")
+                : $"比赛结束！{winner} {wPts} - {lPts} {loser}，{winner} 获胜！";
+            LogEvent(-1, msg);
+        }
+
+        private string ScoreStr()
+        {
+            int h = _homeSnap?.TeamStats.Points ?? 0;
+            int a = _awaySnap?.TeamStats.Points ?? 0;
+            return $"{h}-{a}";
+        }
+
+        private static string ShotTypeChinese(ShotType shotType) => shotType switch
+        {
+            ShotType.ThreePoint => "三分",
+            ShotType.TwoPoint   => "中投",
+            ShotType.Layup      => "上篮",
+            ShotType.CloseShot  => "近投",
+            ShotType.Post       => "背身",
+            _                   => "投篮"
+        };
+
+        // -------- Scoring run & milestone helpers --------
+
+        private void UpdateScoringRun(bool offIsHome, int pts)
+        {
+            if (_pbp == null || pts <= 0) return;
+            if (offIsHome) { _homeRunScore += pts; _awayRunScore = 0; }
+            else           { _awayRunScore += pts; _homeRunScore = 0; }
+            int run = offIsHome ? _homeRunScore : _awayRunScore;
+            string runTeam = offIsHome ? _homeSnap.Team.Name : _awaySnap.Team.Name;
+            string runMsg = run switch
+            {
+                6  => Pick($"连续攻势！{runTeam} 打出 6-0！", $"{runTeam} 连得 6 分，势头渐起！"),
+                8  => Pick($"势不可挡！{runTeam} 已连得 8 分！", $"8-0！{runTeam} 把对手打得无法得分！"),
+                10 => Pick($"10-0！{runTeam} 的进攻势头锐不可当！", $"惊人攻势！{runTeam} 连得 10 分，对手急需叫停！"),
+                12 => Pick($"12-0！{runTeam} 统治这段时间！", $"停止出血！{runTeam} 打出恐怖 12-0 攻势！"),
+                15 => Pick($"15-0！{runTeam} 完全控制比赛节奏！", $"这段时间 {runTeam} 横扫一切，连得 15 分！"),
+                20 => $"不可思议！{runTeam} 竟然连得 20 分！对手急需喘息！",
+                _  => null
+            };
+            if (runMsg != null) LogEvent(-1, runMsg);
+        }
+
+        private void CheckPlayerMilestone(int playerId, bool isHome, MatchTeamSnapshot snap)
+        {
+            if (_pbp == null || _milestonesFired == null) return;
+            if (!snap.PlayerStatsById.TryGetValue(playerId, out var stats)) return;
+            var player = snap.Players?.FirstOrDefault(p => p.Id == playerId);
+            string name = player?.GetDisplayName() ?? playerId.ToString();
+            foreach (int m in new[] { 20, 30, 40 })
+            {
+                string key = $"{playerId}:{m}";
+                if (stats.Points >= m && !_milestonesFired.Contains(key))
+                {
+                    _milestonesFired.Add(key);
+                    string msg = m switch
+                    {
+                        20 => Pick($"里程碑！{name} 本场已得 20 分！", $"{name} 砍下 20 分，成为比赛最亮眼的球星！"),
+                        30 => Pick($"爆发！{name} 本场已拿下 30 分！", $"统治级演出！{name} 30 分登顶全场得分榜！"),
+                        40 => $"传奇演出！{name} 本场已得 40 分！全场震撼！",
+                        _  => null
+                    };
+                    if (msg != null) LogEvent(-1, msg);
+                    break; // only one milestone per possession
+                }
+            }
         }
 
         private void ValidateResult(MatchResult result)

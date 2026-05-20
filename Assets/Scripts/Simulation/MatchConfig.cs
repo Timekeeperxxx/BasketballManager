@@ -8,5 +8,6 @@ namespace BasketballManager.Simulation
         public int MinPossessionsPerTeam { get; set; } = 90;
         public int MaxPossessionsPerTeam { get; set; } = 105;
         public bool UseFixedSeed { get; set; }
+        public bool EnablePlayByPlay { get; set; } = false;
     }
 }

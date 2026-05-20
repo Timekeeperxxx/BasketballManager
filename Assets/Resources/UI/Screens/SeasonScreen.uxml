@@ -103,5 +103,24 @@
             </ui:VisualElement>
 
         </ui:VisualElement>
+
+        <!-- ===== 比赛结果弹窗 ===== -->
+        <ui:VisualElement name="match-modal-overlay" class="match-modal-overlay">
+            <ui:VisualElement name="match-modal" class="match-modal">
+                <ui:VisualElement class="match-modal__header">
+                    <ui:VisualElement class="match-modal__score-block">
+                        <ui:Label name="modal-score-headline" text="" class="match-modal__headline" />
+                        <ui:Label name="modal-score-quarters" text="" class="match-modal__quarters" />
+                    </ui:VisualElement>
+                    <ui:Button name="modal-close-btn" text="✕" class="match-modal__close-btn" />
+                </ui:VisualElement>
+                <ui:VisualElement class="match-modal__tab-bar">
+                    <ui:Button name="modal-tab-pbp"    text="📡 播报"  class="modal-tab modal-tab--active" />
+                    <ui:Button name="modal-tab-player" text="球员数据" class="modal-tab" />
+                    <ui:Button name="modal-tab-team"   text="球队数据" class="modal-tab" />
+                </ui:VisualElement>
+                <ui:VisualElement name="modal-tab-content" class="match-modal__content" />
+            </ui:VisualElement>
+        </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>
