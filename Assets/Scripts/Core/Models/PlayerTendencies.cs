@@ -19,5 +19,24 @@ namespace BasketballManager.Core.Models
         public int HelpDefenseTendency;
         public int OffensiveReboundTendency;
         public int DefensiveReboundTendency;
+
+        // Three-point zone tendencies
+        public int ZoneThreeLeftCorner  = 50;
+        public int ZoneThreeRightCorner = 50;
+        public int ZoneThreeLeftWing    = 60;
+        public int ZoneThreeRightWing   = 60;
+        public int ZoneThreeTopKey      = 70;
+
+        // Mid-range zone tendencies
+        public int ZoneMidLeftCorner  = 40;
+        public int ZoneMidRightCorner = 40;
+        public int ZoneMidLeftElbow   = 60;
+        public int ZoneMidRightElbow  = 60;
+        public int ZoneMidTopKey      = 50;
+
+        // Close-range positional zone tendencies (surrounding basket; basket uses CloseShotTendency)
+        public int ZoneCloseLeft   = 50;
+        public int ZoneCloseCenter = 70;
+        public int ZoneCloseRight  = 50;
     }
 }

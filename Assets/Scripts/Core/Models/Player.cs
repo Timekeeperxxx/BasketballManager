@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using BasketballManager.Core.Enums;
 
 namespace BasketballManager.Core.Models
@@ -19,8 +20,28 @@ namespace BasketballManager.Core.Models
         public int JerseyNumber;
         public int Overall;
         public bool IsCurrent;
+        public int PotentialMin;
+        public int PotentialMax;
+        public int PeakAgeStart = 25;
+        public int PeakAgeEnd   = 30;
+        public int ContractYears;
+        public int ContractSalary;   // 单位：百万（3 = 3M）
+        public bool IsFreeAgent   => TeamId == "__FA__";
+        public bool IsInDraftPool => TeamId == "__DRAFT_POOL__";
+        public int Potential => (PotentialMin + PotentialMax) / 2;
         public PlayerAttributes Attributes = new PlayerAttributes();
         public PlayerTendencies Tendencies = new PlayerTendencies();
+        public List<PlayerTrait> Traits = new List<PlayerTrait>();
+
+        public static int GetMaxTraits(int overall)
+        {
+            if (overall >= 90) return 5;
+            if (overall >= 80) return 4;
+            if (overall >= 70) return 3;
+            if (overall >= 60) return 2;
+            if (overall >= 50) return 1;
+            return 0;
+        }
 
         public string GetDisplayName()
         {

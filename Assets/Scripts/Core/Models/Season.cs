@@ -10,5 +10,6 @@ namespace BasketballManager.Core.Models
         public string Status { get; set; } = "IN_PROGRESS";   // IN_PROGRESS / FINISHED
         public string Phase { get; set; } = "REGULAR";        // REGULAR | PLAYOFF
         public string CreatedAt { get; set; } = string.Empty;
+        public int SeasonNumber { get; set; } = 1;
     }
 }

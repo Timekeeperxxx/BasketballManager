@@ -25,5 +25,9 @@ namespace BasketballManager.Core.Models
         public int Turnovers { get; set; }
         public int Fouls { get; set; }
         public int PlusMinus { get; set; }
+
+        // Zone FG tracking — indexed by (int)ShotZone, length 14
+        public int[] ZoneFga = new int[14];
+        public int[] ZoneFgm = new int[14];
     }
 }
