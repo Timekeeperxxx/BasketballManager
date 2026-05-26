@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using BasketballManager.Core.Models;
+using BasketballManager.Core.Services;
 using BasketballManager.Database;
 using BasketballManager.Simulation;
 
@@ -16,29 +18,93 @@ namespace BasketballManager.Seasons
         private readonly PlayerRepository _playerRepository;
         private readonly SimulationProfileRepository _profileRepository;
         private readonly SeasonRepository _seasonRepository;
+        private readonly PlayerDevelopmentService _developmentService;
+        private readonly FreeAgencyService _freeAgencyService;
+        private readonly DraftService _draftService;
 
         public SeasonService(
             TeamRepository teamRepository,
             PlayerRepository playerRepository,
             SimulationProfileRepository profileRepository,
-            SeasonRepository seasonRepository)
+            SeasonRepository seasonRepository,
+            PlayerDevelopmentService developmentService = null,
+            FreeAgencyService freeAgencyService = null,
+            DraftService draftService = null)
         {
-            _teamRepository = teamRepository;
-            _playerRepository = playerRepository;
-            _profileRepository = profileRepository;
-            _seasonRepository = seasonRepository;
+            _teamRepository     = teamRepository;
+            _playerRepository   = playerRepository;
+            _profileRepository  = profileRepository;
+            _seasonRepository   = seasonRepository;
+            _developmentService = developmentService ?? new PlayerDevelopmentService();
+            _freeAgencyService  = freeAgencyService;
+            _draftService       = draftService;
         }
+
+        public FreeAgencyService FreeAgency => _freeAgencyService;
+        public DraftService Draft => _draftService;
 
         /// <summary>
         /// 用当前数据库里的所有球队建一个新赛季。返回新赛季 id（teams &lt; 2 时返回 0）。
         /// </summary>
-        public int CreateNewSeasonFromAllTeams(string name)
+        public int CreateNewSeasonFromAllTeams(string name, int seasonNumber = 1)
         {
-            var teams = _teamRepository.GetAllTeams();
+            // 排除 __FA__ / __DRAFT_POOL__ 虚拟球队，只用真实参赛球队建赛程。
+            var teams = _teamRepository.GetAllTeams()
+                .Where(t => t.Id != "__FA__" && t.Id != "__DRAFT_POOL__")
+                .ToList();
             if (teams == null || teams.Count < 2) return 0;
 
             var games = ScheduleGenerator.Generate(teams);
-            return _seasonRepository.CreateSeason(name, teams, games);
+            return _seasonRepository.CreateSeason(name, teams, games, seasonNumber);
+        }
+
+        /// <summary>
+        /// 休赛期第一阶段：球员发展 + 合同到期 + 标记自由球员。
+        /// 返回发展结果列表与退役球员姓名列表（供 UI 展示）。
+        /// </summary>
+        public (List<PlayerDevelopmentResult> devResults, List<string> retiredNames)
+            AdvanceOffseasonPhase1(int currentSeasonId)
+        {
+            var allPlayers = _playerRepository.GetAllPlayers();
+            var devResults = _developmentService.ApplySeasonEndDevelopment(allPlayers, _playerRepository);
+
+            List<string> retiredNames = new List<string>();
+            if (_freeAgencyService != null)
+                retiredNames = _freeAgencyService.ExpireContracts();
+
+            return (devResults, retiredNames);
+        }
+
+        /// <summary>
+        /// 休赛期第二阶段：AI 签约 + 创建新赛季。
+        /// 需在选秀结束后调用。
+        /// </summary>
+        public int AdvanceOffseasonPhase2(int currentSeasonId, string userTeamId)
+        {
+            _freeAgencyService?.RunAISignings(userTeamId);
+
+            var currentSeason = _seasonRepository.GetSeasonById(currentSeasonId);
+            int nextNumber    = (currentSeason?.SeasonNumber ?? 0) + 1;
+            string name       = $"第{nextNumber}赛季";
+            return CreateNewSeasonFromAllTeams(name, nextNumber);
+        }
+
+        /// <summary>
+        /// 赛季结束后推进到下一赛季（兼容旧调用，不含 FA/选秀系统）。
+        /// </summary>
+        public (int newSeasonId, List<PlayerDevelopmentResult> devResults)
+            AdvanceToNextSeason(int currentSeasonId)
+        {
+            var currentSeason = _seasonRepository.GetSeasonById(currentSeasonId);
+            int nextNumber    = (currentSeason?.SeasonNumber ?? 0) + 1;
+
+            var allPlayers = _playerRepository.GetAllPlayers();
+            var devResults = _developmentService.ApplySeasonEndDevelopment(allPlayers, _playerRepository);
+
+            string name       = $"第{nextNumber}赛季";
+            int    newSeasonId = CreateNewSeasonFromAllTeams(name, nextNumber);
+
+            return (newSeasonId, devResults);
         }
 
         /// <summary>
@@ -127,11 +193,13 @@ namespace BasketballManager.Seasons
 
             _seasonRepository.SaveGameResult(game.Id, result);
             _seasonRepository.SaveGamePlayerStats(game.Id, result);
+            _seasonRepository.SaveGameZoneStats(game.Id, result);
 
             if (game.Phase == "PLAYOFF")
             {
                 bool seriesComplete = _seasonRepository.UpdatePlayoffSeries(game.SeriesId, result);
                 _seasonRepository.UpdatePlayoffPlayerStats(seasonId, result);
+                _seasonRepository.UpdatePlayoffZoneStats(seasonId, result);
                 if (seriesComplete)
                     _seasonRepository.TryAdvancePlayoffRound(seasonId);
             }
@@ -139,6 +207,7 @@ namespace BasketballManager.Seasons
             {
                 _seasonRepository.UpdateStandings(seasonId, result);
                 _seasonRepository.UpdatePlayerStats(seasonId, result);
+                _seasonRepository.UpdateSeasonZoneStats(seasonId, result);
             }
 
             return result;
