@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using BasketballManager.App;
 using BasketballManager.Core.Models;
 using BasketballManager.Database;
@@ -53,7 +54,8 @@ namespace BasketballManager.UI.Screens
         {
             _teams.Clear();
             if (_teamRepository != null)
-                _teams.AddRange(_teamRepository.GetAllTeams());
+                _teams.AddRange(_teamRepository.GetAllTeams()
+                    .Where(t => t.Id != "__FA__" && t.Id != "__DRAFT_POOL__"));
 
             _teamList.itemsSource = _teams;
             _teamList.Rebuild();
