@@ -196,5 +196,25 @@
                 </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>
+
+        <!-- ===== 球员详情弹窗 ===== -->
+        <ui:VisualElement name="player-detail-overlay" class="match-modal-overlay" style="display: none;">
+            <ui:VisualElement name="player-detail-modal" class="match-modal">
+                <ui:VisualElement class="match-modal__header">
+                    <ui:VisualElement class="match-modal__score-block">
+                        <ui:Label name="pd-name"   text="" class="match-modal__headline" />
+                        <ui:Label name="pd-meta"   text="" class="match-modal__quarters" />
+                        <ui:Label name="pd-injury" text="" class="injury-badge" style="display: none;" />
+                    </ui:VisualElement>
+                    <ui:Button name="pd-close" text="✕" class="match-modal__close-btn" />
+                </ui:VisualElement>
+                <ui:VisualElement class="match-modal__tab-bar">
+                    <ui:Button name="pd-tab-info"   text="基本信息"   class="modal-tab modal-tab--active" />
+                    <ui:Button name="pd-tab-stats"  text="本赛季数据" class="modal-tab" />
+                    <ui:Button name="pd-tab-career" text="生涯统计"   class="modal-tab" />
+                </ui:VisualElement>
+                <ui:ScrollView name="pd-content" class="match-modal__content" />
+            </ui:VisualElement>
+        </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

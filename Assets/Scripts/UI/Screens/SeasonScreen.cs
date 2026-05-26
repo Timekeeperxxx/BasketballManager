@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using BasketballManager.Core.Models;
+using BasketballManager.Core.Services;
 using BasketballManager.Database;
 using BasketballManager.Seasons;
 using BasketballManager.UI.Core;
@@ -152,6 +153,15 @@ namespace BasketballManager.UI.Screens
         private Label _teamsCount;
         private readonly List<SeasonTeamStanding> _teamStats = new List<SeasonTeamStanding>();
 
+        // ---------- 球员详情弹窗 ----------
+        private VisualElement _pdOverlay;
+        private Label _pdName, _pdMeta, _pdInjury;
+        private Button _pdClose;
+        private Button _pdTabInfo, _pdTabStats, _pdTabCareer;
+        private ScrollView _pdContent;
+        private int _pdActivePlayerId;
+        private string _pdActiveTab = "info";
+
         private void Awake() { ScreenId = Id; }
 
         public void Initialize(SeasonService seasonService, SeasonRepository seasonRepository,
@@ -298,6 +308,22 @@ namespace BasketballManager.UI.Screens
             _btnDraftAuto.clicked += OnDraftAutoClicked;
             _btnDraftDone.clicked += OnDraftDoneClicked;
             _draftOverlay.style.display = DisplayStyle.None;
+
+            // 球员详情弹窗
+            _pdOverlay  = Root.Q<VisualElement>("player-detail-overlay");
+            _pdName     = Root.Q<Label>("pd-name");
+            _pdMeta     = Root.Q<Label>("pd-meta");
+            _pdInjury   = Root.Q<Label>("pd-injury");
+            _pdClose    = Root.Q<Button>("pd-close");
+            _pdTabInfo  = Root.Q<Button>("pd-tab-info");
+            _pdTabStats = Root.Q<Button>("pd-tab-stats");
+            _pdTabCareer= Root.Q<Button>("pd-tab-career");
+            _pdContent  = Root.Q<ScrollView>("pd-content");
+            _pdClose.clicked    += () => { _pdOverlay.style.display = DisplayStyle.None; };
+            _pdTabInfo.clicked  += () => ShowPdTab("info");
+            _pdTabStats.clicked += () => ShowPdTab("stats");
+            _pdTabCareer.clicked+= () => ShowPdTab("career");
+            _pdOverlay.style.display = DisplayStyle.None;
 
             // 赛程行点击：仅响应真实鼠标点击，不响应 hover/键盘引起的 selectionChanged
             _scheduleView.selectionType = SelectionType.Single;
@@ -772,7 +798,21 @@ namespace BasketballManager.UI.Screens
             var cols = _playersView.columns;
             cols.Clear();
             cols.Add(Col("rank","#",     30, Length.Percent(4),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = (i + 1).ToString()));
-            cols.Add(Col("name","球员",  130, Length.Percent(15), () => Cell(),                     (e, i) => ((Label)e).text = _playerStats[i].PlayerName));
+            cols.Add(Col("name","球员",  130, Length.Percent(15), () =>
+            {
+                var lbl = Cell();
+                lbl.AddToClassList("cell--clickable");
+                lbl.RegisterCallback<ClickEvent>(_ =>
+                {
+                    if (lbl.userData is int id) ShowPlayerDetail(id);
+                });
+                return lbl;
+            }, (e, i) =>
+            {
+                var lbl = (Label)e;
+                lbl.text = _playerStats[i].PlayerName;
+                lbl.userData = _playerStats[i].PlayerId;
+            }));
             cols.Add(Col("team","队",    80,  Length.Percent(10), () => Cell(),                     (e, i) => ((Label)e).text = NameOf(_playerStats[i].TeamId)));
             cols.Add(Col("gp",  "场次",   36, Length.Percent(4),  () => Cell("table-cell--center"), (e, i) => ((Label)e).text = _playerStats[i].GamesPlayed.ToString()));
             cols.Add(Col("min", "时间",   44, Length.Percent(5),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = $"{_playerStats[i].MinutesPerGame:F1}"));
@@ -1403,22 +1443,30 @@ namespace BasketballManager.UI.Screens
                 var row = new VisualElement();
                 row.AddToClassList("pregame-player-row");
                 if (isStarter) row.AddToClassList("pregame-player-row--starter");
+                if (player.IsInjured) row.AddToClassList("pregame-player-row--injured");
 
                 var up = new Button() { text = "↑" };
                 up.AddToClassList("pregame-arrow-btn");
-                up.SetEnabled(idx > 0);
+                up.SetEnabled(idx > 0 && !player.IsInjured);
                 up.clicked += () => MoveRosterEntry(idx, -1);
                 row.Add(up);
 
                 var dn = new Button() { text = "↓" };
                 dn.AddToClassList("pregame-arrow-btn");
-                dn.SetEnabled(idx < _pregameRoster.Count - 1);
+                dn.SetEnabled(idx < _pregameRoster.Count - 1 && !player.IsInjured);
                 dn.clicked += () => MoveRosterEntry(idx, +1);
                 row.Add(dn);
 
                 var info = new Label($"#{player.JerseyNumber}  {player.GetDisplayName()}  ({player.Position})");
                 info.AddToClassList("pregame-player-info");
                 row.Add(info);
+
+                if (player.IsInjured)
+                {
+                    var injuryBadge = new Label($"⚕ 伤缺 {player.InjuryGamesRemaining} 场");
+                    injuryBadge.AddToClassList("injury-badge");
+                    row.Add(injuryBadge);
+                }
 
                 var badge = new Label(isStarter ? "首发" : "替补");
                 badge.AddToClassList("pregame-badge");
@@ -2383,6 +2431,190 @@ namespace BasketballManager.UI.Screens
         private string NameOf(string teamId)
         {
             return _teamNameById.TryGetValue(teamId, out var name) ? name : teamId;
+        }
+
+        // ============================================================
+        //  球员详情弹窗
+        // ============================================================
+
+        private void ShowPlayerDetail(int playerId)
+        {
+            if (_playerRepository == null || _pdOverlay == null) return;
+            _pdActivePlayerId = playerId;
+
+            var player = _playerRepository.GetPlayerById(playerId);
+            if (player == null) return;
+
+            _pdName.text = player.GetDisplayName();
+            var pos = player.SecondaryPosition.HasValue
+                ? $"{player.Position}/{player.SecondaryPosition.Value}"
+                : player.Position.ToString();
+            _pdMeta.text = $"OVR {player.Overall}  ·  {pos}  ·  {player.Age}岁  ·  合同 {player.ContractYears}年/{player.ContractSalary}M";
+            if (player.IsInjured)
+            {
+                _pdInjury.text = InjuryService.GetInjuryLabel(player.InjuryGamesRemaining);
+                _pdInjury.style.display = DisplayStyle.Flex;
+            }
+            else
+            {
+                _pdInjury.style.display = DisplayStyle.None;
+            }
+
+            _pdOverlay.style.display = DisplayStyle.Flex;
+            ShowPdTab(_pdActiveTab);
+        }
+
+        private void ShowPdTab(string tab)
+        {
+            _pdActiveTab = tab;
+            SetPdTabActive(_pdTabInfo,   tab == "info");
+            SetPdTabActive(_pdTabStats,  tab == "stats");
+            SetPdTabActive(_pdTabCareer, tab == "career");
+            _pdContent.Clear();
+
+            switch (tab)
+            {
+                case "info":   BuildPdInfoTab();   break;
+                case "stats":  BuildPdStatsTab();  break;
+                case "career": BuildPdCareerTab(); break;
+            }
+        }
+
+        private void SetPdTabActive(Button btn, bool active)
+        {
+            if (active) btn.AddToClassList("modal-tab--active");
+            else btn.RemoveFromClassList("modal-tab--active");
+        }
+
+        private void BuildPdInfoTab()
+        {
+            if (_playerRepository == null) return;
+            var p = _playerRepository.GetPlayerById(_pdActivePlayerId);
+            if (p == null) return;
+
+            void Row(string label, string value)
+            {
+                var row = new VisualElement();
+                row.style.flexDirection = FlexDirection.Row;
+                row.style.paddingTop    = row.style.paddingBottom = 4;
+                row.style.borderBottomWidth = 1;
+                row.style.borderBottomColor = new UnityEngine.UIElements.StyleColor(new UnityEngine.Color(1,1,1,0.06f));
+                var lbl = new Label(label); lbl.style.width = 140; lbl.AddToClassList("muted");
+                var val = new Label(value); val.style.flexGrow = 1;
+                row.Add(lbl); row.Add(val);
+                _pdContent.Add(row);
+            }
+
+            void Section(string title)
+            {
+                var h = new Label(title);
+                h.AddToClassList("modal-section-title");
+                h.style.marginTop = 10; h.style.marginBottom = 4;
+                _pdContent.Add(h);
+            }
+
+            Section("基本信息");
+            Row("身高 / 体重", $"{p.HeightCm}cm / {p.WeightKg}kg");
+            Row("年龄",       $"{p.Age} 岁");
+            Row("位置",       p.SecondaryPosition.HasValue ? $"{p.Position} / {p.SecondaryPosition.Value}" : p.Position.ToString());
+            Row("综合评分",   p.Overall.ToString());
+            Row("潜力",       $"{p.PotentialMin}–{p.PotentialMax} (均值 {p.Potential})");
+            Row("巅峰区间",   $"{p.PeakAgeStart}–{p.PeakAgeEnd} 岁");
+
+            Section("合同");
+            Row("剩余年限",   $"{p.ContractYears} 年");
+            Row("年薪",       $"{p.ContractSalary} M");
+
+            Section("健康状况");
+            Row("伤病状态",   InjuryService.GetInjuryLabel(p.InjuryGamesRemaining));
+
+            Section("属性");
+            var attr = p.Attributes;
+            Row("速度",       attr.Speed.ToString());        Row("力量",       attr.Strength.ToString());
+            Row("两分投篮",   attr.TwoPoint.ToString());     Row("三分投篮",   attr.ThreePoint.ToString());
+            Row("近距离出手", attr.CloseShot.ToString());    Row("上篮",       attr.Layup.ToString());
+            Row("内线得分",   attr.PostScoring.ToString());  Row("罚球",       attr.FreeThrow.ToString());
+            Row("传球",       attr.Passing.ToString());      Row("控球",       attr.BallHandle.ToString());
+            Row("突破",       attr.Drive.ToString());        Row("制造犯规",   attr.DrawFoul.ToString());
+            Row("外线防守",   attr.PerimeterDefense.ToString()); Row("内线防守", attr.InteriorDefense.ToString());
+            Row("抢断",       attr.Steal.ToString());        Row("盖帽",       attr.Block.ToString());
+            Row("前场篮板",   attr.OffensiveRebound.ToString()); Row("后场篮板", attr.DefensiveRebound.ToString());
+            Row("体力",       attr.Stamina.ToString());
+        }
+
+        private void BuildPdStatsTab()
+        {
+            if (_currentSeason == null || _playerRepository == null) return;
+            var allTeams = _seasonRepository.GetSeasonTeams(_currentSeason.Id);
+            SeasonPlayerStat found = null;
+            foreach (var t in allTeams)
+            {
+                foreach (var s in _seasonRepository.GetPlayerSeasonStats(_currentSeason.Id, t.Id))
+                {
+                    if (s.PlayerId == _pdActivePlayerId) { found = s; break; }
+                }
+                if (found != null) break;
+            }
+
+            if (found == null || found.GamesPlayed == 0)
+            {
+                _pdContent.Add(new Label("本赛季暂无上场数据") { style = { color = new UnityEngine.UIElements.StyleColor(new UnityEngine.Color(1,1,1,0.4f)), marginTop = 20 } });
+                return;
+            }
+
+            void StatRow(string label, string value)
+            {
+                var row = new VisualElement(); row.style.flexDirection = FlexDirection.Row; row.style.paddingTop = row.style.paddingBottom = 4;
+                row.style.borderBottomWidth = 1; row.style.borderBottomColor = new UnityEngine.UIElements.StyleColor(new UnityEngine.Color(1,1,1,0.06f));
+                var lbl = new Label(label); lbl.style.width = 160; lbl.AddToClassList("muted");
+                var val = new Label(value); val.style.flexGrow = 1;
+                row.Add(lbl); row.Add(val); _pdContent.Add(row);
+            }
+
+            int gp = found.GamesPlayed;
+            float Avg(int total) => gp > 0 ? (float)total / gp : 0f;
+            StatRow("场次",   gp.ToString());
+            StatRow("上场时间",  $"{Avg(found.Minutes):F1}'");
+            StatRow("得分",   $"{Avg(found.Points):F1}");
+            StatRow("篮板",   $"{Avg(found.Rebounds):F1}");
+            StatRow("助攻",   $"{Avg(found.Assists):F1}");
+            StatRow("抢断",   $"{Avg(found.Steals):F1}");
+            StatRow("盖帽",   $"{Avg(found.Blocks):F1}");
+            StatRow("失误",   $"{Avg(found.Turnovers):F1}");
+            StatRow("犯规",   $"{Avg(found.Fouls):F1}");
+            string fgPct = found.FieldGoalsAttempted > 0 ? $"{(float)found.FieldGoalsMade / found.FieldGoalsAttempted * 100f:F1}%" : "—";
+            string tpPct = found.ThreePointersAttempted > 0 ? $"{(float)found.ThreePointersMade / found.ThreePointersAttempted * 100f:F1}%" : "—";
+            string ftPct = found.FreeThrowsAttempted > 0 ? $"{(float)found.FreeThrowsMade / found.FreeThrowsAttempted * 100f:F1}%" : "—";
+            StatRow("投篮%", fgPct); StatRow("三分%", tpPct); StatRow("罚球%", ftPct);
+            float pmg = gp > 0 ? (float)found.PlusMinus / gp : 0f;
+            StatRow("正负/场", pmg >= 0 ? $"+{pmg:F1}" : $"{pmg:F1}");
+        }
+
+        private void BuildPdCareerTab()
+        {
+            var career = _seasonRepository.GetPlayerCareerStats(_pdActivePlayerId);
+            if (career.Count == 0)
+            {
+                _pdContent.Add(new Label("暂无赛季数据") { style = { color = new UnityEngine.UIElements.StyleColor(new UnityEngine.Color(1,1,1,0.4f)), marginTop = 20 } });
+                return;
+            }
+
+            foreach (var (seasonNumber, seasonName, stat) in career)
+            {
+                var header = new Label($"赛季 {seasonNumber}  ·  {seasonName}");
+                header.AddToClassList("modal-section-title");
+                header.style.marginTop = 8; header.style.marginBottom = 2;
+                _pdContent.Add(header);
+
+                int gp = stat.GamesPlayed;
+                float Avg(int total) => gp > 0 ? (float)total / gp : 0f;
+                var summary = new Label(gp == 0
+                    ? "无上场记录"
+                    : $"{gp} 场  ·  {Avg(stat.Points):F1}分  {Avg(stat.Rebounds):F1}板  {Avg(stat.Assists):F1}助");
+                summary.style.marginLeft = 8;
+                summary.AddToClassList("muted");
+                _pdContent.Add(summary);
+            }
         }
     }
 }
