@@ -104,7 +104,8 @@ SET
     peak_age_start  = @peakAgeStart,
     peak_age_end    = @peakAgeEnd,
     contract_years  = @contractYears,
-    contract_salary = @contractSalary
+    contract_salary = @contractSalary,
+    injury_games_remaining = @injuryGamesRemaining
 WHERE id = @id;";
                 AddPlayerParameters(playerCommand, player);
                 playerCommand.ExecuteNonQuery();
@@ -196,6 +197,7 @@ SELECT
     COALESCE(p.peak_age_end,   30)  AS peak_age_end,
     COALESCE(p.contract_years,  0)  AS contract_years,
     COALESCE(p.contract_salary, 0)  AS contract_salary,
+    COALESCE(p.injury_games_remaining, 0) AS injury_games_remaining,
     COALESCE(a.two_point, 60) AS two_point,
     COALESCE(a.three_point, 60) AS three_point,
     COALESCE(a.layup, 60) AS layup,
@@ -274,6 +276,7 @@ LEFT JOIN player_tendencies t ON t.player_id = p.id
                 PeakAgeEnd     = ReadInt(reader["peak_age_end"]),
                 ContractYears  = ReadInt(reader["contract_years"]),
                 ContractSalary = ReadInt(reader["contract_salary"]),
+                InjuryGamesRemaining = ReadInt(reader["injury_games_remaining"]),
                 Attributes = new PlayerAttributes
                 {
                     TwoPoint = ReadInt(reader["two_point"]),
@@ -355,6 +358,7 @@ LEFT JOIN player_tendencies t ON t.player_id = p.id
             command.Parameters.AddWithValue("@peakAgeEnd",     player.PeakAgeEnd);
             command.Parameters.AddWithValue("@contractYears",  player.ContractYears);
             command.Parameters.AddWithValue("@contractSalary", player.ContractSalary);
+            command.Parameters.AddWithValue("@injuryGamesRemaining", player.InjuryGamesRemaining);
         }
 
         private static void AddAttributeParameters(SqliteCommand command, Player player)
@@ -600,6 +604,28 @@ VALUES (@pid, @tid, @mpg, @role, @floor, @ceiling);";
             cmd.Parameters.AddWithValue("@pid", playerId);
             var result = cmd.ExecuteScalar();
             return result == null ? 0 : Convert.ToInt32(result);
+        }
+
+        public void SetInjury(int playerId, int gamesRemaining)
+        {
+            using var connection = _databaseManager.OpenConnection();
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = @"UPDATE players SET injury_games_remaining = @g WHERE id = @id;";
+            cmd.Parameters.AddWithValue("@g",  gamesRemaining);
+            cmd.Parameters.AddWithValue("@id", playerId);
+            cmd.ExecuteNonQuery();
+        }
+
+        public void DecrementInjuries(string teamId)
+        {
+            using var connection = _databaseManager.OpenConnection();
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = @"
+UPDATE players
+SET injury_games_remaining = MAX(0, injury_games_remaining - 1)
+WHERE team_id = @teamId AND injury_games_remaining > 0;";
+            cmd.Parameters.AddWithValue("@teamId", teamId);
+            cmd.ExecuteNonQuery();
         }
 
         public void UpdateSimProfileTeam(int playerId, string teamId)

@@ -26,8 +26,10 @@ namespace BasketballManager.Core.Models
         public int PeakAgeEnd   = 30;
         public int ContractYears;
         public int ContractSalary;   // 单位：百万（3 = 3M）
+        public int InjuryGamesRemaining;
         public bool IsFreeAgent   => TeamId == "__FA__";
         public bool IsInDraftPool => TeamId == "__DRAFT_POOL__";
+        public bool IsInjured     => InjuryGamesRemaining > 0;
         public int Potential => (PotentialMin + PotentialMax) / 2;
         public PlayerAttributes Attributes = new PlayerAttributes();
         public PlayerTendencies Tendencies = new PlayerTendencies();

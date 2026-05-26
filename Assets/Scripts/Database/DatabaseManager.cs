@@ -82,6 +82,7 @@ namespace BasketballManager.Database
             EnsurePlayerNamedViews(connection);
             EnsureContractColumns(connection);
             EnsureFreeAgencyTables(connection);
+            EnsureInjuryColumn(connection);
 
             if (!HasManagedSchema(connection))
             {
@@ -228,6 +229,15 @@ CREATE TABLE IF NOT EXISTS draft_class (
     draft_year  INTEGER NOT NULL DEFAULT 1,
     FOREIGN KEY (player_id) REFERENCES players (id) ON DELETE CASCADE
 );");
+            tx.Commit();
+        }
+
+        private static void EnsureInjuryColumn(SqliteConnection connection)
+        {
+            if (HasColumn(connection, "players", "injury_games_remaining")) return;
+            using var tx = connection.BeginTransaction();
+            ExecuteNonQuery(connection, tx,
+                "ALTER TABLE players ADD COLUMN injury_games_remaining INTEGER NOT NULL DEFAULT 0;");
             tx.Commit();
         }
 
