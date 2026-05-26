@@ -60,9 +60,11 @@
 
                 <!-- Tabs -->
                 <ui:VisualElement class="tabs">
-                    <ui:Button name="tab-basic" text="基础信息" class="tab tab--active" />
-                    <ui:Button name="tab-attr"  text="能力属性" class="tab" />
-                    <ui:Button name="tab-tend"  text="球员倾向" class="tab" />
+                    <ui:Button name="tab-basic"   text="基础信息" class="tab tab--active" />
+                    <ui:Button name="tab-attr"    text="能力属性" class="tab" />
+                    <ui:Button name="tab-tend"    text="球员倾向" class="tab" />
+                    <ui:Button name="tab-traits"  text="特    性" class="tab" />
+                    <ui:Button name="tab-zone"    text="投篮图"   class="tab" />
                 </ui:VisualElement>
 
                 <!-- Tab 内容 -->
@@ -90,6 +92,17 @@
                             <ui:IntegerField name="field-age" label="年龄" class="roster-field" />
                             <ui:DropdownField name="field-status" label="球员状态" class="roster-field" />
                         </ui:VisualElement>
+                        <ui:VisualElement class="roster-fields__row">
+                            <ui:IntegerField name="field-potential-min" label="最低潜力" class="roster-field" />
+                            <ui:IntegerField name="field-potential-max" label="最高潜力" class="roster-field" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="roster-fields__row">
+                            <ui:Label name="field-potential-label" text="有效潜力：—" class="roster-field roster-field--readonly" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="roster-fields__row">
+                            <ui:IntegerField name="field-peak-start" label="巅峰开始年龄" class="roster-field" />
+                            <ui:IntegerField name="field-peak-end"   label="巅峰结束年龄" class="roster-field" />
+                        </ui:VisualElement>
                     </ui:VisualElement>
 
                     <!-- ===== 能力属性（代码注入两列） ===== -->
@@ -102,6 +115,96 @@
                     <ui:VisualElement name="page-tend" class="tab-page tab-page--hidden roster-stats">
                         <ui:VisualElement name="tend-col1" class="roster-stats__col" />
                         <ui:VisualElement name="tend-col2" class="roster-stats__col" />
+                    </ui:VisualElement>
+
+                    <!-- ===== 投篮图 ===== -->
+                    <ui:VisualElement name="page-zone" class="tab-page tab-page--hidden">
+                        <ui:Label name="zone-season-label" text="赛季投篮区域" class="zone-chart__title" />
+                        <!-- 三分区（5 格）-->
+                        <ui:VisualElement class="zone-row">
+                            <ui:VisualElement name="zone-0"  class="zone-cell three-zone">
+                                <ui:Label class="zone-name" />
+                                <ui:Label class="zone-stat" />
+                            </ui:VisualElement>
+                            <ui:VisualElement name="zone-2"  class="zone-cell three-zone">
+                                <ui:Label class="zone-name" />
+                                <ui:Label class="zone-stat" />
+                            </ui:VisualElement>
+                            <ui:VisualElement name="zone-4"  class="zone-cell three-zone">
+                                <ui:Label class="zone-name" />
+                                <ui:Label class="zone-stat" />
+                            </ui:VisualElement>
+                            <ui:VisualElement name="zone-3"  class="zone-cell three-zone">
+                                <ui:Label class="zone-name" />
+                                <ui:Label class="zone-stat" />
+                            </ui:VisualElement>
+                            <ui:VisualElement name="zone-1"  class="zone-cell three-zone">
+                                <ui:Label class="zone-name" />
+                                <ui:Label class="zone-stat" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                        <!-- 中投区（5 格）-->
+                        <ui:VisualElement class="zone-row">
+                            <ui:VisualElement name="zone-5"  class="zone-cell mid-zone">
+                                <ui:Label class="zone-name" />
+                                <ui:Label class="zone-stat" />
+                            </ui:VisualElement>
+                            <ui:VisualElement name="zone-7"  class="zone-cell mid-zone">
+                                <ui:Label class="zone-name" />
+                                <ui:Label class="zone-stat" />
+                            </ui:VisualElement>
+                            <ui:VisualElement name="zone-9"  class="zone-cell mid-zone">
+                                <ui:Label class="zone-name" />
+                                <ui:Label class="zone-stat" />
+                            </ui:VisualElement>
+                            <ui:VisualElement name="zone-8"  class="zone-cell mid-zone">
+                                <ui:Label class="zone-name" />
+                                <ui:Label class="zone-stat" />
+                            </ui:VisualElement>
+                            <ui:VisualElement name="zone-6"  class="zone-cell mid-zone">
+                                <ui:Label class="zone-name" />
+                                <ui:Label class="zone-stat" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                        <!-- 近距离区（3 格）-->
+                        <ui:VisualElement class="zone-row">
+                            <ui:VisualElement name="zone-10" class="zone-cell close-zone">
+                                <ui:Label class="zone-name" />
+                                <ui:Label class="zone-stat" />
+                            </ui:VisualElement>
+                            <ui:VisualElement name="zone-12" class="zone-cell close-zone">
+                                <ui:Label class="zone-name" />
+                                <ui:Label class="zone-stat" />
+                            </ui:VisualElement>
+                            <ui:VisualElement name="zone-11" class="zone-cell close-zone">
+                                <ui:Label class="zone-name" />
+                                <ui:Label class="zone-stat" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                        <!-- 篮下（1 格）-->
+                        <ui:VisualElement class="zone-row">
+                            <ui:VisualElement name="zone-13" class="zone-cell basket-zone">
+                                <ui:Label class="zone-name" />
+                                <ui:Label class="zone-stat" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+
+                    <!-- ===== 特性 ===== -->
+                    <ui:VisualElement name="page-traits" class="tab-page tab-page--hidden">
+                        <ui:VisualElement class="traits-header">
+                            <ui:Label name="traits-capacity-label" text="" class="caption traits-capacity" />
+                            <ui:Button name="btn-add-trait" text="+ 添加特性" class="btn btn--sm" />
+                        </ui:VisualElement>
+                        <ui:VisualElement name="traits-list" class="traits-list" />
+                        <!-- 添加特性浮层 -->
+                        <ui:VisualElement name="trait-picker-overlay" class="trait-picker-overlay">
+                            <ui:VisualElement class="trait-picker-popup">
+                                <ui:Label text="选择特性" class="card-title" />
+                                <ui:ScrollView name="trait-picker-scroll" class="trait-picker-scroll" />
+                                <ui:Button name="btn-trait-picker-close" text="取消" class="btn" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
                     </ui:VisualElement>
 
                 </ui:ScrollView>

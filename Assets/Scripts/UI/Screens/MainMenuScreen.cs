@@ -16,9 +16,9 @@ namespace BasketballManager.UI.Screens
 
         protected override void OnBuilt()
         {
-            Root.Q<Button>("btn-season").clicked += () => OnSeasonClicked?.Invoke();
+            Root.Q<Button>("btn-season").clicked  += () => OnSeasonClicked?.Invoke();
             Root.Q<Button>("btn-options").clicked += () => OnOptionsClicked?.Invoke();
-            Root.Q<Button>("btn-quit").clicked += () => OnQuitClicked?.Invoke();
+            Root.Q<Button>("btn-quit").clicked    += () => OnQuitClicked?.Invoke();
         }
     }
 }

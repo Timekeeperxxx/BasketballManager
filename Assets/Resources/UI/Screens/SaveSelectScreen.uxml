@@ -1,0 +1,31 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="project://database/Assets/Resources/UI/Theme/theme.uss" />
+    <Style src="project://database/Assets/Resources/UI/Screens/SaveSelectScreen.uss" />
+    <ui:VisualElement name="save-select-root" class="save-select-root">
+
+        <ui:VisualElement class="save-select-header">
+            <ui:Label text="篮球经理" class="save-select-game-title" />
+            <ui:Label text="选择存档" class="save-select-subtitle" />
+        </ui:VisualElement>
+
+        <ui:ScrollView name="slot-list" class="save-slot-list" />
+
+        <ui:VisualElement class="save-select-footer">
+            <ui:Button name="btn-back" text="返回主菜单" class="btn save-back-btn" />
+            <ui:Button name="btn-quit" text="退出游戏"   class="btn save-quit-btn" />
+        </ui:VisualElement>
+
+        <!-- 删除确认弹窗 -->
+        <ui:VisualElement name="delete-confirm-overlay" class="delete-confirm-overlay">
+            <ui:VisualElement class="delete-confirm-popup">
+                <ui:Label text="确认删除" class="delete-confirm-title" />
+                <ui:Label name="delete-confirm-msg" text="" class="delete-confirm-msg" />
+                <ui:VisualElement class="delete-confirm-btns">
+                    <ui:Button name="btn-delete-cancel"  text="取消" class="btn" />
+                    <ui:Button name="btn-delete-confirm" text="删除" class="btn btn--danger" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+</ui:UXML>

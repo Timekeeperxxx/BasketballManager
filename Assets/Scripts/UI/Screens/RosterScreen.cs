@@ -8,6 +8,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using Position = BasketballManager.Core.Enums.Position;
 using NameOrder = BasketballManager.Core.Enums.NameOrder;
+using ShotZone = BasketballManager.Core.Models.ShotZone;
 
 namespace BasketballManager.UI.Screens
 {
@@ -24,6 +25,8 @@ namespace BasketballManager.UI.Screens
         // 依赖
         private TeamRepository _teamRepository;
         private PlayerRepository _playerRepository;
+        private TraitRepository _traitRepository;
+        private SeasonRepository _seasonRepository;
 
         // 数据
         private List<Team> _teams = new List<Team>();
@@ -47,13 +50,23 @@ namespace BasketballManager.UI.Screens
         private ListView _playersList;
 
         // Tabs
-        private Button _tabBasic, _tabAttr, _tabTend;
-        private VisualElement _pageBasic, _pageAttr, _pageTend;
+        private Button _tabBasic, _tabAttr, _tabTend, _tabTraits, _tabZone;
+        private VisualElement _pageBasic, _pageAttr, _pageTend, _pageTraits, _pageZone;
+
+        // Traits page
+        private Label _traitsCapacityLabel;
+        private Button _btnAddTrait;
+        private VisualElement _traitsList;
+        private VisualElement _traitPickerOverlay;
+        private ScrollView _traitPickerScroll;
+        private List<Trait> _allTraits = new List<Trait>();
 
         // 基础信息字段
         private TextField _fFirstName, _fLastName;
         private DropdownField _fNameOrder, _fPosition, _fSecPos, _fStatus;
         private IntegerField _fJersey, _fHeight, _fWeight, _fAge;
+        private IntegerField _fPotentialMin, _fPotentialMax, _fPeakStart, _fPeakEnd;
+        private Label _fPotentialLabel;
 
         // 状态下拉项
         private const string STATUS_CURRENT = "现役球员";
@@ -68,10 +81,12 @@ namespace BasketballManager.UI.Screens
 
         private void Awake() { ScreenId = Id; }
 
-        public void Initialize(TeamRepository teamRepository, PlayerRepository playerRepository)
+        public void Initialize(TeamRepository teamRepository, PlayerRepository playerRepository, TraitRepository traitRepository = null, SeasonRepository seasonRepository = null)
         {
             _teamRepository = teamRepository;
             _playerRepository = playerRepository;
+            _traitRepository = traitRepository;
+            _seasonRepository = seasonRepository;
         }
 
         // ============================================================
@@ -131,15 +146,31 @@ namespace BasketballManager.UI.Screens
             _playersList.selectionChanged += OnPlayerSelectionChanged;
 
             // Tabs
-            _tabBasic = Root.Q<Button>("tab-basic");
-            _tabAttr  = Root.Q<Button>("tab-attr");
-            _tabTend  = Root.Q<Button>("tab-tend");
-            _pageBasic = Root.Q<VisualElement>("page-basic");
-            _pageAttr  = Root.Q<VisualElement>("page-attr");
-            _pageTend  = Root.Q<VisualElement>("page-tend");
-            _tabBasic.clicked += () => SwitchTab(0);
-            _tabAttr.clicked  += () => SwitchTab(1);
-            _tabTend.clicked  += () => SwitchTab(2);
+            _tabBasic  = Root.Q<Button>("tab-basic");
+            _tabAttr   = Root.Q<Button>("tab-attr");
+            _tabTend   = Root.Q<Button>("tab-tend");
+            _tabTraits = Root.Q<Button>("tab-traits");
+            _tabZone   = Root.Q<Button>("tab-zone");
+            _pageBasic  = Root.Q<VisualElement>("page-basic");
+            _pageAttr   = Root.Q<VisualElement>("page-attr");
+            _pageTend   = Root.Q<VisualElement>("page-tend");
+            _pageTraits = Root.Q<VisualElement>("page-traits");
+            _pageZone   = Root.Q<VisualElement>("page-zone");
+            _tabBasic.clicked  += () => SwitchTab(0);
+            _tabAttr.clicked   += () => SwitchTab(1);
+            _tabTend.clicked   += () => SwitchTab(2);
+            _tabTraits.clicked += () => SwitchTab(3);
+            _tabZone.clicked   += () => SwitchTab(4);
+
+            // Traits page
+            _traitsCapacityLabel = Root.Q<Label>("traits-capacity-label");
+            _btnAddTrait         = Root.Q<Button>("btn-add-trait");
+            _traitsList          = Root.Q<VisualElement>("traits-list");
+            _traitPickerOverlay  = Root.Q<VisualElement>("trait-picker-overlay");
+            _traitPickerScroll   = Root.Q<ScrollView>("trait-picker-scroll");
+
+            _btnAddTrait.clicked += OpenTraitPicker;
+            Root.Q<Button>("btn-trait-picker-close").clicked += CloseTraitPicker;
 
             // 基础信息字段
             _fFirstName = Root.Q<TextField>("field-firstname");
@@ -147,11 +178,16 @@ namespace BasketballManager.UI.Screens
             _fNameOrder = Root.Q<DropdownField>("field-nameorder");
             _fPosition  = Root.Q<DropdownField>("field-position");
             _fSecPos    = Root.Q<DropdownField>("field-secpos");
-            _fJersey    = Root.Q<IntegerField>("field-jersey");
-            _fHeight    = Root.Q<IntegerField>("field-height");
-            _fWeight    = Root.Q<IntegerField>("field-weight");
-            _fAge       = Root.Q<IntegerField>("field-age");
-            _fStatus    = Root.Q<DropdownField>("field-status");
+            _fJersey       = Root.Q<IntegerField>("field-jersey");
+            _fHeight       = Root.Q<IntegerField>("field-height");
+            _fWeight       = Root.Q<IntegerField>("field-weight");
+            _fAge          = Root.Q<IntegerField>("field-age");
+            _fStatus       = Root.Q<DropdownField>("field-status");
+            _fPotentialMin = Root.Q<IntegerField>("field-potential-min");
+            _fPotentialMax = Root.Q<IntegerField>("field-potential-max");
+            _fPotentialLabel = Root.Q<Label>("field-potential-label");
+            _fPeakStart    = Root.Q<IntegerField>("field-peak-start");
+            _fPeakEnd      = Root.Q<IntegerField>("field-peak-end");
 
             // 下拉选项
             _fNameOrder.choices = Enum.GetNames(typeof(NameOrder)).ToList();
@@ -208,6 +244,20 @@ namespace BasketballManager.UI.Screens
             _fWeight.RegisterValueChangedCallback(evt => Mutate(p => p.WeightKg     = evt.newValue));
             _fAge.RegisterValueChangedCallback   (evt => Mutate(p => p.Age          = evt.newValue));
             _fStatus.RegisterValueChangedCallback(evt => Mutate(p => p.IsCurrent    = evt.newValue == STATUS_CURRENT));
+            _fPotentialMin.RegisterValueChangedCallback(evt =>
+            {
+                Mutate(p => p.PotentialMin = evt.newValue);
+                if (_selectedPlayer != null)
+                    _fPotentialLabel.text = $"有效潜力：{_selectedPlayer.Potential}";
+            });
+            _fPotentialMax.RegisterValueChangedCallback(evt =>
+            {
+                Mutate(p => p.PotentialMax = evt.newValue);
+                if (_selectedPlayer != null)
+                    _fPotentialLabel.text = $"有效潜力：{_selectedPlayer.Potential}";
+            });
+            _fPeakStart.RegisterValueChangedCallback(evt => Mutate(p => p.PeakAgeStart = evt.newValue));
+            _fPeakEnd.RegisterValueChangedCallback  (evt => Mutate(p => p.PeakAgeEnd   = evt.newValue));
 
             // 能力（21）&倾向（14）字段：注入到两列
             BuildAttributeFields();
@@ -419,6 +469,9 @@ namespace BasketballManager.UI.Screens
             _selectedPlayer = player;
             LoadFieldsFromPlayer();
             RefreshHero();
+            // Keep zone chart in sync if already visible
+            if (_pageZone != null && !_pageZone.ClassListContains("tab-page--hidden"))
+                RefreshZoneChart();
         }
 
         // ============================================================
@@ -469,6 +522,11 @@ namespace BasketballManager.UI.Screens
                 _fWeight.SetValueWithoutNotify(p.WeightKg);
                 _fAge.SetValueWithoutNotify(p.Age);
                 _fStatus.SetValueWithoutNotify(p.IsCurrent ? STATUS_CURRENT : STATUS_HISTORICAL);
+                _fPotentialMin.SetValueWithoutNotify(p.PotentialMin);
+                _fPotentialMax.SetValueWithoutNotify(p.PotentialMax);
+                _fPotentialLabel.text = $"有效潜力：{p.Potential}";
+                _fPeakStart.SetValueWithoutNotify(p.PeakAgeStart);
+                _fPeakEnd.SetValueWithoutNotify(p.PeakAgeEnd);
 
                 foreach (var f in _attrFields)
                 {
@@ -503,11 +561,18 @@ namespace BasketballManager.UI.Screens
                 _fWeight.SetValueWithoutNotify(0);
                 _fAge.SetValueWithoutNotify(0);
                 _fStatus.SetValueWithoutNotify(STATUS_HISTORICAL);
+                _fPotentialMin.SetValueWithoutNotify(0);
+                _fPotentialMax.SetValueWithoutNotify(0);
+                _fPotentialLabel.text = "有效潜力：—";
+                _fPeakStart.SetValueWithoutNotify(0);
+                _fPeakEnd.SetValueWithoutNotify(0);
                 foreach (var f in _attrFields) f.SetValueWithoutNotify(0);
                 foreach (var f in _tendFields) f.SetValueWithoutNotify(0);
             }
             finally { _suppressSave = false; }
             RefreshHero();
+            _traitsList?.Clear();
+            if (_traitsCapacityLabel != null) _traitsCapacityLabel.text = string.Empty;
         }
 
         // ============================================================
@@ -550,18 +615,129 @@ namespace BasketballManager.UI.Screens
 
         private void SwitchTab(int index)
         {
-            SetActive(_tabBasic, index == 0);
-            SetActive(_tabAttr,  index == 1);
-            SetActive(_tabTend,  index == 2);
+            SetActive(_tabBasic,  index == 0);
+            SetActive(_tabAttr,   index == 1);
+            SetActive(_tabTend,   index == 2);
+            SetActive(_tabTraits, index == 3);
+            SetActive(_tabZone,   index == 4);
 
-            _pageBasic.EnableInClassList("tab-page--hidden", index != 0);
-            _pageAttr.EnableInClassList ("tab-page--hidden", index != 1);
-            _pageTend.EnableInClassList ("tab-page--hidden", index != 2);
+            _pageBasic.EnableInClassList ("tab-page--hidden", index != 0);
+            _pageAttr.EnableInClassList  ("tab-page--hidden", index != 1);
+            _pageTend.EnableInClassList  ("tab-page--hidden", index != 2);
+            _pageTraits.EnableInClassList("tab-page--hidden", index != 3);
+            _pageZone.EnableInClassList  ("tab-page--hidden", index != 4);
+
+            if (index == 3) RefreshTraitsPage();
+            if (index == 4) RefreshZoneChart();
         }
 
         private static void SetActive(Button btn, bool active)
         {
             btn.EnableInClassList("tab--active", active);
+        }
+
+        // ============================================================
+        //  特性页
+        // ============================================================
+
+        private void RefreshTraitsPage()
+        {
+            if (_selectedPlayer == null || _traitRepository == null) return;
+
+            // Reload latest traits from DB
+            _selectedPlayer.Traits = _traitRepository.GetPlayerTraits(_selectedPlayer.Id).ToList();
+
+            int maxTraits = Player.GetMaxTraits(_selectedPlayer.Overall);
+            int count = _selectedPlayer.Traits.Count;
+            _traitsCapacityLabel.text = $"特性容量  {count} / {maxTraits}";
+            _btnAddTrait.style.display = count < maxTraits ? DisplayStyle.Flex : DisplayStyle.None;
+
+            _traitsList.Clear();
+            foreach (var pt in _selectedPlayer.Traits)
+                _traitsList.Add(BuildTraitRow(pt));
+        }
+
+        private VisualElement BuildTraitRow(PlayerTrait pt)
+        {
+            var row = new VisualElement();
+            row.AddToClassList("trait-row");
+
+            var nameLabel = new Label { text = pt.DisplayName };
+            nameLabel.AddToClassList("trait-row__name");
+            row.Add(nameLabel);
+
+            var descLabel = new Label { text = pt.Description };
+            descLabel.AddToClassList("trait-row__desc");
+            row.Add(descLabel);
+
+            var starsContainer = new VisualElement();
+            starsContainer.AddToClassList("trait-row__stars");
+
+            for (int s = 1; s <= 3; s++)
+            {
+                int starValue = s;
+                var starBtn = new Button { text = "★" };
+                starBtn.AddToClassList("trait-star");
+                if (s <= pt.StarLevel) starBtn.AddToClassList("trait-star--active");
+                starBtn.clicked += () =>
+                {
+                    if (_selectedPlayer == null || _traitRepository == null) return;
+                    _traitRepository.UpdateStarLevel(_selectedPlayer.Id, pt.TraitId, starValue);
+                    RefreshTraitsPage();
+                };
+                starsContainer.Add(starBtn);
+            }
+            row.Add(starsContainer);
+
+            var removeBtn = new Button { text = "✕" };
+            removeBtn.AddToClassList("trait-row__remove");
+            removeBtn.clicked += () =>
+            {
+                if (_selectedPlayer == null || _traitRepository == null) return;
+                _traitRepository.RemovePlayerTrait(_selectedPlayer.Id, pt.TraitId);
+                RefreshTraitsPage();
+            };
+            row.Add(removeBtn);
+
+            return row;
+        }
+
+        private void OpenTraitPicker()
+        {
+            if (_traitRepository == null || _selectedPlayer == null) return;
+            var ownedIds = new HashSet<int>(_selectedPlayer.Traits.Select(t => t.TraitId));
+            var available = _traitRepository.GetAllTraits().Where(t => !ownedIds.Contains(t.Id)).ToList();
+
+            _traitPickerScroll.Clear();
+            foreach (var trait in available)
+            {
+                var captured = trait;
+                var btn = new Button(() => OnTraitPickerItemClicked(captured));
+                btn.AddToClassList("trait-picker-item");
+
+                var nameLabel = new Label { text = captured.DisplayName };
+                nameLabel.AddToClassList("trait-picker-item__name");
+                var descLabel = new Label { text = captured.Description1 };
+                descLabel.AddToClassList("trait-picker-item__desc");
+                btn.Add(nameLabel);
+                btn.Add(descLabel);
+                _traitPickerScroll.Add(btn);
+            }
+
+            _traitPickerOverlay.AddToClassList("trait-picker-overlay--visible");
+        }
+
+        private void CloseTraitPicker()
+        {
+            _traitPickerOverlay.RemoveFromClassList("trait-picker-overlay--visible");
+        }
+
+        private void OnTraitPickerItemClicked(Trait trait)
+        {
+            if (trait == null || _selectedPlayer == null || _traitRepository == null) return;
+            _traitRepository.AddPlayerTrait(_selectedPlayer.Id, trait.Id, 1);
+            CloseTraitPicker();
+            RefreshTraitsPage();
         }
 
         // ============================================================
@@ -591,6 +767,74 @@ namespace BasketballManager.UI.Screens
             element.Q<Label>("row-jersey").text = "#" + p.JerseyNumber;
             element.Q<Label>("row-name").text   = p.GetDisplayName();
             element.Q<Label>("row-pos").text    = p.Position.ToString();
+        }
+
+        // ============================================================
+        //  投篮图
+        // ============================================================
+
+        private void RefreshZoneChart()
+        {
+            if (_selectedPlayer == null || _seasonRepository == null || _pageZone == null) return;
+
+            var season = _seasonRepository.GetLatestSeason();
+            var seasonLabel = _pageZone.Q<Label>("zone-season-label");
+            if (season == null)
+            {
+                if (seasonLabel != null) seasonLabel.text = "暂无赛季数据";
+                ClearZoneCells();
+                return;
+            }
+            if (seasonLabel != null) seasonLabel.text = $"{season.Name} · 投篮区域";
+
+            var zoneStats = _seasonRepository.GetPlayerSeasonZoneStats(season.Id, _selectedPlayer.Id);
+            var lookup = new Dictionary<int, PlayerZoneStat>();
+            foreach (var s in zoneStats)
+                lookup[(int)s.Zone] = s;
+
+            for (int z = 0; z < 14; z++)
+            {
+                var cell = _pageZone.Q<VisualElement>($"zone-{z}");
+                if (cell == null) continue;
+
+                var nameLabel = cell.Q<Label>(className: "zone-name");
+                var statLabel = cell.Q<Label>(className: "zone-stat");
+                var zoneName  = ((ShotZone)z).ToChinese();
+
+                if (nameLabel != null) nameLabel.text = zoneName;
+
+                cell.RemoveFromClassList("zone-cell--hot");
+                cell.RemoveFromClassList("zone-cell--cold");
+                cell.RemoveFromClassList("zone-cell--empty");
+
+                if (lookup.TryGetValue(z, out var stat) && stat.Fga > 0)
+                {
+                    if (statLabel != null) statLabel.text = $"{stat.Fga}次 {stat.FgPct:P0}";
+                    if      (stat.FgPct >= 0.45f) cell.AddToClassList("zone-cell--hot");
+                    else if (stat.FgPct <  0.33f) cell.AddToClassList("zone-cell--cold");
+                }
+                else
+                {
+                    if (statLabel != null) statLabel.text = "—";
+                    cell.AddToClassList("zone-cell--empty");
+                }
+            }
+        }
+
+        private void ClearZoneCells()
+        {
+            for (int z = 0; z < 14; z++)
+            {
+                var cell = _pageZone?.Q<VisualElement>($"zone-{z}");
+                if (cell == null) continue;
+                var nameLabel = cell.Q<Label>(className: "zone-name");
+                var statLabel = cell.Q<Label>(className: "zone-stat");
+                if (nameLabel != null) nameLabel.text = ((ShotZone)z).ToChinese();
+                if (statLabel != null) statLabel.text = "—";
+                cell.RemoveFromClassList("zone-cell--hot");
+                cell.RemoveFromClassList("zone-cell--cold");
+                cell.AddToClassList("zone-cell--empty");
+            }
         }
 
         // ============================================================

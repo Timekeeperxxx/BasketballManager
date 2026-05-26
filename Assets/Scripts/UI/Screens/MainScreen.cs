@@ -1,3 +1,4 @@
+using BasketballManager.App;
 using BasketballManager.Database;
 using BasketballManager.Seasons;
 using BasketballManager.UI.Core;
@@ -17,6 +18,11 @@ namespace BasketballManager.UI.Screens
     /// </summary>
     public sealed class MainScreen : MonoBehaviour
     {
+        public event System.Action OnReturnToSaveSelect;
+
+        // 由 AppBootstrapper 在 Initialize 之后、Start 之前设置，跳过内部主菜单直接进赛季
+        private bool _startDirectlyAtSeason;
+
         // ---------- 依赖 ----------
         private DatabaseManager _databaseManager;
         private TeamRepository _teamRepository;
@@ -24,6 +30,7 @@ namespace BasketballManager.UI.Screens
         private SimulationProfileRepository _profileRepository;
         private SeasonRepository _seasonRepository;
         private SeasonService _seasonService;
+        private TraitRepository _traitRepository;
 
         // ---------- UI Toolkit ----------
         private UIDocument _document;
@@ -34,10 +41,13 @@ namespace BasketballManager.UI.Screens
         // ---------- 路由 + 屏幕 ----------
         private ScreenRouter _router;
         private MainMenuScreen _mainMenu;
+        private TeamSelectScreen _teamSelectScreen;
         private SeasonScreen _seasonScreen;
         private OptionsScreen _optionsScreen;
         private RosterScreen _rosterScreen;
         private DebugPanelScreen _debugHost;
+
+        public void SetStartDirectlyAtSeason(bool value) { _startDirectlyAtSeason = value; }
 
         public void Initialize(DatabaseManager databaseManager, TeamRepository teamRepository, PlayerRepository playerRepository, SimulationProfileRepository profileRepository, SeasonRepository seasonRepository, SeasonService seasonService)
         {
@@ -47,6 +57,8 @@ namespace BasketballManager.UI.Screens
             _profileRepository = profileRepository;
             _seasonRepository = seasonRepository;
             _seasonService = seasonService;
+            _traitRepository = new TraitRepository(databaseManager);
+            playerRepository.SetTraitRepository(_traitRepository);
         }
 
         private void Start()
@@ -60,7 +72,25 @@ namespace BasketballManager.UI.Screens
 
             try
             {
+                // 内部主菜单始终作为栈底，保证"返回"可以回来
                 _router.ReplaceRoot(MainMenuScreen.Id);
+
+                if (_startDirectlyAtSeason)
+                {
+                    // 存档选择后直接进赛季，跳过内部主菜单
+                    string teamKey = SaveManager.GetUserTeamIdKey(SaveManager.ActiveSlotId);
+                    string teamId  = UnityEngine.PlayerPrefs.GetString(teamKey, "");
+                    if (string.IsNullOrEmpty(teamId))
+                    {
+                        _router.Push(TeamSelectScreen.Id);
+                    }
+                    else
+                    {
+                        _seasonScreen.SetUserTeam(teamId);
+                        _router.Push(SeasonScreen.Id);
+                    }
+                }
+
                 UpdateDebugFabVisibility(_router.Current);
                 Debug.Log("[MainScreen] ReplaceRoot(MainMenu) OK");
             }
@@ -147,8 +177,13 @@ namespace BasketballManager.UI.Screens
             _mainMenu.BuildUi(_screenHost, LoadTree("UI/Screens/MainMenu"), LoadStyle("UI/Screens/MainMenu"));
             _router.Register(_mainMenu);
 
+            _teamSelectScreen = gameObject.AddComponent<TeamSelectScreen>();
+            _teamSelectScreen.Initialize(_teamRepository);
+            _teamSelectScreen.BuildUi(_screenHost, LoadTree("UI/Screens/TeamSelectScreen"), LoadStyle("UI/Screens/TeamSelectScreen"));
+            _router.Register(_teamSelectScreen);
+
             _seasonScreen = gameObject.AddComponent<SeasonScreen>();
-            _seasonScreen.Initialize(_seasonService, _seasonRepository, _teamRepository);
+            _seasonScreen.Initialize(_seasonService, _seasonRepository, _teamRepository, _playerRepository, _profileRepository);
             _seasonScreen.BuildUi(_screenHost, LoadTree("UI/Screens/SeasonScreen"), LoadStyle("UI/Screens/SeasonScreen"));
             _router.Register(_seasonScreen);
 
@@ -157,7 +192,7 @@ namespace BasketballManager.UI.Screens
             _router.Register(_optionsScreen);
 
             _rosterScreen = gameObject.AddComponent<RosterScreen>();
-            _rosterScreen.Initialize(_teamRepository, _playerRepository);
+            _rosterScreen.Initialize(_teamRepository, _playerRepository, _traitRepository, _seasonRepository);
             _rosterScreen.BuildUi(_screenHost, LoadTree("UI/Screens/RosterScreen"), LoadStyle("UI/Screens/RosterScreen"));
             _router.Register(_rosterScreen);
 
@@ -187,10 +222,22 @@ namespace BasketballManager.UI.Screens
 
         private void WireEvents()
         {
-            // 主菜单
-            _mainMenu.OnSeasonClicked += () => _router.Push(SeasonScreen.Id);
+            // 主菜单：赛季模式 = 重新选存档（由 AppBootstrapper 接管）
+            _mainMenu.OnSeasonClicked  += () => OnReturnToSaveSelect?.Invoke();
             _mainMenu.OnOptionsClicked += () => _router.Push(OptionsScreen.Id);
-            _mainMenu.OnQuitClicked += QuitGame;
+            _mainMenu.OnQuitClicked    += QuitGame;
+
+            // 球队选择
+            _teamSelectScreen.OnBackClicked += () => _router.Pop();
+            _teamSelectScreen.OnTeamConfirmed += teamId =>
+            {
+                string userTeamKey = SaveManager.GetUserTeamIdKey(SaveManager.ActiveSlotId);
+                UnityEngine.PlayerPrefs.SetString(userTeamKey, teamId);
+                UnityEngine.PlayerPrefs.Save();
+                _seasonScreen.SetUserTeam(teamId);
+                _router.Pop();
+                _router.Push(SeasonScreen.Id);
+            };
 
             // 赛季
             _seasonScreen.OnBackClicked += () => _router.Pop();

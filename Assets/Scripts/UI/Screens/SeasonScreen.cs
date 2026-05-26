@@ -76,6 +76,48 @@ namespace BasketballManager.UI.Screens
         // ---------- 顶栏按钮缓存 ----------
         private Button _btnSimNext;
         private Button _btnSimAll;
+        private Button _btnNextSeason;
+
+        // ---------- 赛季间总结弹窗 ----------
+        private VisualElement _offseasonOverlay;
+        private ScrollView _offseasonScroll;
+        private Button _btnOffseasonConfirm;
+
+        // ---------- FA overlay ----------
+        private VisualElement _faOverlay;
+        private Label _faCapSpaceLabel;
+        private ScrollView _faList;
+
+        // ---------- 选秀 overlay ----------
+        private VisualElement _draftOverlay;
+        private Label _draftPickInfo;
+        private ScrollView _draftLog;
+        private ScrollView _draftProspects;
+        private Button _btnDraftAuto;
+        private Button _btnDraftDone;
+
+        // ---------- 休赛期状态 ----------
+        private int _offseasonSeasonId;
+        private List<DraftSlot> _draftSlots;
+        private List<Player> _availableProspects;
+        private int _currentDraftPickIdx;
+        private bool _waitingForUserDraftPick;
+        private Coroutine _draftCoroutine;
+        private int _realTeamCount;
+
+        // ---------- 用户球队 ----------
+        private string _userTeamId = "";
+        private PlayerRepository _playerRepository;
+        private SimulationProfileRepository _profileRepository;
+
+        // ---------- 赛前决策面板 ----------
+        private VisualElement _pregameOverlay;
+        private Label _pregameTitle;
+        private Label _pregameMatchup;
+        private VisualElement _pregamePlayerList;
+        private SeasonGame _pendingGame;
+        private readonly List<(Player player, float sourceMpg)> _pregameRoster
+            = new List<(Player, float)>();
 
         // ---------- 季后赛 ----------
         private Button _btnStartPlayoffs;
@@ -112,12 +154,22 @@ namespace BasketballManager.UI.Screens
 
         private void Awake() { ScreenId = Id; }
 
-        public void Initialize(SeasonService seasonService, SeasonRepository seasonRepository, TeamRepository teamRepository)
+        public void Initialize(SeasonService seasonService, SeasonRepository seasonRepository,
+            TeamRepository teamRepository, PlayerRepository playerRepository = null,
+            SimulationProfileRepository profileRepository = null)
         {
             _seasonService = seasonService;
             _seasonRepository = seasonRepository;
             _teamRepository = teamRepository;
+            _playerRepository = playerRepository;
+            _profileRepository = profileRepository;
         }
+
+        public void SetUserTeam(string teamId) { _userTeamId = teamId; }
+
+        private bool IsUserTeamGame(SeasonGame game)
+            => !string.IsNullOrEmpty(_userTeamId)
+               && (game.HomeTeamId == _userTeamId || game.AwayTeamId == _userTeamId);
 
         protected override void OnBuilt()
         {
@@ -132,6 +184,10 @@ namespace BasketballManager.UI.Screens
             _btnStartPlayoffs = Root.Q<Button>("btn-start-playoffs");
             _btnStartPlayoffs.clicked += OnStartPlayoffs;
             _btnStartPlayoffs.style.display = DisplayStyle.None;
+
+            _btnNextSeason = Root.Q<Button>("btn-next-season");
+            _btnNextSeason.clicked += OnNextSeasonClicked;
+            _btnNextSeason.style.display = DisplayStyle.None;
 
             _bracketContainer = Root.Q<VisualElement>("bracket-container");
             _bracketContainer.style.display = DisplayStyle.None;
@@ -197,6 +253,15 @@ namespace BasketballManager.UI.Screens
             ConfigureTeamsColumns();
 
             // 弹窗
+            // 赛前决策面板
+            _pregameOverlay    = Root.Q<VisualElement>("pregame-modal-overlay");
+            _pregameTitle      = Root.Q<Label>("pregame-title");
+            _pregameMatchup    = Root.Q<Label>("pregame-matchup");
+            _pregamePlayerList = Root.Q<VisualElement>("pregame-player-list");
+            Root.Q<Button>("btn-pregame-skip").clicked    += OnPregameSkip;
+            Root.Q<Button>("btn-pregame-confirm").clicked += OnPregameConfirm;
+            _pregameOverlay.style.display = DisplayStyle.None;
+
             _modalOverlay       = Root.Q<VisualElement>("match-modal-overlay");
             _modalScoreHeadline = Root.Q<Label>("modal-score-headline");
             _modalScoreQuarters = Root.Q<Label>("modal-score-quarters");
@@ -211,6 +276,28 @@ namespace BasketballManager.UI.Screens
             _modalTabBtnTeam.clicked   += () => SwitchModalTab(_modalPageTeam,   _modalTabBtnTeam);
 
             _modalOverlay.style.display = DisplayStyle.None;
+
+            _offseasonOverlay    = Root.Q<VisualElement>("offseason-overlay");
+            _offseasonScroll     = Root.Q<ScrollView>("offseason-scroll");
+            _btnOffseasonConfirm = Root.Q<Button>("btn-offseason-confirm");
+            _btnOffseasonConfirm.clicked += OnOffseasonConfirm;
+            _offseasonOverlay.style.display = DisplayStyle.None;
+
+            _faOverlay       = Root.Q<VisualElement>("fa-overlay");
+            _faCapSpaceLabel = Root.Q<Label>("fa-cap-space");
+            _faList          = Root.Q<ScrollView>("fa-list");
+            Root.Q<Button>("btn-fa-done").clicked += OnFADone;
+            _faOverlay.style.display = DisplayStyle.None;
+
+            _draftOverlay   = Root.Q<VisualElement>("draft-overlay");
+            _draftPickInfo  = Root.Q<Label>("draft-pick-info");
+            _draftLog       = Root.Q<ScrollView>("draft-log");
+            _draftProspects = Root.Q<ScrollView>("draft-prospects");
+            _btnDraftAuto   = Root.Q<Button>("btn-draft-auto");
+            _btnDraftDone   = Root.Q<Button>("btn-draft-done");
+            _btnDraftAuto.clicked += OnDraftAutoClicked;
+            _btnDraftDone.clicked += OnDraftDoneClicked;
+            _draftOverlay.style.display = DisplayStyle.None;
 
             // 赛程行点击：仅响应真实鼠标点击，不响应 hover/键盘引起的 selectionChanged
             _scheduleView.selectionType = SelectionType.Single;
@@ -230,6 +317,12 @@ namespace BasketballManager.UI.Screens
         protected override void OnExit()
         {
             CloseMatchModal();
+            ClosePreGamePanel();
+            if (_draftCoroutine != null)
+            {
+                StopCoroutine(_draftCoroutine);
+                _draftCoroutine = null;
+            }
         }
 
         // ============================================================
@@ -310,7 +403,9 @@ namespace BasketballManager.UI.Screens
         {
             CacheTeamNames();
             _currentSeason = _seasonRepository?.GetLatestSeason();
-            _seasonNameLabel.text = _currentSeason != null ? _currentSeason.Name : "—";
+            _seasonNameLabel.text = _currentSeason != null
+                ? $"第{_currentSeason.SeasonNumber}赛季"
+                : "—";
             UpdateTopBarButtons();
             RefreshCurrentTab();
         }
@@ -328,6 +423,7 @@ namespace BasketballManager.UI.Screens
             if (_currentSeason == null)
             {
                 _btnStartPlayoffs.style.display = DisplayStyle.None;
+                _btnNextSeason.style.display    = DisplayStyle.None;
                 _statsPhaseRow.style.display    = DisplayStyle.None;
                 return;
             }
@@ -344,6 +440,9 @@ namespace BasketballManager.UI.Screens
             bool canSim = !finished && !(regularComplete && !isPlayoff);
             _btnSimNext.style.display = canSim ? DisplayStyle.Flex : DisplayStyle.None;
             _btnSimAll.style.display  = canSim ? DisplayStyle.Flex : DisplayStyle.None;
+
+            // "下一赛季"：赛季已结束
+            _btnNextSeason.style.display = finished ? DisplayStyle.Flex : DisplayStyle.None;
 
             // stats 相位切换：仅季后赛阶段显示
             _statsPhaseRow.style.display = isPlayoff ? DisplayStyle.Flex : DisplayStyle.None;
@@ -496,13 +595,20 @@ namespace BasketballManager.UI.Screens
             var cols = _standingsView.columns;
             cols.Clear();
             cols.Add(Col("rank", "#",    36, Length.Percent(6),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = (i + 1).ToString()));
-            cols.Add(Col("team", "球队",  140, Length.Percent(34), () => Cell(),                     (e, i) => ((Label)e).text = _standings[i].TeamName));
-            cols.Add(Col("w",    "W",     40, Length.Percent(8),  () => Cell("table-cell--center"), (e, i) => ((Label)e).text = _standings[i].Wins.ToString()));
-            cols.Add(Col("l",    "L",     40, Length.Percent(8),  () => Cell("table-cell--center"), (e, i) => ((Label)e).text = _standings[i].Losses.ToString()));
+            cols.Add(Col("team", "球队",  140, Length.Percent(34), () => Cell(), (e, i) =>
+            {
+                var lbl = (Label)e;
+                bool isUser = _standings[i].TeamId == _userTeamId;
+                lbl.text = isUser ? "▶ " + _standings[i].TeamName : _standings[i].TeamName;
+                if (isUser) lbl.AddToClassList("cell--user-team");
+                else lbl.RemoveFromClassList("cell--user-team");
+            }));
+            cols.Add(Col("w",    "胜",     40, Length.Percent(8),  () => Cell("table-cell--center"), (e, i) => ((Label)e).text = _standings[i].Wins.ToString()));
+            cols.Add(Col("l",    "负",     40, Length.Percent(8),  () => Cell("table-cell--center"), (e, i) => ((Label)e).text = _standings[i].Losses.ToString()));
             cols.Add(Col("pct",  "胜率",  60, Length.Percent(12), () => Cell("table-cell--center"), (e, i) => ((Label)e).text = $"{_standings[i].WinPercentage * 100f:F1}%"));
-            cols.Add(Col("pf",   "PF",    50, Length.Percent(10), () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = _standings[i].PointsFor.ToString()));
-            cols.Add(Col("pa",   "PA",    50, Length.Percent(10), () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = _standings[i].PointsAgainst.ToString()));
-            cols.Add(Col("diff", "+/-",   60, Length.Percent(12), () => Cell("table-cell--num"),    (e, i) =>
+            cols.Add(Col("pf",   "总得分", 50, Length.Percent(10), () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = _standings[i].PointsFor.ToString()));
+            cols.Add(Col("pa",   "总失分", 50, Length.Percent(10), () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = _standings[i].PointsAgainst.ToString()));
+            cols.Add(Col("diff", "正负",   60, Length.Percent(12), () => Cell("table-cell--num"),    (e, i) =>
             {
                 var lbl = (Label)e;
                 int d = _standings[i].PointDifferential;
@@ -531,14 +637,28 @@ namespace BasketballManager.UI.Screens
         {
             var cols = _scheduleView.columns;
             cols.Clear();
-            cols.Add(Col("day", "D",   36, Length.Percent(8),  () => Cell("table-cell--center"), (e, i) => ((Label)e).text = _schedule[i].Day.ToString()));
-            cols.Add(Col("home","主队", 120, Length.Percent(30), () => Cell(),                     (e, i) => ((Label)e).text = NameOf(_schedule[i].HomeTeamId)));
+            cols.Add(Col("day", "天",   36, Length.Percent(8),  () => Cell("table-cell--center"), (e, i) => ((Label)e).text = _schedule[i].Day.ToString()));
+            cols.Add(Col("home","主队", 120, Length.Percent(30), () => Cell(), (e, i) =>
+            {
+                var lbl = (Label)e;
+                bool isUser = _schedule[i].HomeTeamId == _userTeamId;
+                lbl.text = NameOf(_schedule[i].HomeTeamId);
+                if (isUser) lbl.AddToClassList("cell--user-team");
+                else lbl.RemoveFromClassList("cell--user-team");
+            }));
             cols.Add(Col("score","比分",80, Length.Percent(20), () => Cell("table-cell--center"), (e, i) =>
             {
                 var g = _schedule[i];
                 ((Label)e).text = g.Status == "PLAYED" ? $"{g.HomeScore} - {g.AwayScore}" : "—";
             }));
-            cols.Add(Col("away","客队", 120, Length.Percent(30), () => Cell(),                     (e, i) => ((Label)e).text = NameOf(_schedule[i].AwayTeamId)));
+            cols.Add(Col("away","客队", 120, Length.Percent(30), () => Cell(), (e, i) =>
+            {
+                var lbl = (Label)e;
+                bool isUser = _schedule[i].AwayTeamId == _userTeamId;
+                lbl.text = NameOf(_schedule[i].AwayTeamId);
+                if (isUser) lbl.AddToClassList("cell--user-team");
+                else lbl.RemoveFromClassList("cell--user-team");
+            }));
             cols.Add(Col("status","状态",60, Length.Percent(12), () => Cell("table-cell--center"), (e, i) =>
             {
                 var lbl = (Label)e;
@@ -651,17 +771,45 @@ namespace BasketballManager.UI.Screens
         {
             var cols = _playersView.columns;
             cols.Clear();
-            cols.Add(Col("rank","#",     36, Length.Percent(5),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = (i + 1).ToString()));
-            cols.Add(Col("name","球员",  140, Length.Percent(22), () => Cell(),                     (e, i) => ((Label)e).text = _playerStats[i].PlayerName));
-            cols.Add(Col("team","队",    100, Length.Percent(15), () => Cell(),                     (e, i) => ((Label)e).text = NameOf(_playerStats[i].TeamId)));
-            cols.Add(Col("gp",  "GP",    40, Length.Percent(6),  () => Cell("table-cell--center"), (e, i) => ((Label)e).text = _playerStats[i].GamesPlayed.ToString()));
-            cols.Add(Col("min", "MIN",   50, Length.Percent(8),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = $"{_playerStats[i].MinutesPerGame:F1}"));
-            cols.Add(Col("pts", "PTS",   50, Length.Percent(8),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = $"{_playerStats[i].PointsPerGame:F1}"));
-            cols.Add(Col("reb", "REB",   50, Length.Percent(8),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = $"{_playerStats[i].ReboundsPerGame:F1}"));
-            cols.Add(Col("ast", "AST",   50, Length.Percent(8),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = $"{_playerStats[i].AssistsPerGame:F1}"));
-            cols.Add(Col("stl", "STL",   50, Length.Percent(6),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = $"{(_playerStats[i].GamesPlayed == 0 ? 0f : (float)_playerStats[i].Steals / _playerStats[i].GamesPlayed):F1}"));
-            cols.Add(Col("blk", "BLK",   50, Length.Percent(6),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = $"{(_playerStats[i].GamesPlayed == 0 ? 0f : (float)_playerStats[i].Blocks / _playerStats[i].GamesPlayed):F1}"));
-            cols.Add(Col("ts",  "TS%",   60, Length.Percent(8),  () => Cell("table-cell--num"),    (e, i) =>
+            cols.Add(Col("rank","#",     30, Length.Percent(4),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = (i + 1).ToString()));
+            cols.Add(Col("name","球员",  130, Length.Percent(15), () => Cell(),                     (e, i) => ((Label)e).text = _playerStats[i].PlayerName));
+            cols.Add(Col("team","队",    80,  Length.Percent(10), () => Cell(),                     (e, i) => ((Label)e).text = NameOf(_playerStats[i].TeamId)));
+            cols.Add(Col("gp",  "场次",   36, Length.Percent(4),  () => Cell("table-cell--center"), (e, i) => ((Label)e).text = _playerStats[i].GamesPlayed.ToString()));
+            cols.Add(Col("min", "时间",   44, Length.Percent(5),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = $"{_playerStats[i].MinutesPerGame:F1}"));
+            cols.Add(Col("pts", "得分",   44, Length.Percent(6),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = $"{_playerStats[i].PointsPerGame:F1}"));
+            cols.Add(Col("reb", "篮板",   44, Length.Percent(6),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = $"{_playerStats[i].ReboundsPerGame:F1}"));
+            cols.Add(Col("ast", "助攻",   44, Length.Percent(6),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = $"{_playerStats[i].AssistsPerGame:F1}"));
+            cols.Add(Col("stl", "抢断",   40, Length.Percent(5),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = $"{(_playerStats[i].GamesPlayed == 0 ? 0f : (float)_playerStats[i].Steals    / _playerStats[i].GamesPlayed):F1}"));
+            cols.Add(Col("blk", "盖帽",   40, Length.Percent(5),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = $"{(_playerStats[i].GamesPlayed == 0 ? 0f : (float)_playerStats[i].Blocks    / _playerStats[i].GamesPlayed):F1}"));
+            cols.Add(Col("tov", "失误",   40, Length.Percent(5),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = $"{(_playerStats[i].GamesPlayed == 0 ? 0f : (float)_playerStats[i].Turnovers / _playerStats[i].GamesPlayed):F1}"));
+            cols.Add(Col("fg",  "投篮%",  50, Length.Percent(6),  () => Cell("table-cell--num"),    (e, i) =>
+            {
+                var s = _playerStats[i];
+                ((Label)e).text = s.FieldGoalsAttempted == 0 ? "—" : $"{(float)s.FieldGoalsMade / s.FieldGoalsAttempted * 100f:F1}%";
+            }));
+            cols.Add(Col("tp",  "三分%",  50, Length.Percent(6),  () => Cell("table-cell--num"),    (e, i) =>
+            {
+                var s = _playerStats[i];
+                ((Label)e).text = s.ThreePointersAttempted == 0 ? "—" : $"{(float)s.ThreePointersMade / s.ThreePointersAttempted * 100f:F1}%";
+            }));
+            cols.Add(Col("ft",  "罚球%",  50, Length.Percent(6),  () => Cell("table-cell--num"),    (e, i) =>
+            {
+                var s = _playerStats[i];
+                ((Label)e).text = s.FreeThrowsAttempted == 0 ? "—" : $"{(float)s.FreeThrowsMade / s.FreeThrowsAttempted * 100f:F1}%";
+            }));
+            cols.Add(Col("pm",  "正负/场", 50, Length.Percent(5),  () => Cell("table-cell--num"),    (e, i) =>
+            {
+                var s = _playerStats[i];
+                if (s.GamesPlayed == 0) { ((Label)e).text = "—"; return; }
+                float pmg = (float)s.PlusMinus / s.GamesPlayed;
+                var lbl = (Label)e;
+                lbl.text = pmg > 0f ? $"+{pmg:F1}" : $"{pmg:F1}";
+                lbl.RemoveFromClassList("table-cell--pos");
+                lbl.RemoveFromClassList("table-cell--neg");
+                if (pmg > 0.05f) lbl.AddToClassList("table-cell--pos");
+                else if (pmg < -0.05f) lbl.AddToClassList("table-cell--neg");
+            }));
+            cols.Add(Col("ts",  "真实%",  50, Length.Percent(6),  () => Cell("table-cell--num"),    (e, i) =>
             {
                 var s = _playerStats[i];
                 float tsa = s.FieldGoalsAttempted + 0.44f * s.FreeThrowsAttempted;
@@ -714,20 +862,20 @@ namespace BasketballManager.UI.Screens
             cols.Clear();
             cols.Add(Col("rank","#",     36, Length.Percent(6),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = (i + 1).ToString()));
             cols.Add(Col("team","球队",  160, Length.Percent(30), () => Cell(),                     (e, i) => ((Label)e).text = _teamStats[i].TeamName));
-            cols.Add(Col("gp",  "GP",    40, Length.Percent(8),  () => Cell("table-cell--center"), (e, i) => ((Label)e).text = _teamStats[i].GamesPlayed.ToString()));
-            cols.Add(Col("w",   "W",     40, Length.Percent(8),  () => Cell("table-cell--center"), (e, i) => ((Label)e).text = _teamStats[i].Wins.ToString()));
-            cols.Add(Col("l",   "L",     40, Length.Percent(8),  () => Cell("table-cell--center"), (e, i) => ((Label)e).text = _teamStats[i].Losses.ToString()));
-            cols.Add(Col("ppg", "PF/G",  60, Length.Percent(13), () => Cell("table-cell--num"),    (e, i) =>
+            cols.Add(Col("gp",  "场次",   40, Length.Percent(8),  () => Cell("table-cell--center"), (e, i) => ((Label)e).text = _teamStats[i].GamesPlayed.ToString()));
+            cols.Add(Col("w",   "胜",     40, Length.Percent(8),  () => Cell("table-cell--center"), (e, i) => ((Label)e).text = _teamStats[i].Wins.ToString()));
+            cols.Add(Col("l",   "负",     40, Length.Percent(8),  () => Cell("table-cell--center"), (e, i) => ((Label)e).text = _teamStats[i].Losses.ToString()));
+            cols.Add(Col("ppg", "得分/场", 60, Length.Percent(13), () => Cell("table-cell--num"),    (e, i) =>
             {
                 var s = _teamStats[i];
                 ((Label)e).text = s.GamesPlayed == 0 ? "—" : $"{(float)s.PointsFor / s.GamesPlayed:F1}";
             }));
-            cols.Add(Col("oppg","PA/G",  60, Length.Percent(13), () => Cell("table-cell--num"),    (e, i) =>
+            cols.Add(Col("oppg","失分/场", 60, Length.Percent(13), () => Cell("table-cell--num"),    (e, i) =>
             {
                 var s = _teamStats[i];
                 ((Label)e).text = s.GamesPlayed == 0 ? "—" : $"{(float)s.PointsAgainst / s.GamesPlayed:F1}";
             }));
-            cols.Add(Col("diff","+/-/G", 64, Length.Percent(14), () => Cell("table-cell--num"),    (e, i) =>
+            cols.Add(Col("diff","正负/场", 64, Length.Percent(14), () => Cell("table-cell--num"),    (e, i) =>
             {
                 var lbl = (Label)e;
                 var s = _teamStats[i];
@@ -767,6 +915,12 @@ namespace BasketballManager.UI.Screens
         private void OnSimulateNext()
         {
             if (_currentSeason == null || _isSimulating) return;
+            var nextGame = _seasonRepository.GetNextScheduledGame(_currentSeason.Id);
+            if (nextGame != null && IsUserTeamGame(nextGame))
+            {
+                ShowPreGamePanel(nextGame);
+                return;
+            }
             var result = _seasonService.SimulateNextGame(_currentSeason.Id, enablePlayByPlay: true);
             if (result == null) return;
             _lastResult = result;
@@ -785,6 +939,361 @@ namespace BasketballManager.UI.Screens
             if (_currentSeason == null || _isSimulating) return;
             _seasonService.StartPlayoffs(_currentSeason.Id);
             _statsPhase = "REGULAR";
+            RefreshFromLatestSeason();
+        }
+
+        private void OnNextSeasonClicked()
+        {
+            if (_currentSeason == null || _isSimulating) return;
+            _offseasonSeasonId = _currentSeason.Id;
+
+            if (_seasonService.FreeAgency != null)
+            {
+                var (devResults, retiredNames) = _seasonService.AdvanceOffseasonPhase1(_offseasonSeasonId);
+                _btnOffseasonConfirm.text = "继续 →";
+                Root.Q<Label>("offseason-subtitle").text = "球员成长与退役";
+
+                _offseasonScroll.Clear();
+                if (retiredNames.Count > 0)
+                {
+                    var hdr = new Label($"退役（{retiredNames.Count} 人）");
+                    hdr.AddToClassList("card-title");
+                    hdr.style.paddingLeft = 14;
+                    hdr.style.paddingTop  = 8;
+                    _offseasonScroll.Add(hdr);
+                    foreach (var n in retiredNames)
+                    {
+                        var lbl = new Label(n);
+                        lbl.style.paddingLeft = 20;
+                        lbl.style.paddingTop  = 2;
+                        lbl.style.color       = new Color(0.97f, 0.45f, 0.45f);
+                        lbl.style.fontSize    = 13;
+                        _offseasonScroll.Add(lbl);
+                    }
+                }
+                foreach (var r in devResults)
+                    _offseasonScroll.Add(BuildDevRow(r));
+                if (devResults.Count == 0 && retiredNames.Count == 0)
+                {
+                    var empty = new Label("本赛季所有球员属性无变化。");
+                    empty.AddToClassList("muted");
+                    empty.AddToClassList("caption");
+                    empty.style.paddingTop  = 12;
+                    empty.style.paddingLeft = 14;
+                    _offseasonScroll.Add(empty);
+                }
+            }
+            else
+            {
+                var (newSeasonId, devResults) = _seasonService.AdvanceToNextSeason(_offseasonSeasonId);
+                if (newSeasonId <= 0) return;
+                var newSeason = _seasonRepository.GetSeasonById(newSeasonId);
+                _btnOffseasonConfirm.text = "进入新赛季";
+                Root.Q<Label>("offseason-subtitle").text =
+                    $"球员成长与衰退 — 即将进入{newSeason?.Name ?? "新赛季"}";
+                _offseasonScroll.Clear();
+                foreach (var r in devResults)
+                    _offseasonScroll.Add(BuildDevRow(r));
+                if (devResults.Count == 0)
+                {
+                    var empty = new Label("本赛季所有球员属性无变化。");
+                    empty.AddToClassList("muted");
+                    empty.AddToClassList("caption");
+                    empty.style.paddingTop  = 12;
+                    empty.style.paddingLeft = 14;
+                    _offseasonScroll.Add(empty);
+                }
+            }
+
+            _lastResult = null;
+            _offseasonOverlay.style.display = DisplayStyle.Flex;
+        }
+
+        private void OnOffseasonConfirm()
+        {
+            _offseasonOverlay.style.display = DisplayStyle.None;
+            if (_seasonService.FreeAgency != null)
+                ShowFAOverlay();
+            else
+                RefreshFromLatestSeason();
+        }
+
+        // ============================================================
+        //  自由球员市场
+        // ============================================================
+
+        private void ShowFAOverlay()
+        {
+            RefreshFAOverlay();
+            _faOverlay.style.display = DisplayStyle.Flex;
+        }
+
+        private void RefreshFAOverlay()
+        {
+            if (_playerRepository == null) return;
+            var freeAgents = _playerRepository.GetFreeAgents();
+            int capUsed    = _seasonService.FreeAgency.GetTeamSalary(_userTeamId);
+            int capSpace   = FreeAgencyService.SalaryCap - capUsed;
+            int roster     = _playerRepository.GetPlayersByTeamId(_userTeamId).Count;
+
+            _faCapSpaceLabel.text = $"薪资帽剩余：{capSpace} M   阵容：{roster} / 15";
+
+            _faList.Clear();
+            if (freeAgents.Count == 0)
+            {
+                var empty = new Label("暂无自由球员");
+                empty.AddToClassList("muted");
+                empty.AddToClassList("caption");
+                empty.style.paddingTop  = 12;
+                empty.style.paddingLeft = 14;
+                _faList.Add(empty);
+                return;
+            }
+            foreach (var fa in freeAgents)
+            {
+                int asking = _playerRepository.GetFreeAgentAskingSalary(fa.Id);
+                bool canSign = capSpace >= asking && roster < 15;
+                _faList.Add(BuildFACard(fa, asking, canSign));
+            }
+        }
+
+        private VisualElement BuildFACard(Player fa, int asking, bool canSign)
+        {
+            var row = new VisualElement();
+            row.AddToClassList("fa-card");
+
+            var name = new Label(fa.GetDisplayName());
+            name.AddToClassList("fa-card__name");
+            row.Add(name);
+
+            var pos = new Label(fa.Position.ToString());
+            pos.AddToClassList("fa-card__pos");
+            row.Add(pos);
+
+            var ovr = new Label($"OVR {fa.Overall}");
+            ovr.AddToClassList("fa-card__ovr");
+            row.Add(ovr);
+
+            var salary = new Label($"{asking} M/年");
+            salary.AddToClassList("fa-card__salary");
+            row.Add(salary);
+
+            var localFaId = fa.Id;
+            var localAsking = asking;
+            var btn = new Button();
+            btn.text = "签约";
+            btn.AddToClassList("btn");
+            btn.SetEnabled(canSign);
+            btn.clicked += () =>
+            {
+                _seasonService.FreeAgency.SignPlayer(localFaId, _userTeamId, localAsking, 2);
+                RefreshFAOverlay();
+            };
+            row.Add(btn);
+
+            return row;
+        }
+
+        private void OnFADone()
+        {
+            _faOverlay.style.display = DisplayStyle.None;
+            ShowDraftOverlay();
+        }
+
+        // ============================================================
+        //  选秀大会
+        // ============================================================
+
+        private void ShowDraftOverlay()
+        {
+            if (_seasonService.Draft == null) { FinishOffseason(); return; }
+
+            var season   = _seasonRepository.GetSeasonById(_offseasonSeasonId);
+            int nextYear = (season?.SeasonNumber ?? 0) + 1;
+
+            // 先确定选秀顺序（基于积分榜），再从中推算球队数量，
+            // 避免依赖 GetCurrentTeams().Count 可能与实际参赛队数不一致的问题。
+            _draftSlots    = _seasonService.Draft.BuildDraftOrder(_offseasonSeasonId);
+            _realTeamCount = _draftSlots.Count / 2;  // BuildDraftOrder 固定生成 2 轮
+
+            // 直接使用 GenerateDraftClass 的返回值，不额外查询 GetDraftPool()
+            _availableProspects = _seasonService.Draft.GenerateDraftClass(nextYear, _realTeamCount);
+            _currentDraftPickIdx = 0;
+
+            if (_draftSlots == null || _draftSlots.Count == 0)
+            {
+                FinishOffseason();
+                return;
+            }
+
+            _draftLog.Clear();
+            _draftProspects.Clear();
+            _btnDraftDone.style.display = DisplayStyle.None;
+            _btnDraftAuto.style.display = DisplayStyle.Flex;
+            _btnDraftAuto.SetEnabled(false);
+
+            UpdateDraftPickInfo();
+            _draftOverlay.style.display = DisplayStyle.Flex;
+
+            _waitingForUserDraftPick = false;
+            if (_draftCoroutine != null) StopCoroutine(_draftCoroutine);
+            _draftCoroutine = StartCoroutine(DraftCoroutine());
+        }
+
+        private IEnumerator DraftCoroutine()
+        {
+            while (_currentDraftPickIdx < _draftSlots.Count)
+            {
+                var slot = _draftSlots[_currentDraftPickIdx];
+                UpdateDraftPickInfo();
+
+                if (slot.TeamId == _userTeamId)
+                {
+                    _waitingForUserDraftPick = true;
+                    _btnDraftAuto.SetEnabled(true);
+                    RefreshDraftProspects(slot);
+                    yield return new WaitUntil(() => !_waitingForUserDraftPick);
+                }
+                else
+                {
+                    _btnDraftAuto.SetEnabled(false);
+                    var pick = _seasonService.Draft.AIAutoPick(_availableProspects);
+                    if (pick != null)
+                    {
+                        _seasonService.Draft.AssignPick(pick, slot.TeamId, slot.Pick, _realTeamCount);
+                        _availableProspects.Remove(pick);
+                        slot.SelectedPlayer = pick;
+                        AddDraftLogEntry(slot, pick);
+                    }
+                    _currentDraftPickIdx++;
+                    yield return new WaitForSeconds(0.15f);
+                }
+            }
+
+            _draftCoroutine = null;
+            _btnDraftAuto.style.display = DisplayStyle.None;
+            _btnDraftDone.style.display = DisplayStyle.Flex;
+            _draftPickInfo.text = "全部顺位已完成！";
+        }
+
+        private void OnDraftAutoClicked()
+        {
+            if (!_waitingForUserDraftPick || _currentDraftPickIdx >= _draftSlots.Count) return;
+            var slot = _draftSlots[_currentDraftPickIdx];
+            var pick = _seasonService.Draft.AIAutoPick(_availableProspects);
+            if (pick != null) ExecuteDraftPick(slot, pick);
+        }
+
+        private void OnUserPickProspect(Player prospect)
+        {
+            if (!_waitingForUserDraftPick || _currentDraftPickIdx >= _draftSlots.Count) return;
+            ExecuteDraftPick(_draftSlots[_currentDraftPickIdx], prospect);
+        }
+
+        private void ExecuteDraftPick(DraftSlot slot, Player prospect)
+        {
+            _seasonService.Draft.AssignPick(prospect, slot.TeamId, slot.Pick, _realTeamCount);
+            _availableProspects.Remove(prospect);
+            slot.SelectedPlayer = prospect;
+            AddDraftLogEntry(slot, prospect);
+            _currentDraftPickIdx++;
+            _waitingForUserDraftPick = false;
+            _btnDraftAuto.SetEnabled(false);
+            _draftProspects.Clear();
+        }
+
+        private void RefreshDraftProspects(DraftSlot slot)
+        {
+            _draftProspects.Clear();
+            var hdr = new Label($"轮到你了！— {slot.TeamName}");
+            hdr.style.paddingTop    = 8;
+            hdr.style.paddingLeft   = 10;
+            hdr.style.paddingBottom = 6;
+            hdr.style.color         = new Color(0.40f, 0.85f, 0.55f);
+            hdr.style.fontSize      = 13;
+            hdr.style.unityFontStyleAndWeight = FontStyle.Bold;
+            _draftProspects.Add(hdr);
+
+            foreach (var p in _availableProspects)
+                _draftProspects.Add(BuildProspectCard(p));
+        }
+
+        private VisualElement BuildProspectCard(Player p)
+        {
+            var row = new VisualElement();
+            row.AddToClassList("draft-prospect-card");
+
+            var name = new Label(p.GetDisplayName());
+            name.AddToClassList("draft-prospect-card__name");
+            row.Add(name);
+
+            var pos = new Label(p.Position.ToString());
+            pos.AddToClassList("draft-prospect-card__pos");
+            row.Add(pos);
+
+            var ovr = new Label($"OVR {p.Overall}");
+            ovr.AddToClassList("draft-prospect-card__ovr");
+            row.Add(ovr);
+
+            var localP = p;
+            var btn = new Button();
+            btn.text = "选择";
+            btn.AddToClassList("btn");
+            btn.clicked += () => OnUserPickProspect(localP);
+            row.Add(btn);
+
+            return row;
+        }
+
+        private void AddDraftLogEntry(DraftSlot slot, Player player)
+        {
+            var row = new VisualElement();
+            row.AddToClassList("draft-log-row");
+            if (slot.TeamId == _userTeamId)
+                row.AddToClassList("draft-log-row--user");
+
+            var pick = new Label($"R{slot.Round}·#{slot.Pick}");
+            pick.AddToClassList("draft-log-row__pick");
+            row.Add(pick);
+
+            var team = new Label(slot.TeamName);
+            team.AddToClassList("draft-log-row__team");
+            row.Add(team);
+
+            var pname = new Label(player.GetDisplayName());
+            pname.AddToClassList("draft-log-row__player");
+            row.Add(pname);
+
+            var detail = new Label($"{player.Position}  OVR {player.Overall}");
+            detail.AddToClassList("draft-log-row__detail");
+            row.Add(detail);
+
+            _draftLog.Insert(0, row);
+        }
+
+        private void UpdateDraftPickInfo()
+        {
+            if (_draftSlots == null || _currentDraftPickIdx >= _draftSlots.Count)
+            {
+                _draftPickInfo.text = "";
+                return;
+            }
+            var slot = _draftSlots[_currentDraftPickIdx];
+            string who = slot.TeamId == _userTeamId ? "你的顺位！" : slot.TeamName;
+            _draftPickInfo.text = $"R{slot.Round} · #{slot.Pick}  ·  {who}";
+        }
+
+        private void OnDraftDoneClicked()
+        {
+            if (_draftCoroutine != null) { StopCoroutine(_draftCoroutine); _draftCoroutine = null; }
+            _draftOverlay.style.display = DisplayStyle.None;
+            FinishOffseason();
+        }
+
+        private void FinishOffseason()
+        {
+            _seasonService.AdvanceOffseasonPhase2(_offseasonSeasonId, _userTeamId);
+            _lastResult = null;
             RefreshFromLatestSeason();
         }
 
@@ -834,6 +1343,8 @@ namespace BasketballManager.UI.Screens
             int seasonId = _currentSeason.Id;
             while (true)
             {
+                var nextGame = _seasonRepository.GetNextScheduledGame(seasonId);
+                if (nextGame == null) break;
                 var result = _seasonService.SimulateNextGame(seasonId);
                 if (result == null) break;
                 _lastResult = result;
@@ -841,6 +1352,147 @@ namespace BasketballManager.UI.Screens
                 yield return null;
             }
             _isSimulating = false;
+        }
+
+        // ============================================================
+        //  赛前决策面板
+        // ============================================================
+
+        private void ShowPreGamePanel(SeasonGame game)
+        {
+            if (_playerRepository == null || _profileRepository == null)
+            {
+                var fallback = _seasonService.SimulateNextGame(_currentSeason.Id, enablePlayByPlay: true);
+                if (fallback == null) return;
+                _lastResult = fallback;
+                RefreshAfterSim();
+                ShowMatchModal(fallback, hasPbp: true);
+                return;
+            }
+
+            _pendingGame = game;
+            bool isHome = game.HomeTeamId == _userTeamId;
+            string opponent = NameOf(isHome ? game.AwayTeamId : game.HomeTeamId);
+            _pregameTitle.text = $"第 {game.Day} 日  ·  赛前准备";
+            _pregameMatchup.text = isHome ? $"主场  vs  {opponent}" : $"客场  @  {opponent}";
+
+            var players = _playerRepository.GetPlayersByTeamId(_userTeamId);
+            var profiles = _profileRepository.GetAllProfiles();
+
+            _pregameRoster.Clear();
+            foreach (var p in players)
+            {
+                float mpg = profiles.TryGetValue(p.Id, out var prof) ? prof.SourceMpg : 0f;
+                _pregameRoster.Add((p, mpg));
+            }
+            _pregameRoster.Sort((a, b) => b.sourceMpg.CompareTo(a.sourceMpg));
+
+            RebuildPreGameRosterList();
+            _pregameOverlay.style.display = DisplayStyle.Flex;
+        }
+
+        private void RebuildPreGameRosterList()
+        {
+            _pregamePlayerList.Clear();
+            for (int i = 0; i < _pregameRoster.Count; i++)
+            {
+                var (player, mpg) = _pregameRoster[i];
+                int idx = i;
+                bool isStarter = i < 5;
+
+                var row = new VisualElement();
+                row.AddToClassList("pregame-player-row");
+                if (isStarter) row.AddToClassList("pregame-player-row--starter");
+
+                var up = new Button() { text = "↑" };
+                up.AddToClassList("pregame-arrow-btn");
+                up.SetEnabled(idx > 0);
+                up.clicked += () => MoveRosterEntry(idx, -1);
+                row.Add(up);
+
+                var dn = new Button() { text = "↓" };
+                dn.AddToClassList("pregame-arrow-btn");
+                dn.SetEnabled(idx < _pregameRoster.Count - 1);
+                dn.clicked += () => MoveRosterEntry(idx, +1);
+                row.Add(dn);
+
+                var info = new Label($"#{player.JerseyNumber}  {player.GetDisplayName()}  ({player.Position})");
+                info.AddToClassList("pregame-player-info");
+                row.Add(info);
+
+                var badge = new Label(isStarter ? "首发" : "替补");
+                badge.AddToClassList("pregame-badge");
+                if (isStarter) badge.AddToClassList("pregame-badge--starter");
+                row.Add(badge);
+
+                var mpgLbl = new Label($"{mpg:F1}'");
+                mpgLbl.AddToClassList("pregame-mpg");
+                row.Add(mpgLbl);
+
+                _pregamePlayerList.Add(row);
+
+                if (i == 4 && _pregameRoster.Count > 5)
+                {
+                    var div = new VisualElement();
+                    div.AddToClassList("pregame-divider");
+                    _pregamePlayerList.Add(div);
+                }
+            }
+        }
+
+        private void MoveRosterEntry(int fromIdx, int delta)
+        {
+            int toIdx = fromIdx + delta;
+            if (toIdx < 0 || toIdx >= _pregameRoster.Count) return;
+            var tmp = _pregameRoster[fromIdx];
+            _pregameRoster[fromIdx] = _pregameRoster[toIdx];
+            _pregameRoster[toIdx] = tmp;
+            RebuildPreGameRosterList();
+        }
+
+        private void ClosePreGamePanel()
+        {
+            if (_pregameOverlay != null)
+                _pregameOverlay.style.display = DisplayStyle.None;
+            _pendingGame = null;
+        }
+
+        private void OnPregameSkip()
+        {
+            var game = _pendingGame;
+            ClosePreGamePanel();
+            if (game == null || _currentSeason == null) return;
+            var result = _seasonService.SimulateNextGame(_currentSeason.Id, enablePlayByPlay: true);
+            if (result == null) return;
+            _lastResult = result;
+            RefreshAfterSim();
+            ShowMatchModal(result, hasPbp: true);
+        }
+
+        private void OnPregameConfirm()
+        {
+            // 将用户排好的顺序映射到 SourceMpg 槽位（原始 mpg 从高到低分配）
+            var sortedMpgs = new List<float>(_pregameRoster.Count);
+            foreach (var entry in _pregameRoster) sortedMpgs.Add(entry.sourceMpg);
+            sortedMpgs.Sort((a, b) => b.CompareTo(a));
+
+            for (int i = 0; i < _pregameRoster.Count; i++)
+            {
+                int playerId = _pregameRoster[i].player.Id;
+                float newMpg = sortedMpgs[i];
+                if (System.Math.Abs(_pregameRoster[i].sourceMpg - newMpg) > 0.01f)
+                    _profileRepository.UpdateSourceMpg(playerId, newMpg);
+                _pregameRoster[i] = (_pregameRoster[i].player, newMpg);
+            }
+
+            var game = _pendingGame;
+            ClosePreGamePanel();
+            if (game == null || _currentSeason == null) return;
+            var result = _seasonService.SimulateNextGame(_currentSeason.Id, enablePlayByPlay: true);
+            if (result == null) return;
+            _lastResult = result;
+            RefreshAfterSim();
+            ShowMatchModal(result, hasPbp: true);
         }
 
         // ============================================================
@@ -1285,13 +1937,15 @@ namespace BasketballManager.UI.Screens
             {
                 PlayerId = p.PlayerId, TeamId = p.TeamId,
                 PlayerName = p.PlayerName, Position = p.Position,
-                Minutes = p.Minutes
+                Minutes = p.Minutes,
+                PlusMinus = p.PlusMinus
             }).ToList();
             awayStats = result.AwayPlayerStats.Select(p => new PlayerBoxScore
             {
                 PlayerId = p.PlayerId, TeamId = p.TeamId,
                 PlayerName = p.PlayerName, Position = p.Position,
-                Minutes = p.Minutes
+                Minutes = p.Minutes,
+                PlusMinus = p.PlusMinus
             }).ToList();
 
             var byId = new Dictionary<int, PlayerBoxScore>();
@@ -1349,12 +2003,16 @@ namespace BasketballManager.UI.Screens
             };
             view.style.height = Mathf.Clamp(data.Count * 28 + 30, 80, 340);
 
-            view.columns.Add(Col("name","球员",140, Length.Percent(22), () => Cell(),                     (e, i) => ((Label)e).text = data[i].PlayerName));
-            view.columns.Add(Col("min", "分钟", 50, Length.Percent(7),  () => Cell("table-cell--center"), (e, i) => ((Label)e).text = data[i].Minutes.ToString()));
-            view.columns.Add(Col("pts", "得分", 50, Length.Percent(8),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = data[i].Points.ToString()));
-            view.columns.Add(Col("reb", "篮板", 50, Length.Percent(8),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = data[i].Rebounds.ToString()));
-            view.columns.Add(Col("ast", "助攻", 50, Length.Percent(8),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = data[i].Assists.ToString()));
-            view.columns.Add(Col("pm",  "+/-",  50, Length.Percent(7),  () => Cell("table-cell--num"),    (e, i) =>
+            view.columns.Add(Col("name","球员",130, Length.Percent(17), () => Cell(),                     (e, i) => ((Label)e).text = data[i].PlayerName));
+            view.columns.Add(Col("min", "时间",  40, Length.Percent(5),  () => Cell("table-cell--center"), (e, i) => ((Label)e).text = data[i].Minutes.ToString()));
+            view.columns.Add(Col("pts", "得分",  44, Length.Percent(6),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = data[i].Points.ToString()));
+            view.columns.Add(Col("reb", "篮板",  44, Length.Percent(6),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = data[i].Rebounds.ToString()));
+            view.columns.Add(Col("ast", "助攻",  44, Length.Percent(6),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = data[i].Assists.ToString()));
+            view.columns.Add(Col("stl", "抢断",  40, Length.Percent(5),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = data[i].Steals.ToString()));
+            view.columns.Add(Col("blk", "盖帽",  40, Length.Percent(5),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = data[i].Blocks.ToString()));
+            view.columns.Add(Col("tov", "失误",  40, Length.Percent(5),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = data[i].Turnovers.ToString()));
+            view.columns.Add(Col("pf",  "犯规",  36, Length.Percent(4),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = data[i].Fouls.ToString()));
+            view.columns.Add(Col("pm",  "正负",  44, Length.Percent(5),  () => Cell("table-cell--num"),    (e, i) =>
             {
                 var lbl = (Label)e;
                 int pm = data[i].PlusMinus;
@@ -1364,9 +2022,9 @@ namespace BasketballManager.UI.Screens
                 if (pm > 0) lbl.AddToClassList("table-cell--pos");
                 else if (pm < 0) lbl.AddToClassList("table-cell--neg");
             }));
-            view.columns.Add(Col("fg",  "投篮", 80,  Length.Percent(13), () => Cell("table-cell--center"), (e, i) => ((Label)e).text = $"{data[i].FieldGoalsMade}/{data[i].FieldGoalsAttempted}"));
-            view.columns.Add(Col("tp",  "三分", 80,  Length.Percent(13), () => Cell("table-cell--center"), (e, i) => ((Label)e).text = $"{data[i].ThreePointersMade}/{data[i].ThreePointersAttempted}"));
-            view.columns.Add(Col("ft",  "罚球", 80,  Length.Percent(14), () => Cell("table-cell--center"), (e, i) => ((Label)e).text = $"{data[i].FreeThrowsMade}/{data[i].FreeThrowsAttempted}"));
+            view.columns.Add(Col("fg",  "投篮", 72,  Length.Percent(11), () => Cell("table-cell--center"), (e, i) => ((Label)e).text = $"{data[i].FieldGoalsMade}/{data[i].FieldGoalsAttempted}"));
+            view.columns.Add(Col("tp",  "三分", 72,  Length.Percent(11), () => Cell("table-cell--center"), (e, i) => ((Label)e).text = $"{data[i].ThreePointersMade}/{data[i].ThreePointersAttempted}"));
+            view.columns.Add(Col("ft",  "罚球", 72,  Length.Percent(9),  () => Cell("table-cell--center"), (e, i) => ((Label)e).text = $"{data[i].FreeThrowsMade}/{data[i].FreeThrowsAttempted}"));
 
             card.Add(view);
             return card;
@@ -1492,23 +2150,43 @@ namespace BasketballManager.UI.Screens
             };
             view.style.height = Mathf.Clamp(data.Count * 28 + 30, 80, 310);
 
-            view.columns.Add(Col("name","球员",140, Length.Percent(24), () => Cell(), (e, i) => ((Label)e).text = data[i].PlayerName));
-            view.columns.Add(Col("gp",  "GP",  36,  Length.Percent(6),  () => Cell("table-cell--center"), (e, i) => ((Label)e).text = data[i].GamesPlayed.ToString()));
-            view.columns.Add(Col("min", "MIN", 50,  Length.Percent(9),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = $"{data[i].MinutesPerGame:F1}"));
-            view.columns.Add(Col("pts", "PTS", 50,  Length.Percent(9),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = $"{data[i].PointsPerGame:F1}"));
-            view.columns.Add(Col("reb", "REB", 50,  Length.Percent(9),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = $"{data[i].ReboundsPerGame:F1}"));
-            view.columns.Add(Col("ast", "AST", 50,  Length.Percent(9),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = $"{data[i].AssistsPerGame:F1}"));
-            view.columns.Add(Col("stl", "STL", 50,  Length.Percent(9),  () => Cell("table-cell--num"),    (e, i) =>
+            view.columns.Add(Col("name","球员",120, Length.Percent(17), () => Cell(), (e, i) => ((Label)e).text = data[i].PlayerName));
+            view.columns.Add(Col("gp",  "场次", 32,  Length.Percent(5),  () => Cell("table-cell--center"), (e, i) => ((Label)e).text = data[i].GamesPlayed.ToString()));
+            view.columns.Add(Col("min", "时间", 44,  Length.Percent(6),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = $"{data[i].MinutesPerGame:F1}"));
+            view.columns.Add(Col("pts", "得分", 44,  Length.Percent(7),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = $"{data[i].PointsPerGame:F1}"));
+            view.columns.Add(Col("reb", "篮板", 44,  Length.Percent(7),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = $"{data[i].ReboundsPerGame:F1}"));
+            view.columns.Add(Col("ast", "助攻", 44,  Length.Percent(7),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = $"{data[i].AssistsPerGame:F1}"));
+            view.columns.Add(Col("stl", "抢断", 40,  Length.Percent(6),  () => Cell("table-cell--num"),    (e, i) =>
             {
                 var s = data[i];
                 ((Label)e).text = s.GamesPlayed == 0 ? "—" : $"{(float)s.Steals / s.GamesPlayed:F1}";
             }));
-            view.columns.Add(Col("blk", "BLK", 50,  Length.Percent(9),  () => Cell("table-cell--num"),    (e, i) =>
+            view.columns.Add(Col("blk", "盖帽", 40,  Length.Percent(6),  () => Cell("table-cell--num"),    (e, i) =>
             {
                 var s = data[i];
                 ((Label)e).text = s.GamesPlayed == 0 ? "—" : $"{(float)s.Blocks / s.GamesPlayed:F1}";
             }));
-            view.columns.Add(Col("ts",  "TS%", 60,  Length.Percent(16), () => Cell("table-cell--num"),    (e, i) =>
+            view.columns.Add(Col("tov", "失误", 40,  Length.Percent(6),  () => Cell("table-cell--num"),    (e, i) =>
+            {
+                var s = data[i];
+                ((Label)e).text = s.GamesPlayed == 0 ? "—" : $"{(float)s.Turnovers / s.GamesPlayed:F1}";
+            }));
+            view.columns.Add(Col("fg",  "投篮%", 46,  Length.Percent(7),  () => Cell("table-cell--num"),    (e, i) =>
+            {
+                var s = data[i];
+                ((Label)e).text = s.FieldGoalsAttempted == 0 ? "—" : $"{(float)s.FieldGoalsMade / s.FieldGoalsAttempted * 100f:F1}%";
+            }));
+            view.columns.Add(Col("tp",  "三分%", 46,  Length.Percent(7),  () => Cell("table-cell--num"),    (e, i) =>
+            {
+                var s = data[i];
+                ((Label)e).text = s.ThreePointersAttempted == 0 ? "—" : $"{(float)s.ThreePointersMade / s.ThreePointersAttempted * 100f:F1}%";
+            }));
+            view.columns.Add(Col("ft",  "罚球%", 46,  Length.Percent(7),  () => Cell("table-cell--num"),    (e, i) =>
+            {
+                var s = data[i];
+                ((Label)e).text = s.FreeThrowsAttempted == 0 ? "—" : $"{(float)s.FreeThrowsMade / s.FreeThrowsAttempted * 100f:F1}%";
+            }));
+            view.columns.Add(Col("ts",  "真实%", 46,  Length.Percent(7),  () => Cell("table-cell--num"),    (e, i) =>
             {
                 var s = data[i];
                 float tsa = s.FieldGoalsAttempted + 0.44f * s.FreeThrowsAttempted;
@@ -1625,6 +2303,46 @@ namespace BasketballManager.UI.Screens
         // ============================================================
         //  helpers
         // ============================================================
+
+        private static VisualElement BuildDevRow(PlayerDevelopmentResult r)
+        {
+            var row = new VisualElement();
+            row.AddToClassList("dev-row");
+
+            var name = new Label(r.PlayerName);
+            name.style.width    = 110;
+            name.style.fontSize = 13;
+            row.Add(name);
+
+            var age = new Label($"{r.OldAge}→{r.NewAge}岁");
+            age.AddToClassList("caption");
+            age.style.width            = 68;
+            age.style.unityTextAlign   = TextAnchor.MiddleCenter;
+            row.Add(age);
+
+            int delta = r.OverallDelta;
+            var ovr = new Label($"OVR {r.OldOverall}→{r.NewOverall} ({(delta > 0 ? "+" : "")}{delta})");
+            ovr.style.width    = 160;
+            ovr.style.fontSize = 13;
+            if      (delta > 0) ovr.AddToClassList("dev-ovr-up");
+            else if (delta < 0) ovr.AddToClassList("dev-ovr-down");
+            else                ovr.AddToClassList("caption");
+            row.Add(ovr);
+
+            var topDeltas = r.AttributeDeltas
+                .OrderByDescending(kv => Math.Abs(kv.Value))
+                .Take(3)
+                .ToList();
+            string attrText = string.Join("  ", topDeltas.Select(kv =>
+                $"{kv.Key}{(kv.Value > 0 ? "+" : "")}{kv.Value}"));
+            var attrs = new Label(attrText);
+            attrs.style.flexGrow = 1;
+            attrs.style.fontSize = 12;
+            attrs.style.color    = new Color(0.55f, 0.58f, 0.62f);
+            row.Add(attrs);
+
+            return row;
+        }
 
         private static Column Col(string name, string title, int minWidth, Length width,
             Func<VisualElement> make, Action<VisualElement, int> bind)

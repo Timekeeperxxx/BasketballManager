@@ -15,6 +15,7 @@
                 <ui:Button name="btn-sim-next" text="模拟下一场" class="btn btn--primary topbar-btn" />
                 <ui:Button name="btn-sim-all" text="模拟剩余" class="btn topbar-btn" />
                 <ui:Button name="btn-start-playoffs" text="开始季后赛" class="btn btn--primary topbar-btn" />
+                <ui:Button name="btn-next-season" text="下一赛季" class="btn btn--primary topbar-btn" />
             </ui:VisualElement>
         </ui:VisualElement>
 
@@ -111,6 +112,40 @@
 
         </ui:VisualElement>
 
+        <!-- ===== 赛前决策面板 ===== -->
+        <ui:VisualElement name="pregame-modal-overlay" class="match-modal-overlay">
+            <ui:VisualElement name="pregame-modal" class="pregame-modal">
+                <ui:VisualElement class="pregame-modal__header">
+                    <ui:VisualElement class="pregame-modal__title-block">
+                        <ui:Label name="pregame-title" text="" class="pregame-modal__title" />
+                        <ui:Label name="pregame-matchup" text="" class="pregame-modal__matchup" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                <ui:Label text="轮换顺序  ·  调整↑↓改变球员上场时间（前5名为首发）" class="pregame-modal__hint" />
+                <ui:ScrollView name="pregame-player-scroll" class="pregame-modal__scroll">
+                    <ui:VisualElement name="pregame-player-list" class="pregame-modal__list" />
+                </ui:ScrollView>
+                <ui:VisualElement class="pregame-modal__footer">
+                    <ui:Button name="btn-pregame-skip" text="跳过调整，直接模拟" class="btn" />
+                    <ui:Button name="btn-pregame-confirm" text="确认阵容，开始比赛" class="btn btn--primary" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ===== 赛季间总结弹窗 ===== -->
+        <ui:VisualElement name="offseason-overlay" class="match-modal-overlay">
+            <ui:VisualElement class="offseason-popup">
+                <ui:VisualElement class="offseason-popup__header">
+                    <ui:Label name="offseason-title" text="赛季总结" class="offseason-popup__title" />
+                    <ui:Label name="offseason-subtitle" text="" class="caption" />
+                </ui:VisualElement>
+                <ui:ScrollView name="offseason-scroll" class="offseason-scroll" />
+                <ui:VisualElement class="offseason-popup__footer">
+                    <ui:Button name="btn-offseason-confirm" text="进入新赛季" class="btn btn--primary" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
         <!-- ===== 比赛结果弹窗 ===== -->
         <ui:VisualElement name="match-modal-overlay" class="match-modal-overlay">
             <ui:VisualElement name="match-modal" class="match-modal">
@@ -127,6 +162,38 @@
                     <ui:Button name="modal-tab-team"   text="球队数据" class="modal-tab" />
                 </ui:VisualElement>
                 <ui:VisualElement name="modal-tab-content" class="match-modal__content" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ===== 自由球员市场 overlay ===== -->
+        <ui:VisualElement name="fa-overlay" class="match-modal-overlay" style="display: none;">
+            <ui:VisualElement class="offseason-popup fa-modal">
+                <ui:VisualElement class="offseason-popup__header">
+                    <ui:Label text="自由球员市场" class="offseason-popup__title" />
+                    <ui:Label name="fa-cap-space" text="薪资帽剩余：— M" class="caption" />
+                </ui:VisualElement>
+                <ui:ScrollView name="fa-list" class="offseason-scroll" />
+                <ui:VisualElement class="offseason-popup__footer">
+                    <ui:Button name="btn-fa-done" text="完成签约，进入选秀" class="btn btn--primary" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ===== 选秀大会 overlay ===== -->
+        <ui:VisualElement name="draft-overlay" class="match-modal-overlay" style="display: none;">
+            <ui:VisualElement class="offseason-popup draft-modal">
+                <ui:VisualElement class="offseason-popup__header">
+                    <ui:Label text="选秀大会" class="offseason-popup__title" />
+                    <ui:Label name="draft-pick-info" text="" class="caption" />
+                </ui:VisualElement>
+                <ui:VisualElement class="draft-content">
+                    <ui:ScrollView name="draft-log" class="draft-log" />
+                    <ui:ScrollView name="draft-prospects" class="draft-prospects" />
+                </ui:VisualElement>
+                <ui:VisualElement class="offseason-popup__footer">
+                    <ui:Button name="btn-draft-auto" text="AI 代选" class="btn" />
+                    <ui:Button name="btn-draft-done" text="进入新赛季" class="btn btn--primary" style="display: none;" />
+                </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>

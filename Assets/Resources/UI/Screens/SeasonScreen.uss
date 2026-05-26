@@ -423,3 +423,413 @@
 .series-row__winner {
     color: var(--accent);
 }
+
+/* ===== 赛前决策面板 ===== */
+.pregame-modal {
+    width: 600px;
+    max-height: 700px;
+    background-color: var(--bg-surface);
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+    border-top-color: var(--border);
+    border-right-color: var(--border);
+    border-bottom-color: var(--border);
+    border-left-color: var(--border);
+    flex-direction: column;
+}
+
+.pregame-modal__header {
+    flex-direction: row;
+    align-items: center;
+    padding-top: 20px;
+    padding-right: 20px;
+    padding-bottom: 16px;
+    padding-left: 20px;
+    border-bottom-width: 1px;
+    border-bottom-color: var(--border);
+    flex-shrink: 0;
+}
+
+.pregame-modal__title-block {
+    flex-grow: 1;
+}
+
+.pregame-modal__title {
+    font-size: 20px;
+    -unity-font-style: bold;
+    color: var(--text-primary);
+}
+
+.pregame-modal__matchup {
+    font-size: 14px;
+    color: var(--accent);
+    margin-top: 4px;
+    -unity-font-style: bold;
+}
+
+.pregame-modal__hint {
+    font-size: 12px;
+    color: var(--text-muted);
+    padding-top: 8px;
+    padding-right: 20px;
+    padding-bottom: 8px;
+    padding-left: 20px;
+    background-color: var(--bg-surface-2);
+    border-bottom-width: 1px;
+    border-bottom-color: var(--border);
+    flex-shrink: 0;
+}
+
+.pregame-modal__scroll {
+    flex-grow: 1;
+}
+
+.pregame-modal__list {
+    flex-direction: column;
+    padding-top: 4px;
+    padding-bottom: 4px;
+}
+
+.pregame-modal__footer {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    padding-top: 12px;
+    padding-right: 16px;
+    padding-bottom: 12px;
+    padding-left: 16px;
+    border-top-width: 1px;
+    border-top-color: var(--border);
+    flex-shrink: 0;
+}
+
+.pregame-modal__footer .btn {
+    margin-left: 8px;
+}
+
+/* ---- roster rows ---- */
+.pregame-player-row {
+    flex-direction: row;
+    align-items: center;
+    padding-top: 8px;
+    padding-right: 16px;
+    padding-bottom: 8px;
+    padding-left: 8px;
+    border-bottom-width: 1px;
+    border-bottom-color: var(--border);
+}
+
+.pregame-player-row--starter {
+    background-color: rgba(99, 155, 255, 0.06);
+}
+
+.pregame-arrow-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+    background-color: rgba(255, 255, 255, 0.06);
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+    border-top-color: var(--border);
+    border-right-color: var(--border);
+    border-bottom-color: var(--border);
+    border-left-color: var(--border);
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    border-bottom-left-radius: 4px;
+    border-bottom-right-radius: 4px;
+    color: var(--text-secondary);
+    -unity-text-align: middle-center;
+    padding: 0;
+    margin-right: 4px;
+}
+
+.pregame-arrow-btn:hover {
+    background-color: rgba(255, 255, 255, 0.12);
+    color: var(--text-primary);
+}
+
+.pregame-arrow-btn:disabled {
+    opacity: 0.3;
+}
+
+.pregame-player-info {
+    flex-grow: 1;
+    font-size: 14px;
+    color: var(--text-primary);
+    margin-left: 8px;
+}
+
+.pregame-badge {
+    width: 36px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    -unity-text-align: middle-center;
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+    border-bottom-left-radius: 3px;
+    border-bottom-right-radius: 3px;
+    padding-top: 2px;
+    padding-right: 4px;
+    padding-bottom: 2px;
+    padding-left: 4px;
+    background-color: rgba(255, 255, 255, 0.08);
+    margin-right: 8px;
+}
+
+.pregame-badge--starter {
+    color: var(--accent);
+    background-color: rgba(99, 155, 255, 0.15);
+    -unity-font-style: bold;
+}
+
+.pregame-mpg {
+    width: 56px;
+    font-size: 12px;
+    color: var(--text-muted);
+    -unity-text-align: middle-right;
+}
+
+.pregame-divider {
+    height: 1px;
+    background-color: var(--accent);
+    opacity: 0.3;
+    margin-top: 2px;
+    margin-bottom: 2px;
+}
+
+/* ---- standings/schedule user-team highlight ---- */
+.cell--user-team {
+    color: var(--accent);
+    -unity-font-style: bold;
+}
+
+/* ===== 赛季间总结弹窗 ===== */
+.offseason-popup {
+    width: 580px;
+    max-height: 520px;
+    background-color: var(--bg-surface);
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+    border-top-color: var(--border);
+    border-right-color: var(--border);
+    border-bottom-color: var(--border);
+    border-left-color: var(--border);
+    flex-direction: column;
+}
+
+.offseason-popup__header {
+    padding-top: 16px;
+    padding-right: 20px;
+    padding-bottom: 12px;
+    padding-left: 20px;
+    border-bottom-width: 1px;
+    border-bottom-color: var(--border);
+    flex-shrink: 0;
+}
+
+.offseason-popup__title {
+    font-size: 18px;
+    -unity-font-style: bold;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.offseason-scroll {
+    flex-grow: 1;
+}
+
+.offseason-popup__footer {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    padding-top: 12px;
+    padding-right: 16px;
+    padding-bottom: 12px;
+    padding-left: 16px;
+    border-top-width: 1px;
+    border-top-color: var(--border);
+    flex-shrink: 0;
+}
+
+.dev-row {
+    flex-direction: row;
+    align-items: center;
+    padding-top: 7px;
+    padding-right: 14px;
+    padding-bottom: 7px;
+    padding-left: 14px;
+    border-bottom-width: 1px;
+    border-bottom-color: var(--border);
+}
+
+.dev-ovr-up {
+    color: rgb(74, 222, 128);
+    -unity-font-style: bold;
+}
+
+.dev-ovr-down {
+    color: rgb(248, 113, 113);
+    -unity-font-style: bold;
+}
+
+/* ===== 自由球员市场 overlay ===== */
+.fa-modal {
+    width: 680px;
+    max-height: 600px;
+}
+
+.fa-card {
+    flex-direction: row;
+    align-items: center;
+    padding-top: 9px;
+    padding-right: 14px;
+    padding-bottom: 9px;
+    padding-left: 14px;
+    border-bottom-width: 1px;
+    border-bottom-color: var(--border);
+}
+
+.fa-card__name {
+    flex-grow: 1;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.fa-card__pos {
+    width: 36px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    -unity-text-align: middle-center;
+}
+
+.fa-card__ovr {
+    width: 68px;
+    font-size: 13px;
+    color: var(--accent);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.fa-card__salary {
+    width: 80px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    -unity-text-align: middle-right;
+    margin-right: 12px;
+}
+
+/* ===== 选秀大会 overlay ===== */
+.draft-modal {
+    width: 900px;
+    max-height: 640px;
+}
+
+.draft-content {
+    flex-direction: row;
+    flex-grow: 1;
+    min-height: 400px;
+}
+
+.draft-log {
+    flex-grow: 1;
+    flex-basis: 0;
+    border-right-width: 1px;
+    border-right-color: var(--border);
+    padding-top: 4px;
+    padding-bottom: 4px;
+}
+
+.draft-prospects {
+    flex-grow: 1;
+    flex-basis: 0;
+    padding-top: 4px;
+    padding-bottom: 4px;
+}
+
+.draft-log-row {
+    flex-direction: row;
+    align-items: center;
+    padding-top: 6px;
+    padding-right: 10px;
+    padding-bottom: 6px;
+    padding-left: 10px;
+    border-bottom-width: 1px;
+    border-bottom-color: var(--border);
+}
+
+.draft-log-row--user {
+    background-color: rgba(99, 155, 255, 0.08);
+}
+
+.draft-log-row__pick {
+    width: 52px;
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.draft-log-row__team {
+    width: 100px;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.draft-log-row__player {
+    flex-grow: 1;
+    font-size: 13px;
+    color: var(--text-primary);
+    -unity-font-style: bold;
+}
+
+.draft-log-row__detail {
+    font-size: 11px;
+    color: var(--text-secondary);
+    -unity-text-align: middle-right;
+}
+
+.draft-prospect-card {
+    flex-direction: row;
+    align-items: center;
+    padding-top: 8px;
+    padding-right: 10px;
+    padding-bottom: 8px;
+    padding-left: 10px;
+    border-bottom-width: 1px;
+    border-bottom-color: var(--border);
+}
+
+.draft-prospect-card__name {
+    flex-grow: 1;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.draft-prospect-card__pos {
+    width: 36px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    -unity-text-align: middle-center;
+}
+
+.draft-prospect-card__ovr {
+    width: 68px;
+    font-size: 13px;
+    color: var(--accent);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    margin-right: 10px;
+}

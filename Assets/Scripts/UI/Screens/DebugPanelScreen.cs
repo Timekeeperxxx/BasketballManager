@@ -984,12 +984,16 @@ namespace BasketballManager.UI.Screens
                 showAlternatingRowBackgrounds = AlternatingRowBackground.ContentOnly,
             };
 
-            view.columns.Add(Col("name", "球员", 140, Length.Percent(22), () => Cell(),                     (e, i) => ((Label)e).text = data[i].PlayerName));
-            view.columns.Add(Col("min",  "分钟", 50,  Length.Percent(7),  () => Cell("table-cell--center"), (e, i) => ((Label)e).text = data[i].Minutes.ToString()));
-            view.columns.Add(Col("pts",  "得分", 50,  Length.Percent(8),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = data[i].Points.ToString()));
-            view.columns.Add(Col("reb",  "篮板", 50,  Length.Percent(8),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = data[i].Rebounds.ToString()));
-            view.columns.Add(Col("ast",  "助攻", 50,  Length.Percent(8),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = data[i].Assists.ToString()));
-            view.columns.Add(Col("pm",   "+/-", 50,  Length.Percent(7),  () => Cell("table-cell--num"),    (e, i) =>
+            view.columns.Add(Col("name", "球员", 130, Length.Percent(17), () => Cell(),                     (e, i) => ((Label)e).text = data[i].PlayerName));
+            view.columns.Add(Col("min",  "时间",  40,  Length.Percent(5),  () => Cell("table-cell--center"), (e, i) => ((Label)e).text = data[i].Minutes.ToString()));
+            view.columns.Add(Col("pts",  "得分",  44,  Length.Percent(6),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = data[i].Points.ToString()));
+            view.columns.Add(Col("reb",  "篮板",  44,  Length.Percent(6),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = data[i].Rebounds.ToString()));
+            view.columns.Add(Col("ast",  "助攻",  44,  Length.Percent(6),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = data[i].Assists.ToString()));
+            view.columns.Add(Col("stl",  "抢断",  40,  Length.Percent(5),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = data[i].Steals.ToString()));
+            view.columns.Add(Col("blk",  "盖帽",  40,  Length.Percent(5),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = data[i].Blocks.ToString()));
+            view.columns.Add(Col("tov",  "失误",  40,  Length.Percent(5),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = data[i].Turnovers.ToString()));
+            view.columns.Add(Col("pf",   "犯规",  36,  Length.Percent(4),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = data[i].Fouls.ToString()));
+            view.columns.Add(Col("pm",   "正负",  44,  Length.Percent(5),  () => Cell("table-cell--num"),    (e, i) =>
             {
                 var lbl = (Label)e;
                 int pm = data[i].PlusMinus;
@@ -999,9 +1003,9 @@ namespace BasketballManager.UI.Screens
                 if (pm > 0) lbl.AddToClassList("table-cell--pos");
                 else if (pm < 0) lbl.AddToClassList("table-cell--neg");
             }));
-            view.columns.Add(Col("fg",   "投篮", 80,  Length.Percent(13), () => Cell("table-cell--center"), (e, i) => ((Label)e).text = $"{data[i].FieldGoalsMade}/{data[i].FieldGoalsAttempted}"));
-            view.columns.Add(Col("tp",   "三分", 80,  Length.Percent(13), () => Cell("table-cell--center"), (e, i) => ((Label)e).text = $"{data[i].ThreePointersMade}/{data[i].ThreePointersAttempted}"));
-            view.columns.Add(Col("ft",   "罚球", 80,  Length.Percent(14), () => Cell("table-cell--center"), (e, i) => ((Label)e).text = $"{data[i].FreeThrowsMade}/{data[i].FreeThrowsAttempted}"));
+            view.columns.Add(Col("fg",   "投篮", 72,  Length.Percent(11), () => Cell("table-cell--center"), (e, i) => ((Label)e).text = $"{data[i].FieldGoalsMade}/{data[i].FieldGoalsAttempted}"));
+            view.columns.Add(Col("tp",   "三分", 72,  Length.Percent(11), () => Cell("table-cell--center"), (e, i) => ((Label)e).text = $"{data[i].ThreePointersMade}/{data[i].ThreePointersAttempted}"));
+            view.columns.Add(Col("ft",   "罚球", 72,  Length.Percent(9),  () => Cell("table-cell--center"), (e, i) => ((Label)e).text = $"{data[i].FreeThrowsMade}/{data[i].FreeThrowsAttempted}"));
 
             card.Add(view);
             return card;
@@ -1029,17 +1033,17 @@ namespace BasketballManager.UI.Screens
                 showAlternatingRowBackgrounds = AlternatingRowBackground.ContentOnly,
             };
 
-            view.columns.Add(Col("name", "球员", 140, Length.Percent(20), () => Cell(),                     (e, i) => ((Label)e).text = data[i].PlayerName));
-            view.columns.Add(Col("pos",  "位置", 60,  Length.Percent(7),  () => Cell("table-cell--center"), (e, i) =>
+            view.columns.Add(Col("name", "球员", 130, Length.Percent(16), () => Cell(),                     (e, i) => ((Label)e).text = data[i].PlayerName));
+            view.columns.Add(Col("pos",  "位置", 55,  Length.Percent(6),  () => Cell("table-cell--center"), (e, i) =>
             {
                 var p = data[i];
                 ((Label)e).text = p.SecondaryPosition.HasValue ? $"{p.PrimaryPosition}/{p.SecondaryPosition.Value}" : p.PrimaryPosition.ToString();
             }));
-            view.columns.Add(Col("min", "分钟", 50,  Length.Percent(7),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = data[i].Minutes.ToString("F1")));
-            view.columns.Add(Col("pts", "得分", 50,  Length.Percent(7),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = data[i].Points.ToString("F1")));
-            view.columns.Add(Col("reb", "篮板", 50,  Length.Percent(7),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = data[i].Rebounds.ToString("F1")));
-            view.columns.Add(Col("ast", "助攻", 50,  Length.Percent(7),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = data[i].Assists.ToString("F1")));
-            view.columns.Add(Col("pm",  "+/-", 50,  Length.Percent(7),  () => Cell("table-cell--num"),    (e, i) =>
+            view.columns.Add(Col("min", "时间", 44,  Length.Percent(5),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = data[i].Minutes.ToString("F1")));
+            view.columns.Add(Col("pts", "得分", 44,  Length.Percent(5),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = data[i].Points.ToString("F1")));
+            view.columns.Add(Col("reb", "篮板", 44,  Length.Percent(5),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = data[i].Rebounds.ToString("F1")));
+            view.columns.Add(Col("ast", "助攻", 44,  Length.Percent(5),  () => Cell("table-cell--num"),    (e, i) => ((Label)e).text = data[i].Assists.ToString("F1")));
+            view.columns.Add(Col("pm",  "正负", 44,  Length.Percent(5),  () => Cell("table-cell--num"),    (e, i) =>
             {
                 var lbl = (Label)e;
                 float pm = data[i].PlusMinus;
@@ -1049,20 +1053,35 @@ namespace BasketballManager.UI.Screens
                 if (pm > 0.05f) lbl.AddToClassList("table-cell--pos");
                 else if (pm < -0.05f) lbl.AddToClassList("table-cell--neg");
             }));
-            view.columns.Add(Col("fg", "投篮", 110, Length.Percent(13), () => Cell("table-cell--center"), (e, i) =>
+            view.columns.Add(Col("fg",  "投篮", 90,  Length.Percent(10), () => Cell("table-cell--center"), (e, i) =>
             {
                 var p = data[i];
                 ((Label)e).text = FormatMakeAtt(p.FieldGoalsMade, p.FieldGoalAttempts);
             }));
-            view.columns.Add(Col("tp", "三分", 110, Length.Percent(13), () => Cell("table-cell--center"), (e, i) =>
+            view.columns.Add(Col("fg%", "投篮%", 46,  Length.Percent(6),  () => Cell("table-cell--num"), (e, i) =>
+            {
+                var p = data[i];
+                ((Label)e).text = p.FieldGoalAttempts < 0.01f ? "—" : $"{p.FieldGoalsMade / p.FieldGoalAttempts * 100f:F1}%";
+            }));
+            view.columns.Add(Col("tp",  "三分", 90,  Length.Percent(10), () => Cell("table-cell--center"), (e, i) =>
             {
                 var p = data[i];
                 ((Label)e).text = FormatMakeAtt(p.ThreePointersMade, p.ThreePointAttempts);
             }));
-            view.columns.Add(Col("ft", "罚球", 110, Length.Percent(12), () => Cell("table-cell--center"), (e, i) =>
+            view.columns.Add(Col("tp%", "三分%", 46,  Length.Percent(6),  () => Cell("table-cell--num"), (e, i) =>
+            {
+                var p = data[i];
+                ((Label)e).text = p.ThreePointAttempts < 0.01f ? "—" : $"{p.ThreePointersMade / p.ThreePointAttempts * 100f:F1}%";
+            }));
+            view.columns.Add(Col("ft",  "罚球", 90,  Length.Percent(10), () => Cell("table-cell--center"), (e, i) =>
             {
                 var p = data[i];
                 ((Label)e).text = FormatMakeAtt(p.FreeThrowsMade, p.FreeThrowAttempts);
+            }));
+            view.columns.Add(Col("ft%", "罚球%", 46,  Length.Percent(6),  () => Cell("table-cell--num"), (e, i) =>
+            {
+                var p = data[i];
+                ((Label)e).text = p.FreeThrowAttempts < 0.01f ? "—" : $"{p.FreeThrowsMade / p.FreeThrowAttempts * 100f:F1}%";
             }));
 
             card.Add(view);

@@ -1,0 +1,27 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="project://database/Assets/Resources/UI/Theme/theme.uss" />
+    <Style src="project://database/Assets/Resources/UI/Screens/TeamSelectScreen.uss" />
+    <ui:VisualElement name="team-select" class="screen-page team-select">
+
+        <!-- 顶栏 -->
+        <ui:VisualElement class="page-topbar">
+            <ui:Button name="btn-back" text="← 返回" class="btn btn--back" />
+            <ui:VisualElement class="page-topbar__title-block">
+                <ui:Label text="选择执教球队" class="h2" />
+                <ui:Label text="你将以主教练身份带领这支球队参加整个赛季" class="caption" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- 球队列表 -->
+        <ui:VisualElement class="team-select__body">
+            <ui:ListView name="team-list" class="team-select__list" />
+        </ui:VisualElement>
+
+        <!-- 底部确认栏 -->
+        <ui:VisualElement class="team-select__footer">
+            <ui:Label name="team-select__selected-label" text="请选择一支球队" class="team-select__hint" />
+            <ui:Button name="btn-confirm" text="确认执教" class="btn btn--primary" />
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+</ui:UXML>

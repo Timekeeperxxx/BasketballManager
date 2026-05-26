@@ -11,9 +11,9 @@
         </ui:VisualElement>
 
         <ui:VisualElement class="main-menu__actions">
-            <ui:Button name="btn-season" text="赛  季  模  式" class="btn btn--primary btn--lg main-menu__btn" />
+            <ui:Button name="btn-season"  text="赛  季  模  式" class="btn btn--primary btn--lg main-menu__btn" />
             <ui:Button name="btn-options" text="游  戏  选  项" class="btn btn--lg main-menu__btn" />
-            <ui:Button name="btn-quit" text="退  出  游  戏" class="btn btn--ghost btn--lg main-menu__btn" />
+            <ui:Button name="btn-quit"    text="退  出  游  戏" class="btn btn--ghost btn--lg main-menu__btn" />
         </ui:VisualElement>
 
         <ui:Label name="version-label" text="v0.1 · 阶段一" class="main-menu__version" />

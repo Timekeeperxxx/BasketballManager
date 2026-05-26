@@ -1,0 +1,228 @@
+.save-select-root {
+    flex-grow: 1;
+    background-color: var(--bg-base);
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+}
+
+.save-select-header {
+    align-items: center;
+    margin-bottom: 32px;
+}
+
+.save-select-game-title {
+    font-size: 36px;
+    -unity-font-style: bold;
+    color: var(--text-primary);
+    letter-spacing: 4px;
+}
+
+.save-select-subtitle {
+    font-size: 15px;
+    color: var(--text-secondary);
+    margin-top: 6px;
+}
+
+.save-slot-list {
+    width: 520px;
+    max-height: 520px;
+}
+
+.save-select-footer {
+    margin-top: 24px;
+    flex-direction: row;
+    justify-content: center;
+}
+
+.save-back-btn {
+    min-width: 120px;
+    margin-right: 16px;
+    background-color: rgba(0, 0, 0, 0);
+    color: var(--text-secondary);
+    border-top-width: 0;
+    border-right-width: 0;
+    border-bottom-width: 0;
+    border-left-width: 0;
+}
+
+.save-back-btn:hover {
+    color: var(--text-primary);
+}
+
+.save-quit-btn {
+    min-width: 120px;
+    background-color: rgba(0, 0, 0, 0);
+    color: var(--text-secondary);
+    border-top-width: 0;
+    border-right-width: 0;
+    border-bottom-width: 0;
+    border-left-width: 0;
+}
+
+.save-quit-btn:hover {
+    color: var(--text-primary);
+}
+
+/* ===== 存档卡片 ===== */
+.save-slot-card {
+    flex-direction: row;
+    align-items: center;
+    background-color: var(--bg-surface);
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+    border-top-color: var(--border);
+    border-right-color: var(--border);
+    border-bottom-color: var(--border);
+    border-left-color: var(--border);
+    padding-top: 16px;
+    padding-right: 16px;
+    padding-bottom: 16px;
+    padding-left: 16px;
+    margin-bottom: 10px;
+}
+
+.save-slot-card:hover {
+    border-top-color: var(--accent);
+    border-right-color: var(--accent);
+    border-bottom-color: var(--accent);
+    border-left-color: var(--accent);
+}
+
+.save-slot-badge {
+    width: 44px;
+    height: 44px;
+    border-top-left-radius: 22px;
+    border-top-right-radius: 22px;
+    border-bottom-left-radius: 22px;
+    border-bottom-right-radius: 22px;
+    background-color: var(--bg-surface-2);
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+    border-top-color: var(--border);
+    border-right-color: var(--border);
+    border-bottom-color: var(--border);
+    border-left-color: var(--border);
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-right: 14px;
+}
+
+.save-slot-badge__text {
+    font-size: 16px;
+    -unity-font-style: bold;
+    color: var(--text-secondary);
+    -unity-text-align: middle-center;
+}
+
+.save-slot-info {
+    flex-grow: 1;
+}
+
+.save-slot-info__name {
+    font-size: 15px;
+    -unity-font-style: bold;
+    color: var(--text-primary);
+    margin-bottom: 3px;
+}
+
+.save-slot-info__meta {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.save-slot-info__empty {
+    font-size: 14px;
+    color: var(--text-muted);
+    -unity-font-style: italic;
+}
+
+.save-slot-actions {
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+    margin-left: 12px;
+}
+
+.save-slot-actions .btn {
+    margin-left: 6px;
+}
+
+.btn--danger {
+    background-color: rgba(239, 68, 68, 0.15);
+    color: rgb(248, 113, 113);
+    border-top-color: rgba(239, 68, 68, 0.4);
+    border-right-color: rgba(239, 68, 68, 0.4);
+    border-bottom-color: rgba(239, 68, 68, 0.4);
+    border-left-color: rgba(239, 68, 68, 0.4);
+}
+
+.btn--danger:hover {
+    background-color: rgba(239, 68, 68, 0.3);
+}
+
+/* ===== 删除确认弹窗 ===== */
+.delete-confirm-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.75);
+    align-items: center;
+    justify-content: center;
+    display: none;
+}
+
+.delete-confirm-popup {
+    width: 340px;
+    background-color: var(--bg-surface);
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+    border-top-color: var(--border);
+    border-right-color: var(--border);
+    border-bottom-color: var(--border);
+    border-left-color: var(--border);
+    padding-top: 24px;
+    padding-right: 24px;
+    padding-bottom: 20px;
+    padding-left: 24px;
+}
+
+.delete-confirm-title {
+    font-size: 17px;
+    -unity-font-style: bold;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+}
+
+.delete-confirm-msg {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+    white-space: normal;
+}
+
+.delete-confirm-btns {
+    flex-direction: row;
+    justify-content: flex-end;
+}
+
+.delete-confirm-btns .btn {
+    margin-left: 8px;
+}
