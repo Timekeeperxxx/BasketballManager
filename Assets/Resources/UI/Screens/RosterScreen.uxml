@@ -51,6 +51,7 @@
                     <ui:VisualElement class="player-hero__info">
                         <ui:Label name="hero-name" text="—" class="player-hero__name" />
                         <ui:Label name="hero-sub" text="" class="player-hero__sub" />
+                        <ui:Label name="hero-injury" text="" class="injury-badge" style="display:none;" />
                     </ui:VisualElement>
                     <ui:VisualElement class="player-hero__overall">
                         <ui:Label text="OVR" class="player-hero__overall-label" />

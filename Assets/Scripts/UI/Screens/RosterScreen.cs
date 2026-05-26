@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using BasketballManager.Core.Models;
+using BasketballManager.Core.Services;
 using BasketballManager.Database;
 using BasketballManager.UI.Core;
 using UnityEngine;
@@ -37,7 +38,7 @@ namespace BasketballManager.UI.Screens
 
         // UI 引用：顶栏 & Hero
         private Label _saveStatus;
-        private Label _heroJersey, _heroName, _heroSub, _heroOverall;
+        private Label _heroJersey, _heroName, _heroSub, _heroOverall, _heroInjury;
         private Label _rosterCount;
 
         // 左侧
@@ -103,6 +104,7 @@ namespace BasketballManager.UI.Screens
             _heroName    = Root.Q<Label>("hero-name");
             _heroSub     = Root.Q<Label>("hero-sub");
             _heroOverall = Root.Q<Label>("hero-overall");
+            _heroInjury  = Root.Q<Label>("hero-injury");
 
             // 左侧：球队搜索下拉 + 球员列表
             _teamPickerTrigger = Root.Q<VisualElement>("team-picker-trigger");
@@ -486,12 +488,25 @@ namespace BasketballManager.UI.Screens
                 _heroName.text    = "—";
                 _heroSub.text     = string.Empty;
                 _heroOverall.text = "--";
+                if (_heroInjury != null) _heroInjury.style.display = DisplayStyle.None;
                 return;
             }
             _heroJersey.text  = "#" + _selectedPlayer.JerseyNumber;
             _heroName.text    = _selectedPlayer.GetDisplayName();
             _heroSub.text     = FormatSub(_selectedPlayer);
             _heroOverall.text = _selectedPlayer.Overall.ToString();
+            if (_heroInjury != null)
+            {
+                if (_selectedPlayer.IsInjured)
+                {
+                    _heroInjury.text = InjuryService.GetInjuryLabel(_selectedPlayer.InjuryGamesRemaining);
+                    _heroInjury.style.display = DisplayStyle.Flex;
+                }
+                else
+                {
+                    _heroInjury.style.display = DisplayStyle.None;
+                }
+            }
         }
 
         private static string FormatSub(Player p)
