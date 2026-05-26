@@ -108,7 +108,9 @@ namespace BasketballManager.UI.Screens
         protected override void OnEnter()
         {
             if (_teamRepository == null) return;
-            _teams = _teamRepository.GetAllTeams().ToList();
+            _teams = _teamRepository.GetAllTeams()
+                .Where(t => t.Id != "__FA__" && t.Id != "__DRAFT_POOL__")
+                .ToList();
             if (_teams.Count >= 2) { _homeIdx = 0; _awayIdx = 1; }
             else                   { _homeIdx = 0; _awayIdx = 0; }
             RefreshTeamCards();
