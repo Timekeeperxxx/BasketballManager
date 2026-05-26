@@ -501,6 +501,7 @@ namespace BasketballManager.Simulation
             offense.HasTransitionOpportunity = false;
 
             var attacker = SelectInitiator(offense);
+            if (attacker == null) return;
             var defender = SelectMatchedDefender(defense, attacker, null);
 
             var offStats = offense.PlayerStatsById[attacker.Id];
@@ -549,6 +550,7 @@ namespace BasketballManager.Simulation
             }
 
             var finisher = SelectFinisher(offense, isTransition);
+            if (finisher == null) return;
             var shotType = SelectShotType(finisher, offense, quarterIndex, isTransition);
 
             ResolveShotAttempt(offense, defense, finisher, shotType, quarterIndex, new ShotAttemptContext
@@ -566,6 +568,7 @@ namespace BasketballManager.Simulation
             bool selfFinish = _random.Chance(isBig ? 0.55f : 0.25f);
 
             Player finisher = selfFinish ? rebounder : SelectFinisher(offense, false);
+            if (finisher == null) return;
 
             ShotType shotType;
             if (selfFinish)
@@ -621,6 +624,9 @@ namespace BasketballManager.Simulation
             bool offIsHome = IsHome(offense);
             bool isThreePt = shotType == ShotType.ThreePoint;
 
+            // Determine shot zone once, used for zone stats and PBP throughout this possession
+            ShotZone shotZone = SelectShotZone(finisher, shotType);
+
             // Block (priority over Foul/And-1)
             float blockChance = CalculateBlockChance(shotType, finisher, finDefender);
             if (_random.Chance(blockChance))
@@ -628,7 +634,7 @@ namespace BasketballManager.Simulation
                 finDefStats.Blocks++;
                 defense.TeamStats.Blocks++;
 
-                RecordShotResult(offense, finisher, shotType, false, true);
+                RecordShotResult(offense, finisher, shotType, false, true, shotZone);
 
                 var (rebounder, isOffensive) = ResolveRebound(offense, defense, shotType);
                 string rebDesc = rebounder != null
@@ -669,10 +675,15 @@ namespace BasketballManager.Simulation
             }
 
             // FG
-            float fgChance = CalculateFgChance(offense, defense, finisher, finDefender, shotType, ctx.IsTransition) + ctx.MadeChanceBoost;
+            float fgChance = CalculateFgChance(offense, defense, finisher, finDefender, shotType, ctx.IsTransition)
+                             + ctx.MadeChanceBoost
+                             + GetClutchTraitBonus(finisher, offense)
+                             + GetCatchAndShootBonus(finisher, ctx)
+                             + GetVolumeShooterBonus(finisher, offense)
+                             + GetComebackKidBonus(finisher, offense);
             bool isMade = _random.Chance(fgChance);
 
-            int fgPts = RecordShotResult(offense, finisher, shotType, isMade, false);
+            int fgPts = RecordShotResult(offense, finisher, shotType, isMade, false, shotZone);
             ApplyPlusMinus(offense, defense, fgPts);
 
             if (isMade)
@@ -683,15 +694,26 @@ namespace BasketballManager.Simulation
                 string assisterName = assister?.GetDisplayName();
 
                 int finPts = offense.PlayerStatsById[finisher.Id].Points;
+                string zoneName = shotZone.ToChinese();
                 string madeVerb;
                 if (shotType == ShotType.ThreePoint)
-                    madeVerb = Pick(
-                        "三分命中！",
-                        "远投打进！",
-                        "弧顶三分，空心入网！",
-                        "底角三分，精准命中！",
-                        "从容出手，三分得手！",
-                        "梦幻弧线，三分落袋！");
+                    madeVerb = shotZone switch
+                    {
+                        ShotZone.ThreeLeftCorner  => Pick($"{zoneName}，精准命中！", $"{zoneName}出手，打进！", $"{zoneName}三分，空心入网！"),
+                        ShotZone.ThreeRightCorner => Pick($"{zoneName}，精准命中！", $"{zoneName}出手，打进！", $"{zoneName}三分，空心入网！"),
+                        ShotZone.ThreeLeftWing    => Pick($"{zoneName}，三分命中！", $"{zoneName}拔起，远投打进！", $"{zoneName}斜线三分，落袋！"),
+                        ShotZone.ThreeRightWing   => Pick($"{zoneName}，三分命中！", $"{zoneName}拔起，远投打进！", $"{zoneName}斜线三分，落袋！"),
+                        _                         => Pick($"{zoneName}，空心入网！", $"{zoneName}出手，三分命中！", "弧顶三分，从容打进！", "梦幻弧线，三分落袋！"),
+                    };
+                else if (shotType == ShotType.TwoPoint)
+                    madeVerb = shotZone switch
+                    {
+                        ShotZone.MidLeftCorner  => Pick($"{zoneName}，急停跳投命中！", $"{zoneName}出手，中投打进！"),
+                        ShotZone.MidRightCorner => Pick($"{zoneName}，急停跳投命中！", $"{zoneName}出手，中投打进！"),
+                        ShotZone.MidLeftElbow   => Pick($"{zoneName}，干净命中！", $"{zoneName}急停拔起，打进！", "左肘区后撤步，命中！"),
+                        ShotZone.MidRightElbow  => Pick($"{zoneName}，干净命中！", $"{zoneName}急停拔起，打进！", "右肘区后撤步，命中！"),
+                        _                       => Pick($"{zoneName}，中投得分！", "急停跳投，打进！", "高难度出手，竟然打进！"),
+                    };
                 else if (shotType == ShotType.Layup && ctx.IsTransition)
                     madeVerb = Pick(
                         "快攻上篮，打进！",
@@ -699,27 +721,25 @@ namespace BasketballManager.Simulation
                         "快攻推进，轻松上篮！",
                         "无人防守，一条龙上篮！");
                 else if (shotType == ShotType.Layup)
-                    madeVerb = Pick(
-                        "上篮打进！",
-                        "切入得分！",
-                        "强行杀入禁区，上篮命中！",
-                        "高抛手腕，上篮打板进！",
-                        "假动作骗过防守，上篮得分！");
+                    madeVerb = shotZone switch
+                    {
+                        ShotZone.CloseLeft  => Pick("左侧切入，上篮打进！", "左路突破，上篮命中！", "左侧上篮，打板得分！"),
+                        ShotZone.CloseRight => Pick("右侧切入，上篮打进！", "右路突破，上篮命中！", "右侧上篮，打板得分！"),
+                        _                   => Pick("中路切入，上篮打进！", "强行杀入禁区，上篮命中！", "假动作骗过防守，上篮得分！", "高抛手腕，上篮打板进！"),
+                    };
                 else if (shotType == ShotType.Post)
-                    madeVerb = Pick(
-                        "低位强打，得手！",
-                        "背身打板命中！",
-                        "转身跳投，命中！",
-                        "低位要位，强力得分！",
-                        "背打造空间，底线命中！");
+                    madeVerb = shotZone switch
+                    {
+                        ShotZone.CloseLeft  => Pick("左侧低位，背身命中！", "左侧背身，打板得分！", "左低位强打，转身命中！"),
+                        ShotZone.CloseRight => Pick("右侧低位，背身命中！", "右侧背身，打板得分！", "右低位强打，转身命中！"),
+                        _                   => Pick("中路低位，强打命中！", "背身造空间，转身得手！", "低位要位，强力得分！"),
+                    };
                 else
                     madeVerb = Pick(
-                        "投篮命中！",
-                        "急停跳投，打进！",
-                        "中投得分！",
-                        "后撤步中投，命中！",
-                        "高难度出手，竟然打进！",
-                        "急停拔起，干净命中！");
+                        "篮下命中！",
+                        "近距离轻松打进！",
+                        "禁区内强力完成！",
+                        "近投得手！");
 
                 // Clutch time: Q4 final 2 minutes, margin ≤ 5
                 bool isClutch = _curQuarter >= 4 && _clockSec < 120 &&
@@ -757,7 +777,7 @@ namespace BasketballManager.Simulation
                 string rebDesc = hasReb
                     ? (isOffensive ? $"{rebounder.GetDisplayName()} 进攻篮板" : $"{rebounder.GetDisplayName()} 防守篮板")
                     : "";
-                string shotNameM = ShotTypeChinese(shotType);
+                string shotNameM = shotZone.ToChinese();
                 LogEvent(finisher.JerseyNumber, $"{finisher.GetDisplayName()} {shotNameM}{missVerb}{rebDesc}", missCredits.ToArray());
                 if (isOffensive && rebounder != null && ctx.AllowSecondChanceOnMiss)
                     SimulateSecondChanceAttempt(offense, defense, rebounder, quarterIndex);
@@ -944,6 +964,7 @@ namespace BasketballManager.Simulation
         private Player SelectInitiator(MatchTeamSnapshot offense)
         {
             var candidates = offense.CurrentLineup;
+            if (candidates.Count == 0) return null;
             float totalWeight = 0;
             var weights = new float[candidates.Count];
 
@@ -984,6 +1005,7 @@ namespace BasketballManager.Simulation
         private Player SelectFinisher(MatchTeamSnapshot offense, bool isTransition = false)
         {
             var candidates = offense.CurrentLineup;
+            if (candidates.Count == 0) return null;
             float totalWeight = 0;
             var weights = new float[candidates.Count];
 
@@ -1119,6 +1141,50 @@ namespace BasketballManager.Simulation
             return candidates.Last();
         }
 
+        private ShotZone SelectShotZone(Player player, ShotType shotType)
+        {
+            var t = player.Tendencies;
+            switch (shotType)
+            {
+                case ShotType.ThreePoint:
+                {
+                    float total = t.ZoneThreeLeftCorner + t.ZoneThreeRightCorner
+                                + t.ZoneThreeLeftWing   + t.ZoneThreeRightWing + t.ZoneThreeTopKey;
+                    if (total <= 0) return ShotZone.ThreeTopKey;
+                    float roll = _random.Range(0f, total);
+                    roll -= t.ZoneThreeLeftCorner;  if (roll <= 0) return ShotZone.ThreeLeftCorner;
+                    roll -= t.ZoneThreeRightCorner; if (roll <= 0) return ShotZone.ThreeRightCorner;
+                    roll -= t.ZoneThreeLeftWing;    if (roll <= 0) return ShotZone.ThreeLeftWing;
+                    roll -= t.ZoneThreeRightWing;   if (roll <= 0) return ShotZone.ThreeRightWing;
+                    return ShotZone.ThreeTopKey;
+                }
+                case ShotType.TwoPoint:
+                {
+                    float total = t.ZoneMidLeftCorner + t.ZoneMidRightCorner
+                                + t.ZoneMidLeftElbow  + t.ZoneMidRightElbow + t.ZoneMidTopKey;
+                    if (total <= 0) return ShotZone.MidTopKey;
+                    float roll = _random.Range(0f, total);
+                    roll -= t.ZoneMidLeftCorner;  if (roll <= 0) return ShotZone.MidLeftCorner;
+                    roll -= t.ZoneMidRightCorner; if (roll <= 0) return ShotZone.MidRightCorner;
+                    roll -= t.ZoneMidLeftElbow;   if (roll <= 0) return ShotZone.MidLeftElbow;
+                    roll -= t.ZoneMidRightElbow;  if (roll <= 0) return ShotZone.MidRightElbow;
+                    return ShotZone.MidTopKey;
+                }
+                case ShotType.Layup:
+                case ShotType.Post:
+                {
+                    float total = t.ZoneCloseLeft + t.ZoneCloseCenter + t.ZoneCloseRight;
+                    if (total <= 0) return ShotZone.CloseCenter;
+                    float roll = _random.Range(0f, total);
+                    roll -= t.ZoneCloseLeft;   if (roll <= 0) return ShotZone.CloseLeft;
+                    roll -= t.ZoneCloseCenter; if (roll <= 0) return ShotZone.CloseCenter;
+                    return ShotZone.CloseRight;
+                }
+                default:
+                    return ShotZone.Basket;
+            }
+        }
+
         private ShotType SelectShotType(Player player, MatchTeamSnapshot offense, int quarterIndex, bool isTransition = false)
         {
             float threeWeight = player.Tendencies.ThreeTendency * 1.65f + player.Attributes.ThreePoint * 0.65f;
@@ -1212,7 +1278,10 @@ namespace BasketballManager.Simulation
             float result = Mathf.Clamp(baseChance + delta, 0.05f, 0.25f);
             
             result /= offense.StyleProfile.TurnoverControl;
-            
+            // 传切利器：在任何防守压力下都能精准送出传球，降低失误率
+            result -= GetNeedleThreaderBonus(attacker);
+            result = Mathf.Clamp(result, 0.05f, 0.25f);
+
             if (isTransition)
             {
                 result *= 0.90f;
@@ -1282,7 +1351,7 @@ namespace BasketballManager.Simulation
             return false;
         }
 
-        private int RecordShotResult(MatchTeamSnapshot offense, Player shooter, ShotType shotType, bool isMade, bool isBlocked = false)
+        private int RecordShotResult(MatchTeamSnapshot offense, Player shooter, ShotType shotType, bool isMade, bool isBlocked = false, ShotZone shotZone = ShotZone.Basket)
         {
             var pStats = offense.PlayerStatsById[shooter.Id];
             var pState = offense.PlayerGameStates[shooter.Id];
@@ -1291,6 +1360,9 @@ namespace BasketballManager.Simulation
             pStats.FieldGoalsAttempted++;
             pState.Fga++;
             tStats.FieldGoalsAttempted++;
+
+            // Zone FGA always counts (blocked shots are still FGA)
+            pStats.ZoneFga[(int)shotZone]++;
 
             bool isThree = shotType == ShotType.ThreePoint;
             if (isThree)
@@ -1305,6 +1377,8 @@ namespace BasketballManager.Simulation
                 pStats.FieldGoalsMade++;
                 pState.Fgm++;
                 tStats.FieldGoalsMade++;
+
+                pStats.ZoneFgm[(int)shotZone]++;
 
                 int pts = isThree ? 3 : 2;
                 pStats.Points += pts;
@@ -1405,6 +1479,8 @@ namespace BasketballManager.Simulation
 
             float effectiveOff = offAttr * _random.Range(attacker.Attributes.OffensiveConsistency / 100f, 1.0f);
             float effectiveDef = defAttr * _random.Range(defender.Attributes.DefensiveConsistency / 100f, 1.0f);
+            // 封锁专家：放大防守方有效属性，压低攻方命中率
+            effectiveDef *= GetClampsMultiplier(defender);
 
             float delta = (effectiveOff - effectiveDef) / 100f * 0.2f;
 
@@ -1418,15 +1494,103 @@ namespace BasketballManager.Simulation
                 _ => 0.40f
             };
 
+            // 硬汉防守：压低篮下/低位/中距离出手的命中率上限
+            float intimidate = GetIntimidatorClampReduction(defender, shotType);
             return shotType switch
             {
                 ShotType.ThreePoint => Mathf.Clamp(chance, 0.22f, 0.55f),
-                ShotType.TwoPoint => Mathf.Clamp(chance, 0.32f, 0.62f),
-                ShotType.Layup => Mathf.Clamp(chance, 0.38f, 0.72f),
-                ShotType.CloseShot => Mathf.Clamp(chance, 0.40f, 0.75f),
-                ShotType.Post => Mathf.Clamp(chance, 0.35f, 0.68f),
+                ShotType.TwoPoint   => Mathf.Clamp(chance, 0.32f, 0.62f),
+                ShotType.Layup      => Mathf.Clamp(chance, 0.38f, 0.72f - intimidate),
+                ShotType.CloseShot  => Mathf.Clamp(chance, 0.40f, 0.75f - intimidate),
+                ShotType.Post       => Mathf.Clamp(chance, 0.35f, 0.68f - intimidate),
                 _ => 0.40f
             };
+        }
+
+        private float GetClutchTraitBonus(Player attacker, MatchTeamSnapshot offenseSnap)
+        {
+            if (_curQuarter < 4 || _clockSec > 300) return 0f;
+            int homeScore = _homeSnap.TeamStats.Points;
+            int awayScore = _awaySnap.TeamStats.Points;
+            int scoreDiff = IsHome(offenseSnap) ? homeScore - awayScore : awayScore - homeScore;
+            if (Math.Abs(scoreDiff) >= 5) return 0f;
+
+            var trait = attacker.Traits?.Find(t => t.NameKey == "clutch_performer");
+            if (trait == null) return 0f;
+
+            return trait.StarLevel switch
+            {
+                1 => 0.015f,
+                2 => 0.025f,
+                3 => 0.04f,
+                _ => 0f
+            };
+        }
+
+        // 接球即投：接到传球直接出手，命中率小幅提升（直接改结果，保守取值）
+        private float GetCatchAndShootBonus(Player shooter, ShotAttemptContext ctx)
+        {
+            if (ctx.AssistAttributionPlayer == null) return 0f;
+            var trait = shooter.Traits?.Find(t => t.NameKey == "catch_and_shoot");
+            if (trait == null) return 0f;
+            return trait.StarLevel switch { 1 => 0.01f, 2 => 0.02f, 3 => 0.03f, _ => 0f };
+        }
+
+        // 量产型：出手越多越进入状态，命中率随出手数缓慢积累（直接改结果，保守取值）
+        private float GetVolumeShooterBonus(Player attacker, MatchTeamSnapshot offense)
+        {
+            var trait = attacker.Traits?.Find(t => t.NameKey == "volume_shooter");
+            if (trait == null) return 0f;
+            int fga       = offense.PlayerStatsById[attacker.Id].FieldGoalsAttempted;
+            int threshold = trait.StarLevel switch { 1 => 10, 2 => 8, 3 => 6, _ => 999 };
+            if (fga < threshold) return 0f;
+            float perFga   = trait.StarLevel switch { 1 => 0.001f, 2 => 0.002f, 3 => 0.003f, _ => 0f };
+            float maxBonus = trait.StarLevel switch { 1 => 0.01f,  2 => 0.02f,  3 => 0.03f,  _ => 0f };
+            return Mathf.Min((fga - threshold + 1) * perFga, maxBonus);
+        }
+
+        // 慢热型：球队落后时激发斗志，落后越大加成越高（直接改结果，保守取值）
+        private float GetComebackKidBonus(Player attacker, MatchTeamSnapshot offenseSnap)
+        {
+            var trait = attacker.Traits?.Find(t => t.NameKey == "comeback_kid");
+            if (trait == null) return 0f;
+            int scoreDiff = IsHome(offenseSnap)
+                ? _homeSnap.TeamStats.Points - _awaySnap.TeamStats.Points
+                : _awaySnap.TeamStats.Points - _homeSnap.TeamStats.Points;
+            if (scoreDiff >= -4) return 0f;
+            int deficit = -scoreDiff;
+            return trait.StarLevel switch
+            {
+                1 => 0.01f,
+                2 => deficit >= 15 ? 0.025f : 0.015f,
+                3 => deficit >= 15 ? 0.035f : 0.02f,
+                _ => 0f
+            };
+        }
+
+        // 封锁专家：放大防守方有效属性，通过 delta 公式间接压低对手命中率（改属性，适度慷慨）
+        private float GetClampsMultiplier(Player defender)
+        {
+            var trait = defender.Traits?.Find(t => t.NameKey == "clamps");
+            if (trait == null) return 1f;
+            return trait.StarLevel switch { 1 => 1.12f, 2 => 1.22f, 3 => 1.32f, _ => 1f };
+        }
+
+        // 硬汉防守：气场压制，降低靠近篮筐时的命中率上限（直接改上限，保守取值）
+        private float GetIntimidatorClampReduction(Player defender, ShotType shotType)
+        {
+            if (shotType is ShotType.ThreePoint or ShotType.TwoPoint) return 0f;
+            var trait = defender.Traits?.Find(t => t.NameKey == "intimidator");
+            if (trait == null) return 0f;
+            return trait.StarLevel switch { 1 => 0.02f, 2 => 0.03f, 3 => 0.04f, _ => 0f };
+        }
+
+        // 传切利器：减少持球传球时的失误率（直接改失误率，保守取值）
+        private float GetNeedleThreaderBonus(Player attacker)
+        {
+            var trait = attacker.Traits?.Find(t => t.NameKey == "needle_threader");
+            if (trait == null) return 0f;
+            return trait.StarLevel switch { 1 => 0.008f, 2 => 0.015f, 3 => 0.02f, _ => 0f };
         }
 
         private float GetBaseAssistChance(ShotType shotType)
