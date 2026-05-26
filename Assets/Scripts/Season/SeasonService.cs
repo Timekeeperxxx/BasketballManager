@@ -183,8 +183,10 @@ namespace BasketballManager.Seasons
             }
             if (home == null || away == null) return null;
 
-            var homePlayers = _playerRepository.GetPlayersByTeamId(home.Id);
-            var awayPlayers = _playerRepository.GetPlayersByTeamId(away.Id);
+            var homePlayers = _playerRepository.GetPlayersByTeamId(home.Id)
+                .Where(p => !p.IsInjured).ToList();
+            var awayPlayers = _playerRepository.GetPlayersByTeamId(away.Id)
+                .Where(p => !p.IsInjured).ToList();
             var allProfiles = _profileRepository.GetAllProfiles();
 
             var simulator = new MatchSimulator();
@@ -194,6 +196,13 @@ namespace BasketballManager.Seasons
             _seasonRepository.SaveGameResult(game.Id, result);
             _seasonRepository.SaveGamePlayerStats(game.Id, result);
             _seasonRepository.SaveGameZoneStats(game.Id, result);
+
+            _playerRepository.DecrementInjuries(game.HomeTeamId);
+            _playerRepository.DecrementInjuries(game.AwayTeamId);
+            var newInjuries = InjuryService.RollInjuries(
+                result.HomePlayerStats.Concat(result.AwayPlayerStats));
+            foreach (var kv in newInjuries)
+                _playerRepository.SetInjury(kv.Key, kv.Value);
 
             if (game.Phase == "PLAYOFF")
             {

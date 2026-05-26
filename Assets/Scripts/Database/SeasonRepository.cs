@@ -273,6 +273,59 @@ ORDER BY CASE WHEN (st.wins + st.losses) = 0 THEN 1 ELSE 0 END ASC,
             return standings;
         }
 
+        public List<(int seasonNumber, string seasonName, SeasonPlayerStat stat)> GetPlayerCareerStats(int playerId)
+        {
+            var result = new List<(int, string, SeasonPlayerStat)>();
+            using var connection = _databaseManager.OpenConnection();
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = @"
+SELECT s.season_number, s.name AS season_name,
+       sps.season_id, sps.player_id, sps.team_id,
+       p.first_name || ' ' || p.last_name AS player_name,
+       sps.games_played, sps.minutes, sps.points, sps.rebounds, sps.offensive_rebounds,
+       sps.assists, sps.steals, sps.blocks, sps.turnovers, sps.fouls,
+       sps.field_goals_made, sps.field_goals_attempted,
+       sps.three_pointers_made, sps.three_pointers_attempted,
+       sps.free_throws_made, sps.free_throws_attempted,
+       sps.plus_minus
+FROM season_player_stats sps
+JOIN seasons s ON s.id = sps.season_id
+JOIN players p ON p.id = sps.player_id
+WHERE sps.player_id = @playerId
+ORDER BY s.season_number ASC;";
+            cmd.Parameters.AddWithValue("@playerId", playerId);
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                var stat = new SeasonPlayerStat
+                {
+                    SeasonId               = ReadInt(reader["season_id"]),
+                    PlayerId               = ReadInt(reader["player_id"]),
+                    TeamId                 = reader["team_id"].ToString() ?? string.Empty,
+                    PlayerName             = reader["player_name"].ToString() ?? string.Empty,
+                    GamesPlayed            = ReadInt(reader["games_played"]),
+                    Minutes                = ReadInt(reader["minutes"]),
+                    Points                 = ReadInt(reader["points"]),
+                    Rebounds               = ReadInt(reader["rebounds"]),
+                    OffensiveRebounds      = ReadInt(reader["offensive_rebounds"]),
+                    Assists                = ReadInt(reader["assists"]),
+                    Steals                 = ReadInt(reader["steals"]),
+                    Blocks                 = ReadInt(reader["blocks"]),
+                    Turnovers              = ReadInt(reader["turnovers"]),
+                    Fouls                  = ReadInt(reader["fouls"]),
+                    FieldGoalsMade         = ReadInt(reader["field_goals_made"]),
+                    FieldGoalsAttempted    = ReadInt(reader["field_goals_attempted"]),
+                    ThreePointersMade      = ReadInt(reader["three_pointers_made"]),
+                    ThreePointersAttempted = ReadInt(reader["three_pointers_attempted"]),
+                    FreeThrowsMade         = ReadInt(reader["free_throws_made"]),
+                    FreeThrowsAttempted    = ReadInt(reader["free_throws_attempted"]),
+                    PlusMinus              = ReadInt(reader["plus_minus"]),
+                };
+                result.Add((ReadInt(reader["season_number"]), reader["season_name"].ToString() ?? string.Empty, stat));
+            }
+            return result;
+        }
+
         public IReadOnlyList<SeasonPlayerStat> GetPlayerSeasonStats(int seasonId, string teamId)
         {
             var stats = new List<SeasonPlayerStat>();
