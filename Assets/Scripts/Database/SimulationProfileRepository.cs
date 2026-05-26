@@ -14,6 +14,16 @@ namespace BasketballManager.Database
             _databaseManager = databaseManager;
         }
 
+        public void UpdateSourceMpg(int playerId, float sourceMpg)
+        {
+            using var connection = _databaseManager.OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE player_simulation_profiles SET source_mpg=@mpg WHERE player_id=@id";
+            command.Parameters.AddWithValue("@mpg", sourceMpg);
+            command.Parameters.AddWithValue("@id", playerId);
+            command.ExecuteNonQuery();
+        }
+
         public IReadOnlyDictionary<int, SimulationPlayerProfile> GetAllProfiles()
         {
             var profiles = new Dictionary<int, SimulationPlayerProfile>();

@@ -13,10 +13,11 @@ namespace BasketballManager.Database
         private readonly string _persistentDatabasePath;
         private bool _initialized;
 
-        public DatabaseManager()
+        public DatabaseManager(string fileName = DatabaseFileName)
         {
-            _streamingDatabasePath = Path.Combine(UnityEngine.Application.streamingAssetsPath, DatabaseFileName);
-            _persistentDatabasePath = Path.Combine(UnityEngine.Application.persistentDataPath, DatabaseFileName);
+            // 模板始终来自 StreamingAssets/game.db；槽位文件名由 fileName 决定
+            _streamingDatabasePath  = Path.Combine(UnityEngine.Application.streamingAssetsPath, DatabaseFileName);
+            _persistentDatabasePath = Path.Combine(UnityEngine.Application.persistentDataPath,  fileName);
         }
 
         public string PersistentDatabasePath => _persistentDatabasePath;
@@ -73,8 +74,14 @@ namespace BasketballManager.Database
             EnsureSeasonTables(connection);
             EnsurePlayoffColumns(connection);
             EnsurePlayoffTables(connection);
+            EnsureTraitTables(connection);
+            EnsureGrowthColumns(connection);
             EnsurePlayerIsCurrentColumn(connection);
+            EnsurePlayerTendencyZoneColumns(connection);
+            EnsureZoneStatsTables(connection);
             EnsurePlayerNamedViews(connection);
+            EnsureContractColumns(connection);
+            EnsureFreeAgencyTables(connection);
 
             if (!HasManagedSchema(connection))
             {
@@ -96,6 +103,132 @@ UPDATE players
 SET is_current = COALESCE((SELECT is_current FROM teams WHERE teams.id = players.team_id), 0);");
             transaction.Commit();
             Debug.Log("[Database] 已为 players 表补加 is_current 列，并按所属球队回填初值。");
+        }
+
+        // 为 player_tendencies 按需补加 14 个投篮区域倾向列（旧 db 兼容）。
+        private static void EnsurePlayerTendencyZoneColumns(SqliteConnection connection)
+        {
+            var cols = new (string col, int def)[]
+            {
+                ("zone_three_left_corner",  50),
+                ("zone_three_right_corner", 50),
+                ("zone_three_left_wing",    60),
+                ("zone_three_right_wing",   60),
+                ("zone_three_top_key",      70),
+                ("zone_mid_left_corner",    40),
+                ("zone_mid_right_corner",   40),
+                ("zone_mid_left_elbow",     60),
+                ("zone_mid_right_elbow",    60),
+                ("zone_mid_top_key",        50),
+                ("zone_close_left",         50),
+                ("zone_close_center",       70),
+                ("zone_close_right",        50),
+            };
+
+            using var transaction = connection.BeginTransaction();
+            foreach (var (col, def) in cols)
+            {
+                if (!HasColumn(connection, "player_tendencies", col))
+                    ExecuteNonQuery(connection, transaction,
+                        $"ALTER TABLE player_tendencies ADD COLUMN {col} INTEGER DEFAULT {def};");
+            }
+            transaction.Commit();
+        }
+
+        // 按需创建投篮区域统计表（旧 db 兼容）。
+        private static void EnsureZoneStatsTables(SqliteConnection connection)
+        {
+            using var tx = connection.BeginTransaction();
+            ExecuteNonQuery(connection, tx, @"
+CREATE TABLE IF NOT EXISTS game_zone_stats (
+    game_id   INTEGER NOT NULL,
+    player_id INTEGER NOT NULL,
+    team_id   TEXT NOT NULL,
+    zone      INTEGER NOT NULL,
+    fgm       INTEGER NOT NULL DEFAULT 0,
+    fga       INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (game_id, player_id, zone),
+    FOREIGN KEY (game_id) REFERENCES season_games (id) ON DELETE CASCADE
+);");
+            ExecuteNonQuery(connection, tx, @"
+CREATE TABLE IF NOT EXISTS season_zone_stats (
+    season_id INTEGER NOT NULL,
+    player_id INTEGER NOT NULL,
+    team_id   TEXT NOT NULL,
+    zone      INTEGER NOT NULL,
+    fgm       INTEGER NOT NULL DEFAULT 0,
+    fga       INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (season_id, player_id, zone),
+    FOREIGN KEY (season_id) REFERENCES seasons (id) ON DELETE CASCADE
+);");
+            ExecuteNonQuery(connection, tx, @"
+CREATE TABLE IF NOT EXISTS playoff_zone_stats (
+    season_id INTEGER NOT NULL,
+    player_id INTEGER NOT NULL,
+    team_id   TEXT NOT NULL,
+    zone      INTEGER NOT NULL,
+    fgm       INTEGER NOT NULL DEFAULT 0,
+    fga       INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (season_id, player_id, zone),
+    FOREIGN KEY (season_id) REFERENCES seasons (id) ON DELETE CASCADE
+);");
+            tx.Commit();
+        }
+
+        private static void EnsureContractColumns(SqliteConnection connection)
+        {
+            using var tx = connection.BeginTransaction();
+            if (!HasColumn(connection, "players", "contract_years"))
+                ExecuteNonQuery(connection, tx, "ALTER TABLE players ADD COLUMN contract_years INTEGER NOT NULL DEFAULT 0;");
+            if (!HasColumn(connection, "players", "contract_salary"))
+                ExecuteNonQuery(connection, tx, "ALTER TABLE players ADD COLUMN contract_salary INTEGER NOT NULL DEFAULT 0;");
+            tx.Commit();
+
+            // 回填现有球员合同（仅 contract_years = 0 的真实球员）
+            // 用 id % 3 散列使各球员合同年数不同（1/2/3 年各占约 1/3），
+            // 保证每个赛季间歇期都有约 1/3 球员到期进入自由市场。
+            using var tx2 = connection.BeginTransaction();
+            ExecuteNonQuery(connection, tx2, @"
+UPDATE players SET
+    contract_years  = 1 + (id % 3),
+    contract_salary = CASE
+        WHEN overall >= 91 THEN 28
+        WHEN overall >= 81 THEN 13
+        WHEN overall >= 71 THEN 5
+        ELSE 3 END
+WHERE contract_years = 0
+  AND team_id NOT IN ('__FA__', '__DRAFT_POOL__');");
+            tx2.Commit();
+        }
+
+        private static void EnsureFreeAgencyTables(SqliteConnection connection)
+        {
+            using var tx = connection.BeginTransaction();
+
+            // 虚拟球队（FK 锚点，用于自由球员和选秀池）
+            // teams 表的 abbreviation 列可能不存在于旧 schema，先尝试加
+            if (!HasColumn(connection, "teams", "abbreviation"))
+                ExecuteNonQuery(connection, tx, "ALTER TABLE teams ADD COLUMN abbreviation TEXT NOT NULL DEFAULT '';");
+
+            ExecuteNonQuery(connection, tx, @"
+INSERT OR IGNORE INTO teams (id, name, city, era, is_current, abbreviation)
+VALUES ('__FA__',         '自由球员', '', 0, 0, 'FA'),
+       ('__DRAFT_POOL__', '选秀池',   '', 0, 0, 'DP');");
+
+            ExecuteNonQuery(connection, tx, @"
+CREATE TABLE IF NOT EXISTS free_agents (
+    player_id   INTEGER PRIMARY KEY,
+    asking_salary INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (player_id) REFERENCES players (id) ON DELETE CASCADE
+);");
+
+            ExecuteNonQuery(connection, tx, @"
+CREATE TABLE IF NOT EXISTS draft_class (
+    player_id   INTEGER PRIMARY KEY,
+    draft_year  INTEGER NOT NULL DEFAULT 1,
+    FOREIGN KEY (player_id) REFERENCES players (id) ON DELETE CASCADE
+);");
+            tx.Commit();
         }
 
         // 确保 player_attributes_named / player_tendencies_named 视图 + INSTEAD OF UPDATE 触发器存在。
@@ -349,6 +482,103 @@ CREATE TABLE IF NOT EXISTS playoff_player_stats (
             transaction.Commit();
         }
 
+        private static void EnsureTraitTables(SqliteConnection connection)
+        {
+            using var transaction = connection.BeginTransaction();
+            ExecuteNonQuery(connection, transaction, @"
+CREATE TABLE IF NOT EXISTS traits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name_key TEXT NOT NULL UNIQUE,
+    display_name TEXT NOT NULL,
+    category TEXT NOT NULL DEFAULT '',
+    description_1 TEXT NOT NULL DEFAULT '',
+    description_2 TEXT NOT NULL DEFAULT '',
+    description_3 TEXT NOT NULL DEFAULT ''
+);");
+            ExecuteNonQuery(connection, transaction, @"
+CREATE TABLE IF NOT EXISTS player_traits (
+    player_id INTEGER NOT NULL,
+    trait_id INTEGER NOT NULL,
+    star_level INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (player_id, trait_id),
+    FOREIGN KEY (player_id) REFERENCES players (id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (trait_id) REFERENCES traits (id) ON UPDATE CASCADE ON DELETE CASCADE
+);");
+            ExecuteNonQuery(connection, transaction, @"
+INSERT OR IGNORE INTO traits (name_key, display_name, category, description_1, description_2, description_3)
+VALUES
+('clutch_performer', '关键先生', 'Scoring',
+ '第四节剩余5分钟内分差<5分时，投篮命中率+1.5%',
+ '第四节剩余5分钟内分差<5分时，投篮命中率+2.5%',
+ '第四节剩余5分钟内分差<5分时，投篮命中率+4%'),
+('catch_and_shoot', '接球即投', 'Shooting',
+ '接到队友传球后不运球直接出手，投篮命中率+1%',
+ '接到队友传球后不运球直接出手，投篮命中率+2%',
+ '接到队友传球后不运球直接出手，投篮命中率+3%'),
+('needle_threader', '传切利器', 'Playmaking',
+ '在拥挤区域也能精准送出传球，个人失误率降低0.8%',
+ '在拥挤区域也能精准送出传球，个人失误率降低1.5%',
+ '在拥挤区域也能精准送出传球，个人失误率降低2%'),
+('clamps', '封锁专家', 'Defense',
+ '防守对手运球出手时横向移动迅捷，对手有效防守属性×1.12，迫使对手命中率下降',
+ '防守对手运球出手时横向移动迅捷，对手有效防守属性×1.22，迫使对手命中率下降',
+ '防守对手运球出手时横向移动迅捷，对手有效防守属性×1.32，迫使对手命中率下降'),
+('intimidator', '硬汉防守', 'Defense',
+ '强壮身躯令对手心理受压，防守篮下/低位/中距离时对手命中率上限降低2%',
+ '强壮身躯令对手心理受压，防守篮下/低位/中距离时对手命中率上限降低3%',
+ '强壮身躯令对手心理受压，防守篮下/低位/中距离时对手命中率上限降低4%'),
+('volume_shooter', '量产型', 'Shooting',
+ '出手越多越进入状态：本场出手达10次后，每多出手1次命中率+0.1%，上限+1%',
+ '出手越多越进入状态：本场出手达8次后，每多出手1次命中率+0.2%，上限+2%',
+ '出手越多越进入状态：本场出手达6次后，每多出手1次命中率+0.3%，上限+3%'),
+('comeback_kid', '慢热型', 'Scoring',
+ '球队落后5分以上时激发斗志，个人投篮命中率+1%',
+ '球队落后5分以上时+1.5%，落后15分以上时+2.5%，越难越勇',
+ '球队落后5分以上时+2%，落后15分以上时+3.5%，越难越勇');");
+            transaction.Commit();
+        }
+
+        private static void EnsureGrowthColumns(SqliteConnection connection)
+        {
+            using var tx = connection.BeginTransaction();
+            var addCols = new (string col, string def)[]
+            {
+                ("potential_min",  "0"),
+                ("potential_max",  "0"),
+                ("peak_age_start", "0"),
+                ("peak_age_end",   "0"),
+            };
+            foreach (var (col, def) in addCols)
+            {
+                if (!HasColumn(connection, "players", col))
+                    ExecuteNonQuery(connection, tx,
+                        $"ALTER TABLE players ADD COLUMN {col} INTEGER NOT NULL DEFAULT {def};");
+            }
+            if (!HasColumn(connection, "seasons", "season_number"))
+                ExecuteNonQuery(connection, tx,
+                    "ALTER TABLE seasons ADD COLUMN season_number INTEGER NOT NULL DEFAULT 1;");
+            tx.Commit();
+
+            // 对默认值为 0 的球员做一次性自动校准
+            using var tx2 = connection.BeginTransaction();
+            ExecuteNonQuery(connection, tx2, @"
+UPDATE players SET
+  potential_min   = CASE WHEN age <= 22 THEN MAX(50, overall - 5)
+                         WHEN age <= 28 THEN MAX(50, overall - 3)
+                         ELSE MAX(40, overall - 8) END,
+  potential_max   = CASE WHEN age <= 22 THEN MIN(99, overall + 20)
+                         WHEN age <= 28 THEN MIN(99, overall + 8)
+                         ELSE MIN(99, overall + 2) END,
+  peak_age_start  = CASE WHEN age <= 22 THEN 25
+                         WHEN age <= 28 THEN age
+                         ELSE MAX(age - 2, 25) END,
+  peak_age_end    = CASE WHEN age <= 22 THEN 30
+                         WHEN age <= 28 THEN MIN(age + 4, 34)
+                         ELSE MIN(age + 1, 36) END
+WHERE potential_min = 0 AND potential_max = 0;");
+            tx2.Commit();
+        }
+
         public SqliteConnection OpenConnection()
         {
             Initialize();
@@ -416,7 +646,12 @@ CREATE TABLE IF NOT EXISTS playoff_player_stats (
             SetForeignKeys(connection, false);
 
             using var transaction = connection.BeginTransaction();
-            // 先删赛季相关表（被引用方在前）。
+            // 先删依赖表（被引用方在前）。
+            ExecuteNonQuery(connection, transaction, "DROP TABLE IF EXISTS player_traits;");
+            ExecuteNonQuery(connection, transaction, "DROP TABLE IF EXISTS traits;");
+            ExecuteNonQuery(connection, transaction, "DROP TABLE IF EXISTS playoff_zone_stats;");
+            ExecuteNonQuery(connection, transaction, "DROP TABLE IF EXISTS season_zone_stats;");
+            ExecuteNonQuery(connection, transaction, "DROP TABLE IF EXISTS game_zone_stats;");
             ExecuteNonQuery(connection, transaction, "DROP TABLE IF EXISTS playoff_player_stats;");
             ExecuteNonQuery(connection, transaction, "DROP TABLE IF EXISTS playoff_series;");
             ExecuteNonQuery(connection, transaction, "DROP TABLE IF EXISTS game_player_stats;");
@@ -436,8 +671,13 @@ CREATE TABLE teams (
     name TEXT NOT NULL,
     city TEXT DEFAULT '',
     era INTEGER DEFAULT 0,
-    is_current INTEGER DEFAULT 0
+    is_current INTEGER DEFAULT 0,
+    abbreviation TEXT NOT NULL DEFAULT ''
 );");
+            ExecuteNonQuery(connection, transaction, @"
+INSERT INTO teams (id, name, city, era, is_current, abbreviation)
+VALUES ('__FA__', '自由球员', '', 0, 0, 'FA'),
+       ('__DRAFT_POOL__', '选秀池', '', 0, 0, 'DP');");
 
             ExecuteNonQuery(connection, transaction, @"
 CREATE TABLE players (
@@ -454,6 +694,8 @@ CREATE TABLE players (
     jersey_number INTEGER,
     overall INTEGER NOT NULL DEFAULT 70,
     is_current INTEGER NOT NULL DEFAULT 0,
+    contract_years INTEGER NOT NULL DEFAULT 0,
+    contract_salary INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (team_id) REFERENCES teams (id) ON UPDATE CASCADE ON DELETE CASCADE
 );");
 
@@ -503,6 +745,19 @@ CREATE TABLE player_tendencies (
     help_defense_tendency INTEGER DEFAULT 60,
     offensive_rebound_tendency INTEGER DEFAULT 60,
     defensive_rebound_tendency INTEGER DEFAULT 60,
+    zone_three_left_corner INTEGER DEFAULT 50,
+    zone_three_right_corner INTEGER DEFAULT 50,
+    zone_three_left_wing INTEGER DEFAULT 60,
+    zone_three_right_wing INTEGER DEFAULT 60,
+    zone_three_top_key INTEGER DEFAULT 70,
+    zone_mid_left_corner INTEGER DEFAULT 40,
+    zone_mid_right_corner INTEGER DEFAULT 40,
+    zone_mid_left_elbow INTEGER DEFAULT 60,
+    zone_mid_right_elbow INTEGER DEFAULT 60,
+    zone_mid_top_key INTEGER DEFAULT 50,
+    zone_close_left INTEGER DEFAULT 50,
+    zone_close_center INTEGER DEFAULT 70,
+    zone_close_right INTEGER DEFAULT 50,
     FOREIGN KEY (player_id) REFERENCES players (id) ON UPDATE CASCADE ON DELETE CASCADE
 );");
 
@@ -669,6 +924,104 @@ CREATE TABLE playoff_player_stats (
     FOREIGN KEY (player_id) REFERENCES players (id) ON UPDATE CASCADE ON DELETE CASCADE
 );");
             ExecuteNonQuery(connection, transaction, "CREATE INDEX idx_playoff_player_stats_team ON playoff_player_stats (season_id, team_id);");
+
+            ExecuteNonQuery(connection, transaction, @"
+CREATE TABLE game_zone_stats (
+    game_id   INTEGER NOT NULL,
+    player_id INTEGER NOT NULL,
+    team_id   TEXT NOT NULL,
+    zone      INTEGER NOT NULL,
+    fgm       INTEGER NOT NULL DEFAULT 0,
+    fga       INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (game_id, player_id, zone),
+    FOREIGN KEY (game_id) REFERENCES season_games (id) ON DELETE CASCADE
+);");
+            ExecuteNonQuery(connection, transaction, @"
+CREATE TABLE season_zone_stats (
+    season_id INTEGER NOT NULL,
+    player_id INTEGER NOT NULL,
+    team_id   TEXT NOT NULL,
+    zone      INTEGER NOT NULL,
+    fgm       INTEGER NOT NULL DEFAULT 0,
+    fga       INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (season_id, player_id, zone),
+    FOREIGN KEY (season_id) REFERENCES seasons (id) ON DELETE CASCADE
+);");
+            ExecuteNonQuery(connection, transaction, @"
+CREATE TABLE playoff_zone_stats (
+    season_id INTEGER NOT NULL,
+    player_id INTEGER NOT NULL,
+    team_id   TEXT NOT NULL,
+    zone      INTEGER NOT NULL,
+    fgm       INTEGER NOT NULL DEFAULT 0,
+    fga       INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (season_id, player_id, zone),
+    FOREIGN KEY (season_id) REFERENCES seasons (id) ON DELETE CASCADE
+);");
+
+            ExecuteNonQuery(connection, transaction, @"
+CREATE TABLE traits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name_key TEXT NOT NULL UNIQUE,
+    display_name TEXT NOT NULL,
+    category TEXT NOT NULL DEFAULT '',
+    description_1 TEXT NOT NULL DEFAULT '',
+    description_2 TEXT NOT NULL DEFAULT '',
+    description_3 TEXT NOT NULL DEFAULT ''
+);");
+            ExecuteNonQuery(connection, transaction, @"
+CREATE TABLE player_traits (
+    player_id INTEGER NOT NULL,
+    trait_id INTEGER NOT NULL,
+    star_level INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (player_id, trait_id),
+    FOREIGN KEY (player_id) REFERENCES players (id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (trait_id) REFERENCES traits (id) ON UPDATE CASCADE ON DELETE CASCADE
+);");
+            ExecuteNonQuery(connection, transaction, @"
+CREATE TABLE free_agents (
+    player_id   INTEGER PRIMARY KEY,
+    asking_salary INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (player_id) REFERENCES players (id) ON DELETE CASCADE
+);");
+            ExecuteNonQuery(connection, transaction, @"
+CREATE TABLE draft_class (
+    player_id   INTEGER PRIMARY KEY,
+    draft_year  INTEGER NOT NULL DEFAULT 1,
+    FOREIGN KEY (player_id) REFERENCES players (id) ON DELETE CASCADE
+);");
+
+            ExecuteNonQuery(connection, transaction, @"
+INSERT INTO traits (name_key, display_name, category, description_1, description_2, description_3)
+VALUES
+('clutch_performer', '关键先生', 'Scoring',
+ '第四节剩余5分钟内分差<5分时，投篮命中率+1.5%',
+ '第四节剩余5分钟内分差<5分时，投篮命中率+2.5%',
+ '第四节剩余5分钟内分差<5分时，投篮命中率+4%'),
+('catch_and_shoot', '接球即投', 'Shooting',
+ '接到队友传球后不运球直接出手，投篮命中率+1%',
+ '接到队友传球后不运球直接出手，投篮命中率+2%',
+ '接到队友传球后不运球直接出手，投篮命中率+3%'),
+('needle_threader', '传切利器', 'Playmaking',
+ '在拥挤区域也能精准送出传球，个人失误率降低0.8%',
+ '在拥挤区域也能精准送出传球，个人失误率降低1.5%',
+ '在拥挤区域也能精准送出传球，个人失误率降低2%'),
+('clamps', '封锁专家', 'Defense',
+ '防守对手运球出手时横向移动迅捷，对手有效防守属性×1.12，迫使对手命中率下降',
+ '防守对手运球出手时横向移动迅捷，对手有效防守属性×1.22，迫使对手命中率下降',
+ '防守对手运球出手时横向移动迅捷，对手有效防守属性×1.32，迫使对手命中率下降'),
+('intimidator', '硬汉防守', 'Defense',
+ '强壮身躯令对手心理受压，防守篮下/低位/中距离时对手命中率上限降低2%',
+ '强壮身躯令对手心理受压，防守篮下/低位/中距离时对手命中率上限降低3%',
+ '强壮身躯令对手心理受压，防守篮下/低位/中距离时对手命中率上限降低4%'),
+('volume_shooter', '量产型', 'Shooting',
+ '出手越多越进入状态：本场出手达10次后，每多出手1次命中率+0.1%，上限+1%',
+ '出手越多越进入状态：本场出手达8次后，每多出手1次命中率+0.2%，上限+2%',
+ '出手越多越进入状态：本场出手达6次后，每多出手1次命中率+0.3%，上限+3%'),
+('comeback_kid', '慢热型', 'Scoring',
+ '球队落后5分以上时激发斗志，个人投篮命中率+1%',
+ '球队落后5分以上时+1.5%，落后15分以上时+2.5%，越难越勇',
+ '球队落后5分以上时+2%，落后15分以上时+3.5%，越难越勇');");
 
             ExecuteNonQuery(connection, transaction, @"
 CREATE VIEW IF NOT EXISTS player_attributes_named AS

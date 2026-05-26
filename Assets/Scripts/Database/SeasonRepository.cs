@@ -21,7 +21,7 @@ namespace BasketballManager.Database
         /// <summary>
         /// 在一个事务里写入赛季元数据、参赛球队、初始赛程。返回新赛季 id。
         /// </summary>
-        public int CreateSeason(string name, IReadOnlyList<Team> teams, IReadOnlyList<SeasonGame> games)
+        public int CreateSeason(string name, IReadOnlyList<Team> teams, IReadOnlyList<SeasonGame> games, int seasonNumber = 1)
         {
             using var connection = _databaseManager.OpenConnection();
             using var transaction = connection.BeginTransaction();
@@ -30,8 +30,9 @@ namespace BasketballManager.Database
             using (var cmd = connection.CreateCommand())
             {
                 cmd.Transaction = transaction;
-                cmd.CommandText = "INSERT INTO seasons (name, status, phase) VALUES (@name, 'IN_PROGRESS', 'REGULAR');";
+                cmd.CommandText = "INSERT INTO seasons (name, status, phase, season_number) VALUES (@name, 'IN_PROGRESS', 'REGULAR', @seasonNumber);";
                 cmd.Parameters.AddWithValue("@name", name);
+                cmd.Parameters.AddWithValue("@seasonNumber", seasonNumber);
                 cmd.ExecuteNonQuery();
             }
             // Mono.Data.Sqlite 对"多语句单 cmd"支持不稳；拆成第二条 SELECT 取 rowid。
@@ -76,7 +77,7 @@ VALUES (@season_id, @day, @home, @away, 'SCHEDULED');";
         {
             using var connection = _databaseManager.OpenConnection();
             using var cmd = connection.CreateCommand();
-            cmd.CommandText = "SELECT id, name, status, COALESCE(phase, 'REGULAR') AS phase, created_at FROM seasons ORDER BY id DESC LIMIT 1;";
+            cmd.CommandText = "SELECT id, name, status, COALESCE(phase, 'REGULAR') AS phase, created_at, COALESCE(season_number, 1) AS season_number FROM seasons ORDER BY id DESC LIMIT 1;";
             using var reader = cmd.ExecuteReader();
             return reader.Read() ? MapSeason(reader) : null;
         }
@@ -85,7 +86,7 @@ VALUES (@season_id, @day, @home, @away, 'SCHEDULED');";
         {
             using var connection = _databaseManager.OpenConnection();
             using var cmd = connection.CreateCommand();
-            cmd.CommandText = "SELECT id, name, status, COALESCE(phase, 'REGULAR') AS phase, created_at FROM seasons WHERE id = @id LIMIT 1;";
+            cmd.CommandText = "SELECT id, name, status, COALESCE(phase, 'REGULAR') AS phase, created_at, COALESCE(season_number, 1) AS season_number FROM seasons WHERE id = @id LIMIT 1;";
             cmd.Parameters.AddWithValue("@id", seasonId);
             using var reader = cmd.ExecuteReader();
             return reader.Read() ? MapSeason(reader) : null;
@@ -750,6 +751,112 @@ ORDER BY pps.points DESC, pps.player_id ASC;";
             return stats;
         }
 
+        // -------- zone stats --------
+
+        public void SaveGameZoneStats(int gameId, MatchResult result)
+        {
+            using var connection = _databaseManager.OpenConnection();
+            using var transaction = connection.BeginTransaction();
+            SaveTeamGameZoneStats(connection, transaction, gameId, result.HomeTeamId, result.HomePlayerStats);
+            SaveTeamGameZoneStats(connection, transaction, gameId, result.AwayTeamId, result.AwayPlayerStats);
+            transaction.Commit();
+        }
+
+        public void UpdateSeasonZoneStats(int seasonId, MatchResult result)
+        {
+            using var connection = _databaseManager.OpenConnection();
+            using var transaction = connection.BeginTransaction();
+            UpsertTeamZoneStats(connection, transaction, "season_zone_stats", "season_id", seasonId, result.HomeTeamId, result.HomePlayerStats);
+            UpsertTeamZoneStats(connection, transaction, "season_zone_stats", "season_id", seasonId, result.AwayTeamId, result.AwayPlayerStats);
+            transaction.Commit();
+        }
+
+        public void UpdatePlayoffZoneStats(int seasonId, MatchResult result)
+        {
+            using var connection = _databaseManager.OpenConnection();
+            using var transaction = connection.BeginTransaction();
+            UpsertTeamZoneStats(connection, transaction, "playoff_zone_stats", "season_id", seasonId, result.HomeTeamId, result.HomePlayerStats);
+            UpsertTeamZoneStats(connection, transaction, "playoff_zone_stats", "season_id", seasonId, result.AwayTeamId, result.AwayPlayerStats);
+            transaction.Commit();
+        }
+
+        public List<BasketballManager.Core.Models.PlayerZoneStat> GetPlayerSeasonZoneStats(int seasonId, int playerId)
+        {
+            var stats = new List<BasketballManager.Core.Models.PlayerZoneStat>();
+            using var connection = _databaseManager.OpenConnection();
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = @"
+SELECT zone, fgm, fga FROM season_zone_stats
+WHERE season_id = @season_id AND player_id = @player_id;";
+            cmd.Parameters.AddWithValue("@season_id", seasonId);
+            cmd.Parameters.AddWithValue("@player_id", playerId);
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                stats.Add(new BasketballManager.Core.Models.PlayerZoneStat
+                {
+                    Zone = (BasketballManager.Core.Models.ShotZone)ReadInt(reader["zone"]),
+                    Fgm = ReadInt(reader["fgm"]),
+                    Fga = ReadInt(reader["fga"]),
+                });
+            }
+            return stats;
+        }
+
+        private static void SaveTeamGameZoneStats(SqliteConnection connection, SqliteTransaction transaction,
+            int gameId, string teamId, List<BasketballManager.Core.Models.PlayerBoxScore> players)
+        {
+            foreach (var p in players)
+            {
+                if (p.Minutes <= 0) continue;
+                for (int z = 0; z < 14; z++)
+                {
+                    if (p.ZoneFga[z] == 0) continue;
+                    using var cmd = connection.CreateCommand();
+                    cmd.Transaction = transaction;
+                    cmd.CommandText = @"
+INSERT OR REPLACE INTO game_zone_stats (game_id, player_id, team_id, zone, fgm, fga)
+VALUES (@game_id, @player_id, @team_id, @zone, @fgm, @fga);";
+                    cmd.Parameters.AddWithValue("@game_id", gameId);
+                    cmd.Parameters.AddWithValue("@player_id", p.PlayerId);
+                    cmd.Parameters.AddWithValue("@team_id", teamId);
+                    cmd.Parameters.AddWithValue("@zone", z);
+                    cmd.Parameters.AddWithValue("@fgm", p.ZoneFgm[z]);
+                    cmd.Parameters.AddWithValue("@fga", p.ZoneFga[z]);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        private static void UpsertTeamZoneStats(SqliteConnection connection, SqliteTransaction transaction,
+            string table, string idCol, int id, string teamId, List<BasketballManager.Core.Models.PlayerBoxScore> players)
+        {
+            foreach (var p in players)
+            {
+                if (p.Minutes <= 0) continue;
+                for (int z = 0; z < 14; z++)
+                {
+                    if (p.ZoneFga[z] == 0) continue;
+                    using var cmd = connection.CreateCommand();
+                    cmd.Transaction = transaction;
+                    cmd.CommandText = $@"
+INSERT INTO {table} ({idCol}, player_id, team_id, zone, fgm, fga)
+VALUES (@id, @player_id, @team_id, @zone, @fgm, @fga)
+ON CONFLICT({idCol}, player_id, zone) DO UPDATE SET
+    fgm = fgm + excluded.fgm,
+    fga = fga + excluded.fga,
+    team_id = excluded.team_id;";
+                    cmd.Parameters.AddWithValue("@id", id);
+                    cmd.Parameters.AddWithValue("@player_id", p.PlayerId);
+                    cmd.Parameters.AddWithValue("@team_id", teamId);
+                    cmd.Parameters.AddWithValue("@zone", z);
+                    cmd.Parameters.AddWithValue("@fgm", p.ZoneFgm[z]);
+                    cmd.Parameters.AddWithValue("@fga", p.ZoneFga[z]);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
         // -------- helpers --------
 
         private static void SaveTeamGameStats(SqliteConnection connection, SqliteTransaction transaction, int gameId, string teamId, List<PlayerBoxScore> players)
@@ -932,11 +1039,12 @@ ON CONFLICT(season_id, player_id) DO UPDATE SET
         {
             return new Season
             {
-                Id = ReadInt(reader["id"]),
-                Name = reader["name"].ToString() ?? string.Empty,
-                Status = reader["status"].ToString() ?? "IN_PROGRESS",
-                Phase = reader["phase"].ToString() ?? "REGULAR",
-                CreatedAt = reader["created_at"].ToString() ?? string.Empty,
+                Id           = ReadInt(reader["id"]),
+                Name         = reader["name"].ToString() ?? string.Empty,
+                Status       = reader["status"].ToString() ?? "IN_PROGRESS",
+                Phase        = reader["phase"].ToString() ?? "REGULAR",
+                CreatedAt    = reader["created_at"].ToString() ?? string.Empty,
+                SeasonNumber = ReadInt(reader["season_number"]),
             };
         }
 
