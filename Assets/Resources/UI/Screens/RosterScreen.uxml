@@ -2,216 +2,234 @@
     <Style src="project://database/Assets/Resources/UI/Theme/theme.uss" />
     <Style src="project://database/Assets/Resources/UI/Screens/RosterScreen.uss" />
     <ui:VisualElement name="roster-screen" class="screen-page roster-screen">
-
-        <!-- 顶栏 -->
         <ui:VisualElement class="page-topbar">
-            <ui:Button name="btn-back" text="← 返回选项" class="btn btn--back" />
+            <ui:Button name="btn-back" text="Back" class="btn btn--back" />
             <ui:VisualElement class="page-topbar__title-block">
-                <ui:Label text="编辑阵容名单" class="h2" />
-                <ui:Label name="save-status" text="字段失焦自动保存。" class="caption" />
+                <ui:Label text="Roster Board" class="h2" />
+                <ui:Label name="save-status" text="Select a player to edit. Changes auto-save." class="caption" />
             </ui:VisualElement>
         </ui:VisualElement>
 
-        <!-- 主体两栏 -->
         <ui:VisualElement class="roster-main">
+            <ui:VisualElement name="roster-list-page" class="card roster-left roster-list-page">
+                <ui:VisualElement class="roster-command-deck">
+                    <ui:VisualElement class="roster-command-deck__header">
+                        <ui:VisualElement class="roster-command-deck__title-block">
+                            <ui:Label text="Team Roster Overview" class="roster-command-deck__title" />
+                            <ui:Label name="roster-panel-subtitle" text="MANAGER OS | Current Roster View" class="roster-command-deck__subtitle" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="roster-command-deck__metrics">
+                            <ui:VisualElement class="roster-metric">
+                                <ui:Label text="Team" class="roster-metric__label" />
+                                <ui:Label name="roster-summary-team" text="--" class="roster-metric__value" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="roster-metric">
+                                <ui:Label text="Players" class="roster-metric__label" />
+                                <ui:Label name="roster-summary-count" text="0" class="roster-metric__value" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="roster-metric">
+                                <ui:Label text="Payroll" class="roster-metric__label" />
+                                <ui:Label name="roster-summary-salary" text="$0M" class="roster-metric__value roster-metric__value--salary" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="roster-metric">
+                                <ui:Label text="Avg OVR" class="roster-metric__label" />
+                                <ui:Label name="roster-summary-overall" text="0.0" class="roster-metric__value" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
 
-            <!-- 左侧：球队 + 阵容 -->
-            <ui:VisualElement class="card roster-left">
+                    <ui:VisualElement class="roster-command-deck__toolbar">
+                        <ui:VisualElement class="roster-view-switch">
+                            <ui:Button name="btn-roster-view-team" text="My Roster" class="btn roster-view-switch__btn roster-view-switch__btn--active" />
+                            <ui:Button name="btn-roster-view-all" text="All Players" class="btn roster-view-switch__btn" />
+                        </ui:VisualElement>
 
-                <!-- 自定义带搜索的球队选择器 -->
-                <ui:VisualElement class="team-picker">
-                    <ui:Label text="球队" class="team-picker__label" />
-                    <ui:VisualElement name="team-picker-trigger" class="team-picker__trigger" focusable="true">
-                        <ui:Label name="team-picker-current" text="选择球队" class="team-picker__current" />
-                        <ui:Label text="▾" class="team-picker__arrow" />
+                        <ui:VisualElement name="roster-team-picker" class="team-picker roster-team-picker">
+                            <ui:Label text="Browse Scope" class="team-picker__label" />
+                            <ui:VisualElement name="team-picker-trigger" class="team-picker__trigger" focusable="true">
+                                <ui:Label name="team-picker-current" text="Select Team" class="team-picker__current" />
+                                <ui:Label text="v" class="team-picker__arrow" />
+                            </ui:VisualElement>
+
+                            <ui:VisualElement name="team-picker-popup" class="team-picker__popup team-picker__popup--hidden">
+                                <ui:TextField name="team-picker-search" class="team-picker__search" />
+                                <ui:ListView name="team-picker-list" class="team-picker__list" show-border="false" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
                     </ui:VisualElement>
                 </ui:VisualElement>
 
                 <ui:VisualElement class="roster-roster-header">
-                    <ui:Label text="阵容" class="card-title" />
-                    <ui:Label name="roster-count" text="" class="caption" />
+                    <ui:VisualElement class="roster-roster-header__title">
+                        <ui:Label name="roster-page-title" text="My Roster" class="card-title" />
+                        <ui:Label text="Click a player row to open the detail editor." class="caption" />
+                    </ui:VisualElement>
+                    <ui:Label name="roster-count" text="" class="caption roster-count-pill" />
                 </ui:VisualElement>
-                <ui:ListView name="players-list" class="roster-players" show-border="false" />
 
-                <!-- 球队搜索弹层（必须是 roster-left 的最后一个子元素，保证渲染在 players-list 之上） -->
-                <ui:VisualElement name="team-picker-popup" class="team-picker__popup team-picker__popup--hidden">
-                    <ui:TextField name="team-picker-search" class="team-picker__search" />
-                    <ui:ListView name="team-picker-list" class="team-picker__list" show-border="false" />
+                <ui:VisualElement class="roster-table__header">
+                    <ui:VisualElement class="roster-table__cell roster-table__col roster-table__col--status">
+                        <ui:Label text="Status" class="roster-table__text" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="roster-table__cell roster-table__col roster-table__col--pos">
+                        <ui:Label text="Pos" class="roster-table__text" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="roster-table__cell roster-table__col roster-table__col--name">
+                        <ui:Label text="Player" class="roster-table__text" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="roster-table__cell roster-table__col roster-table__col--age">
+                        <ui:Label text="Age" class="roster-table__text" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="roster-table__cell roster-table__col roster-table__col--salary">
+                        <ui:Label text="Salary" class="roster-table__text" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="roster-table__cell roster-table__col roster-table__col--role">
+                        <ui:Label text="Role" class="roster-table__text" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="roster-table__cell roster-table__col roster-table__col--games">
+                        <ui:Label text="G" class="roster-table__text" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="roster-table__cell roster-table__col roster-table__col--stat">
+                        <ui:Label text="PPG" class="roster-table__text" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="roster-table__cell roster-table__col roster-table__col--stat">
+                        <ui:Label text="RPG" class="roster-table__text" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="roster-table__cell roster-table__col roster-table__col--stat">
+                        <ui:Label text="APG" class="roster-table__text" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="roster-table__cell roster-table__col roster-table__col--ovr">
+                        <ui:Label text="OVR" class="roster-table__text" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="roster-table__cell roster-table__col roster-table__col--pot">
+                        <ui:Label text="POT" class="roster-table__text" />
+                    </ui:VisualElement>
                 </ui:VisualElement>
+
+                <ui:ListView name="players-list" class="roster-players roster-table" show-border="false" />
             </ui:VisualElement>
 
-            <!-- 右侧：球员编辑器 -->
-            <ui:VisualElement class="roster-right">
-
-                <!-- Hero 头 -->
-                <ui:VisualElement class="card player-hero">
-                    <ui:VisualElement name="hero-number" class="player-hero__number">
-                        <ui:Label name="hero-jersey" text="--" class="player-hero__number-text" />
+            <ui:VisualElement name="detail-page" class="card roster-detail-page roster-detail-page--hidden">
+                <ui:VisualElement class="roster-detail__header">
+                    <ui:VisualElement class="roster-detail__title-block">
+                        <ui:Label text="Player Detail" class="card-title" />
+                        <ui:Label name="detail-hint" text="Click a player to inspect and edit details." class="caption" />
                     </ui:VisualElement>
-                    <ui:VisualElement class="player-hero__info">
-                        <ui:Label name="hero-name" text="—" class="player-hero__name" />
-                        <ui:Label name="hero-sub" text="" class="player-hero__sub" />
-                        <ui:Label name="hero-injury" text="" class="injury-badge" style="display:none;" />
-                    </ui:VisualElement>
-                    <ui:VisualElement class="player-hero__overall">
-                        <ui:Label text="OVR" class="player-hero__overall-label" />
-                        <ui:Label name="hero-overall" text="--" class="player-hero__overall-value" />
-                    </ui:VisualElement>
+                    <ui:Button name="detail-back-btn" text="Back to List" class="btn btn--back" />
                 </ui:VisualElement>
 
-                <!-- Tabs -->
-                <ui:VisualElement class="tabs">
-                    <ui:Button name="tab-basic"   text="基础信息" class="tab tab--active" />
-                    <ui:Button name="tab-attr"    text="能力属性" class="tab" />
-                    <ui:Button name="tab-tend"    text="球员倾向" class="tab" />
-                    <ui:Button name="tab-traits"  text="特    性" class="tab" />
-                    <ui:Button name="tab-zone"    text="投篮图"   class="tab" />
+                <ui:VisualElement class="roster-right">
+                    <ui:VisualElement class="card player-hero">
+                        <ui:VisualElement name="hero-number" class="player-hero__number">
+                            <ui:Label name="hero-jersey" text="--" class="player-hero__number-text" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="player-hero__info">
+                            <ui:Label name="hero-name" text="-" class="player-hero__name" />
+                            <ui:Label name="hero-sub" text="" class="player-hero__sub" />
+                            <ui:Label name="hero-injury" text="" class="injury-badge" style="display:none;" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="player-hero__overall">
+                            <ui:Label text="OVR" class="player-hero__overall-label" />
+                            <ui:Label name="hero-overall" text="--" class="player-hero__overall-value" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+
+                    <ui:VisualElement class="tabs">
+                        <ui:Button name="tab-basic" text="Basics" class="tab tab--active" />
+                        <ui:Button name="tab-attr" text="Attributes" class="tab" />
+                        <ui:Button name="tab-tend" text="Tendencies" class="tab" />
+                        <ui:Button name="tab-traits" text="Traits" class="tab" />
+                        <ui:Button name="tab-zone" text="Shot Chart" class="tab" />
+                    </ui:VisualElement>
+
+                    <ui:ScrollView name="tab-content" class="tab-content roster-tab-content">
+                        <ui:VisualElement name="page-basic" class="tab-page roster-fields">
+                            <ui:VisualElement class="roster-fields__row">
+                                <ui:TextField name="field-firstname" label="First Name" class="roster-field" />
+                                <ui:TextField name="field-lastname" label="Last Name" class="roster-field roster-field--last" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="roster-fields__row">
+                                <ui:DropdownField name="field-nameorder" label="Name Order" class="roster-field" />
+                                <ui:DropdownField name="field-position" label="Position" class="roster-field roster-field--last" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="roster-fields__row">
+                                <ui:DropdownField name="field-secpos" label="Secondary Pos" class="roster-field" />
+                                <ui:IntegerField name="field-jersey" label="Jersey No." class="roster-field roster-field--last" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="roster-fields__row">
+                                <ui:IntegerField name="field-height" label="Height (cm)" class="roster-field" />
+                                <ui:IntegerField name="field-weight" label="Weight (kg)" class="roster-field roster-field--last" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="roster-fields__row">
+                                <ui:IntegerField name="field-age" label="Age" class="roster-field" />
+                                <ui:DropdownField name="field-status" label="Status" class="roster-field roster-field--last" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="roster-fields__row">
+                                <ui:IntegerField name="field-potential-min" label="Min Potential" class="roster-field" />
+                                <ui:IntegerField name="field-potential-max" label="Max Potential" class="roster-field roster-field--last" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="roster-fields__row">
+                                <ui:Label name="field-potential-label" text="Effective Potential: -" class="roster-field roster-field--readonly" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="roster-fields__row">
+                                <ui:IntegerField name="field-peak-start" label="Peak Start Age" class="roster-field" />
+                                <ui:IntegerField name="field-peak-end" label="Peak End Age" class="roster-field roster-field--last" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement name="page-attr" class="tab-page tab-page--hidden roster-stats">
+                            <ui:VisualElement name="attr-col1" class="roster-stats__col roster-stats__col--left" />
+                            <ui:VisualElement name="attr-col2" class="roster-stats__col" />
+                        </ui:VisualElement>
+
+                        <ui:VisualElement name="page-tend" class="tab-page tab-page--hidden roster-stats">
+                            <ui:VisualElement name="tend-col1" class="roster-stats__col roster-stats__col--left" />
+                            <ui:VisualElement name="tend-col2" class="roster-stats__col" />
+                        </ui:VisualElement>
+
+                        <ui:VisualElement name="page-zone" class="tab-page tab-page--hidden">
+                            <ui:Label name="zone-season-label" text="Shot Zone" class="zone-chart__title" />
+                            <ui:VisualElement class="zone-row">
+                                <ui:VisualElement name="zone-0" class="zone-cell three-zone"><ui:Label class="zone-name" /><ui:Label class="zone-stat" /></ui:VisualElement>
+                                <ui:VisualElement name="zone-2" class="zone-cell three-zone"><ui:Label class="zone-name" /><ui:Label class="zone-stat" /></ui:VisualElement>
+                                <ui:VisualElement name="zone-4" class="zone-cell three-zone"><ui:Label class="zone-name" /><ui:Label class="zone-stat" /></ui:VisualElement>
+                                <ui:VisualElement name="zone-3" class="zone-cell three-zone"><ui:Label class="zone-name" /><ui:Label class="zone-stat" /></ui:VisualElement>
+                                <ui:VisualElement name="zone-1" class="zone-cell three-zone"><ui:Label class="zone-name" /><ui:Label class="zone-stat" /></ui:VisualElement>
+                            </ui:VisualElement>
+                            <ui:VisualElement class="zone-row">
+                                <ui:VisualElement name="zone-5" class="zone-cell mid-zone"><ui:Label class="zone-name" /><ui:Label class="zone-stat" /></ui:VisualElement>
+                                <ui:VisualElement name="zone-7" class="zone-cell mid-zone"><ui:Label class="zone-name" /><ui:Label class="zone-stat" /></ui:VisualElement>
+                                <ui:VisualElement name="zone-9" class="zone-cell mid-zone"><ui:Label class="zone-name" /><ui:Label class="zone-stat" /></ui:VisualElement>
+                                <ui:VisualElement name="zone-8" class="zone-cell mid-zone"><ui:Label class="zone-name" /><ui:Label class="zone-stat" /></ui:VisualElement>
+                                <ui:VisualElement name="zone-6" class="zone-cell mid-zone"><ui:Label class="zone-name" /><ui:Label class="zone-stat" /></ui:VisualElement>
+                            </ui:VisualElement>
+                            <ui:VisualElement class="zone-row">
+                                <ui:VisualElement name="zone-10" class="zone-cell close-zone"><ui:Label class="zone-name" /><ui:Label class="zone-stat" /></ui:VisualElement>
+                                <ui:VisualElement name="zone-12" class="zone-cell close-zone"><ui:Label class="zone-name" /><ui:Label class="zone-stat" /></ui:VisualElement>
+                                <ui:VisualElement name="zone-11" class="zone-cell close-zone"><ui:Label class="zone-name" /><ui:Label class="zone-stat" /></ui:VisualElement>
+                            </ui:VisualElement>
+                            <ui:VisualElement class="zone-row">
+                                <ui:VisualElement name="zone-13" class="zone-cell basket-zone"><ui:Label class="zone-name" /><ui:Label class="zone-stat" /></ui:VisualElement>
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement name="page-traits" class="tab-page tab-page--hidden">
+                            <ui:VisualElement class="traits-header">
+                                <ui:Label name="traits-capacity-label" text="" class="caption traits-capacity" />
+                                <ui:Button name="btn-add-trait" text="+ Add Trait" class="btn btn--sm" />
+                            </ui:VisualElement>
+                            <ui:VisualElement name="traits-list" class="traits-list" />
+                            <ui:VisualElement name="trait-picker-overlay" class="trait-picker-overlay">
+                                <ui:VisualElement class="trait-picker-popup">
+                                    <ui:Label text="Choose Trait" class="card-title" />
+                                    <ui:ScrollView name="trait-picker-scroll" class="trait-picker-scroll" />
+                                    <ui:Button name="btn-trait-picker-close" text="Cancel" class="btn" />
+                                </ui:VisualElement>
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                    </ui:ScrollView>
                 </ui:VisualElement>
-
-                <!-- Tab 内容 -->
-                <ui:ScrollView name="tab-content" class="tab-content roster-tab-content">
-
-                    <!-- ===== 基础信息 ===== -->
-                    <ui:VisualElement name="page-basic" class="tab-page roster-fields">
-                        <ui:VisualElement class="roster-fields__row">
-                            <ui:TextField name="field-firstname" label="名" class="roster-field" />
-                            <ui:TextField name="field-lastname"  label="姓" class="roster-field" />
-                        </ui:VisualElement>
-                        <ui:VisualElement class="roster-fields__row">
-                            <ui:DropdownField name="field-nameorder" label="姓名顺序" class="roster-field" />
-                            <ui:DropdownField name="field-position"  label="位置"     class="roster-field" />
-                        </ui:VisualElement>
-                        <ui:VisualElement class="roster-fields__row">
-                            <ui:DropdownField name="field-secpos"  label="第二位置"   class="roster-field" />
-                            <ui:IntegerField  name="field-jersey"  label="球衣号"     class="roster-field" />
-                        </ui:VisualElement>
-                        <ui:VisualElement class="roster-fields__row">
-                            <ui:IntegerField name="field-height" label="身高 (cm)" class="roster-field" />
-                            <ui:IntegerField name="field-weight" label="体重 (kg)" class="roster-field" />
-                        </ui:VisualElement>
-                        <ui:VisualElement class="roster-fields__row">
-                            <ui:IntegerField name="field-age" label="年龄" class="roster-field" />
-                            <ui:DropdownField name="field-status" label="球员状态" class="roster-field" />
-                        </ui:VisualElement>
-                        <ui:VisualElement class="roster-fields__row">
-                            <ui:IntegerField name="field-potential-min" label="最低潜力" class="roster-field" />
-                            <ui:IntegerField name="field-potential-max" label="最高潜力" class="roster-field" />
-                        </ui:VisualElement>
-                        <ui:VisualElement class="roster-fields__row">
-                            <ui:Label name="field-potential-label" text="有效潜力：—" class="roster-field roster-field--readonly" />
-                        </ui:VisualElement>
-                        <ui:VisualElement class="roster-fields__row">
-                            <ui:IntegerField name="field-peak-start" label="巅峰开始年龄" class="roster-field" />
-                            <ui:IntegerField name="field-peak-end"   label="巅峰结束年龄" class="roster-field" />
-                        </ui:VisualElement>
-                    </ui:VisualElement>
-
-                    <!-- ===== 能力属性（代码注入两列） ===== -->
-                    <ui:VisualElement name="page-attr" class="tab-page tab-page--hidden roster-stats">
-                        <ui:VisualElement name="attr-col1" class="roster-stats__col" />
-                        <ui:VisualElement name="attr-col2" class="roster-stats__col" />
-                    </ui:VisualElement>
-
-                    <!-- ===== 球员倾向（代码注入两列） ===== -->
-                    <ui:VisualElement name="page-tend" class="tab-page tab-page--hidden roster-stats">
-                        <ui:VisualElement name="tend-col1" class="roster-stats__col" />
-                        <ui:VisualElement name="tend-col2" class="roster-stats__col" />
-                    </ui:VisualElement>
-
-                    <!-- ===== 投篮图 ===== -->
-                    <ui:VisualElement name="page-zone" class="tab-page tab-page--hidden">
-                        <ui:Label name="zone-season-label" text="赛季投篮区域" class="zone-chart__title" />
-                        <!-- 三分区（5 格）-->
-                        <ui:VisualElement class="zone-row">
-                            <ui:VisualElement name="zone-0"  class="zone-cell three-zone">
-                                <ui:Label class="zone-name" />
-                                <ui:Label class="zone-stat" />
-                            </ui:VisualElement>
-                            <ui:VisualElement name="zone-2"  class="zone-cell three-zone">
-                                <ui:Label class="zone-name" />
-                                <ui:Label class="zone-stat" />
-                            </ui:VisualElement>
-                            <ui:VisualElement name="zone-4"  class="zone-cell three-zone">
-                                <ui:Label class="zone-name" />
-                                <ui:Label class="zone-stat" />
-                            </ui:VisualElement>
-                            <ui:VisualElement name="zone-3"  class="zone-cell three-zone">
-                                <ui:Label class="zone-name" />
-                                <ui:Label class="zone-stat" />
-                            </ui:VisualElement>
-                            <ui:VisualElement name="zone-1"  class="zone-cell three-zone">
-                                <ui:Label class="zone-name" />
-                                <ui:Label class="zone-stat" />
-                            </ui:VisualElement>
-                        </ui:VisualElement>
-                        <!-- 中投区（5 格）-->
-                        <ui:VisualElement class="zone-row">
-                            <ui:VisualElement name="zone-5"  class="zone-cell mid-zone">
-                                <ui:Label class="zone-name" />
-                                <ui:Label class="zone-stat" />
-                            </ui:VisualElement>
-                            <ui:VisualElement name="zone-7"  class="zone-cell mid-zone">
-                                <ui:Label class="zone-name" />
-                                <ui:Label class="zone-stat" />
-                            </ui:VisualElement>
-                            <ui:VisualElement name="zone-9"  class="zone-cell mid-zone">
-                                <ui:Label class="zone-name" />
-                                <ui:Label class="zone-stat" />
-                            </ui:VisualElement>
-                            <ui:VisualElement name="zone-8"  class="zone-cell mid-zone">
-                                <ui:Label class="zone-name" />
-                                <ui:Label class="zone-stat" />
-                            </ui:VisualElement>
-                            <ui:VisualElement name="zone-6"  class="zone-cell mid-zone">
-                                <ui:Label class="zone-name" />
-                                <ui:Label class="zone-stat" />
-                            </ui:VisualElement>
-                        </ui:VisualElement>
-                        <!-- 近距离区（3 格）-->
-                        <ui:VisualElement class="zone-row">
-                            <ui:VisualElement name="zone-10" class="zone-cell close-zone">
-                                <ui:Label class="zone-name" />
-                                <ui:Label class="zone-stat" />
-                            </ui:VisualElement>
-                            <ui:VisualElement name="zone-12" class="zone-cell close-zone">
-                                <ui:Label class="zone-name" />
-                                <ui:Label class="zone-stat" />
-                            </ui:VisualElement>
-                            <ui:VisualElement name="zone-11" class="zone-cell close-zone">
-                                <ui:Label class="zone-name" />
-                                <ui:Label class="zone-stat" />
-                            </ui:VisualElement>
-                        </ui:VisualElement>
-                        <!-- 篮下（1 格）-->
-                        <ui:VisualElement class="zone-row">
-                            <ui:VisualElement name="zone-13" class="zone-cell basket-zone">
-                                <ui:Label class="zone-name" />
-                                <ui:Label class="zone-stat" />
-                            </ui:VisualElement>
-                        </ui:VisualElement>
-                    </ui:VisualElement>
-
-                    <!-- ===== 特性 ===== -->
-                    <ui:VisualElement name="page-traits" class="tab-page tab-page--hidden">
-                        <ui:VisualElement class="traits-header">
-                            <ui:Label name="traits-capacity-label" text="" class="caption traits-capacity" />
-                            <ui:Button name="btn-add-trait" text="+ 添加特性" class="btn btn--sm" />
-                        </ui:VisualElement>
-                        <ui:VisualElement name="traits-list" class="traits-list" />
-                        <!-- 添加特性浮层 -->
-                        <ui:VisualElement name="trait-picker-overlay" class="trait-picker-overlay">
-                            <ui:VisualElement class="trait-picker-popup">
-                                <ui:Label text="选择特性" class="card-title" />
-                                <ui:ScrollView name="trait-picker-scroll" class="trait-picker-scroll" />
-                                <ui:Button name="btn-trait-picker-close" text="取消" class="btn" />
-                            </ui:VisualElement>
-                        </ui:VisualElement>
-                    </ui:VisualElement>
-
-                </ui:ScrollView>
-
             </ui:VisualElement>
-
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>
