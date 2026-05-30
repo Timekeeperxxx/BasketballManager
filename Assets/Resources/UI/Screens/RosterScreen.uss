@@ -1,5 +1,15 @@
 .roster-screen {
     background-color: var(--bg-base);
+    --roster-col-status: 88px;
+    --roster-col-pos: 62px;
+    --roster-col-name: 232px;
+    --roster-col-age: 58px;
+    --roster-col-salary: 92px;
+    --roster-col-role: 88px;
+    --roster-col-games: 56px;
+    --roster-col-stat: 72px;
+    --roster-col-ovr: 64px;
+    --roster-col-pot: 64px;
 }
 
 .injury-badge {
@@ -8,59 +18,238 @@
     margin-top: 2px;
 }
 
-/* ===== 主体两栏 ===== */
 .roster-main {
-    flex-direction: row;
+    flex-direction: column;
     flex-grow: 1;
+    position: relative;
+    gap: 12px;
 }
 
-/* ===== 左侧：球队选择器 + 阵容 ===== */
-.roster-left {
-    width: 400px;
-    min-width: 400px;
-    margin-right: 12px;
+.roster-list-page,
+.roster-detail-page {
+    width: 100%;
+    flex-grow: 1;
+    min-height: 0;
     flex-direction: column;
 }
 
-/* ===== 自定义球队选择器（带搜索） ===== */
+.roster-list-page--hidden,
+.roster-detail-page--hidden {
+    display: none;
+}
+
+.roster-left {
+    width: auto;
+    min-width: 0;
+    flex-grow: 1;
+    margin-right: 0;
+    flex-direction: column;
+    position: relative;
+    background-color: rgb(14, 19, 27);
+    border-top-color: rgb(40, 48, 61);
+    border-right-color: rgb(40, 48, 61);
+    border-bottom-color: rgb(40, 48, 61);
+    border-left-color: rgb(40, 48, 61);
+}
+
+.roster-command-deck {
+    flex-direction: column;
+    flex-shrink: 0;
+    margin-bottom: 18px;
+    padding-top: 18px;
+    padding-right: 18px;
+    padding-bottom: 18px;
+    padding-left: 18px;
+    background-color: rgb(10, 14, 20);
+    border-top-left-radius: 14px;
+    border-top-right-radius: 14px;
+    border-bottom-left-radius: 14px;
+    border-bottom-right-radius: 14px;
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+    border-top-color: rgb(36, 44, 57);
+    border-right-color: rgb(36, 44, 57);
+    border-bottom-color: rgb(36, 44, 57);
+    border-left-color: rgb(36, 44, 57);
+}
+
+.roster-command-deck__header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.roster-command-deck__title-block {
+    flex-direction: column;
+    flex-grow: 1;
+    margin-right: 16px;
+}
+
+.roster-command-deck__title {
+    color: rgb(245, 247, 250);
+    font-size: 24px;
+    -unity-font-style: bold;
+    letter-spacing: 0.6px;
+}
+
+.roster-command-deck__subtitle {
+    margin-top: 4px;
+    color: rgb(111, 121, 136);
+    font-size: 12px;
+}
+
+.roster-command-deck__metrics {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.roster-metric {
+    min-width: 112px;
+    margin-left: 10px;
+    padding-top: 10px;
+    padding-right: 12px;
+    padding-bottom: 10px;
+    padding-left: 12px;
+    background-color: rgb(17, 24, 33);
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+    border-top-color: rgb(35, 44, 57);
+    border-right-color: rgb(35, 44, 57);
+    border-bottom-color: rgb(35, 44, 57);
+    border-left-color: rgb(35, 44, 57);
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+.roster-metric__label {
+    color: rgb(123, 134, 150);
+    font-size: 11px;
+}
+
+.roster-metric__value {
+    margin-top: 4px;
+    color: rgb(239, 244, 248);
+    font-size: 18px;
+    -unity-font-style: bold;
+}
+
+.roster-metric__value--salary {
+    color: rgb(74, 222, 128);
+}
+
+.roster-command-deck__toolbar {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+}
+
+.roster-view-switch {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding-top: 4px;
+    padding-right: 4px;
+    padding-bottom: 4px;
+    padding-left: 4px;
+    background-color: rgb(16, 22, 30);
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+    border-top-color: rgb(36, 44, 57);
+    border-right-color: rgb(36, 44, 57);
+    border-bottom-color: rgb(36, 44, 57);
+    border-left-color: rgb(36, 44, 57);
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+.roster-view-switch__btn {
+    min-width: 108px;
+    height: 34px;
+    margin-right: 4px;
+    background-color: rgba(0, 0, 0, 0);
+    border-top-width: 0;
+    border-right-width: 0;
+    border-bottom-width: 0;
+    border-left-width: 0;
+    color: rgb(126, 137, 153);
+}
+
+.roster-view-switch__btn:last-child {
+    margin-right: 0;
+}
+
+.roster-view-switch__btn:hover {
+    background-color: rgb(24, 32, 43);
+    color: rgb(231, 237, 243);
+}
+
+.roster-view-switch__btn--active {
+    background-color: rgb(32, 43, 58);
+    color: rgb(241, 245, 249);
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+    border-top-color: rgb(71, 85, 105);
+    border-right-color: rgb(71, 85, 105);
+    border-bottom-color: rgb(71, 85, 105);
+    border-left-color: rgb(71, 85, 105);
+}
+
 .team-picker {
-    margin-bottom: 12px;
     flex-shrink: 0;
     flex-direction: column;
+}
+
+.roster-team-picker {
+    width: 264px;
+    position: relative;
 }
 
 .team-picker__label {
     color: var(--text-secondary);
     font-size: 12px;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
 }
 
 .team-picker__trigger {
     flex-direction: row;
     align-items: center;
-    background-color: rgb(31, 38, 45);
+    min-height: 40px;
+    padding-left: 14px;
+    padding-right: 14px;
+    background-color: rgb(17, 24, 33);
     border-top-width: 1px;
     border-right-width: 1px;
     border-bottom-width: 1px;
     border-left-width: 1px;
-    border-top-color: rgb(48, 54, 61);
-    border-right-color: rgb(48, 54, 61);
-    border-bottom-color: rgb(48, 54, 61);
-    border-left-color: rgb(48, 54, 61);
-    border-top-left-radius: 4px;
-    border-top-right-radius: 4px;
-    border-bottom-left-radius: 4px;
-    border-bottom-right-radius: 4px;
-    padding-left: 12px;
-    padding-right: 12px;
-    min-height: 36px;
+    border-top-color: rgb(41, 50, 64);
+    border-right-color: rgb(41, 50, 64);
+    border-bottom-color: rgb(41, 50, 64);
+    border-left-color: rgb(41, 50, 64);
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
 }
 
 .team-picker__trigger:hover {
-    border-top-color: rgb(68, 76, 86);
-    border-right-color: rgb(68, 76, 86);
-    border-bottom-color: rgb(68, 76, 86);
-    border-left-color: rgb(68, 76, 86);
+    border-top-color: rgb(73, 86, 103);
+    border-right-color: rgb(73, 86, 103);
+    border-bottom-color: rgb(73, 86, 103);
+    border-left-color: rgb(73, 86, 103);
 }
 
 .team-picker__current {
@@ -77,30 +266,29 @@
     margin-left: 8px;
 }
 
-/* popup 现在是 .roster-left 的子元素：top 从卡片顶（内边距外）算起 */
 .team-picker__popup {
     position: absolute;
-    top: 72px;
-    left: 16px;
-    right: 16px;
-    background-color: rgb(22, 27, 34);
-    border-top-width: 1px;
-    border-right-width: 1px;
-    border-bottom-width: 1px;
-    border-left-width: 1px;
-    border-top-color: rgb(48, 54, 61);
-    border-right-color: rgb(48, 54, 61);
-    border-bottom-color: rgb(48, 54, 61);
-    border-left-color: rgb(48, 54, 61);
-    border-top-left-radius: 4px;
-    border-top-right-radius: 4px;
-    border-bottom-left-radius: 4px;
-    border-bottom-right-radius: 4px;
+    top: 74px;
+    left: 0;
+    right: 0;
+    height: 320px;
     padding-top: 8px;
     padding-right: 8px;
     padding-bottom: 8px;
     padding-left: 8px;
-    height: 320px;
+    background-color: rgb(15, 21, 29);
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+    border-top-color: rgb(41, 50, 64);
+    border-right-color: rgb(41, 50, 64);
+    border-bottom-color: rgb(41, 50, 64);
+    border-left-color: rgb(41, 50, 64);
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
 }
 
 .team-picker__popup--hidden {
@@ -117,7 +305,7 @@
 }
 
 .team-picker__list .unity-list-view__item {
-    height: 32px;
+    height: 34px;
     padding-left: 8px;
     padding-right: 8px;
     color: rgb(230, 237, 243);
@@ -129,57 +317,425 @@
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
     flex-shrink: 0;
+}
+
+.roster-roster-header__title {
+    flex-direction: column;
+}
+
+.roster-roster-header__title .caption {
+    margin-top: 4px;
+}
+
+.roster-count-pill {
+    padding-top: 6px;
+    padding-right: 10px;
+    padding-bottom: 6px;
+    padding-left: 10px;
+    background-color: rgb(19, 26, 36);
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+    border-top-color: rgb(40, 49, 62);
+    border-right-color: rgb(40, 49, 62);
+    border-bottom-color: rgb(40, 49, 62);
+    border-left-color: rgb(40, 49, 62);
+    border-top-left-radius: 999px;
+    border-top-right-radius: 999px;
+    border-bottom-left-radius: 999px;
+    border-bottom-right-radius: 999px;
+    color: rgb(171, 182, 196);
+}
+
+.roster-table__header {
+    flex-direction: row;
+    align-items: center;
+    height: 32px;
+    margin-bottom: 8px;
+    padding-left: 14px;
+    padding-right: 14px;
+    background-color: rgba(22, 29, 39, 0.92);
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+.roster-table__cell {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.roster-table__text {
+    width: 100%;
+    color: rgb(110, 122, 138);
+    font-size: 11px;
+    -unity-font-style: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.roster-table__col--age .roster-table__text,
+.roster-table__col--games .roster-table__text {
+    -unity-text-align: middle-center;
+}
+
+.roster-table__col--salary .roster-table__text,
+.roster-table__col--stat .roster-table__text,
+.roster-table__col--ovr .roster-table__text,
+.roster-table__col--pot .roster-table__text {
+    -unity-text-align: middle-right;
+}
+
+.roster-table__col--status {
+    width: var(--roster-col-status);
+    min-width: var(--roster-col-status);
+}
+
+.roster-table__col--pos {
+    width: var(--roster-col-pos);
+    min-width: var(--roster-col-pos);
+}
+
+.roster-table__col--name {
+    width: var(--roster-col-name);
+    min-width: var(--roster-col-name);
+}
+
+.roster-table__col--age {
+    width: var(--roster-col-age);
+    min-width: var(--roster-col-age);
+}
+
+.roster-table__col--salary {
+    width: var(--roster-col-salary);
+    min-width: var(--roster-col-salary);
+}
+
+.roster-table__col--role {
+    width: var(--roster-col-role);
+    min-width: var(--roster-col-role);
+}
+
+.roster-table__col--games {
+    width: var(--roster-col-games);
+    min-width: var(--roster-col-games);
+}
+
+.roster-table__col--stat {
+    width: var(--roster-col-stat);
+    min-width: var(--roster-col-stat);
+}
+
+.roster-table__col--ovr,
+.roster-table__col--pot {
+    width: var(--roster-col-ovr);
+    min-width: var(--roster-col-ovr);
 }
 
 .roster-players {
     flex-grow: 1;
 }
 
+.roster-table .unity-collection-view__item,
+.roster-table .unity-list-view__item {
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.roster-table .unity-collection-view__item:hover,
+.roster-table .unity-collection-view__item--selected,
+.roster-table .unity-collection-view__item:checked {
+    background-color: rgba(0, 0, 0, 0);
+}
+
 .roster-players .unity-list-view__item {
-    height: 36px;
-    padding-left: 8px;
-    padding-right: 8px;
+    height: 76px;
+    width: 100%;
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0;
+    padding-bottom: 8px;
 }
 
 .roster-player-row {
     flex-direction: row;
     align-items: center;
-    flex-grow: 1;
-    height: 100%;
+    justify-content: flex-start;
+    width: 100%;
+    min-width: 0;
+    height: 68px;
+    padding-left: 14px;
+    padding-right: 14px;
+    background-color: rgb(16, 22, 31);
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+    border-top-color: rgb(36, 44, 57);
+    border-right-color: rgb(36, 44, 57);
+    border-bottom-color: rgb(36, 44, 57);
+    border-left-color: rgb(36, 44, 57);
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
 }
 
-.roster-player-row__jersey {
-    width: 36px;
-    min-width: 36px;
-    color: var(--text-secondary);
+.roster-player-row:hover {
+    background-color: rgb(22, 30, 41);
+    border-top-color: rgb(61, 74, 90);
+    border-right-color: rgb(61, 74, 90);
+    border-bottom-color: rgb(61, 74, 90);
+    border-left-color: rgb(61, 74, 90);
+}
+
+.roster-player-row--selected {
+    background-color: rgb(27, 38, 52);
+    border-top-color: rgb(88, 166, 255);
+    border-right-color: rgb(88, 166, 255);
+    border-bottom-color: rgb(88, 166, 255);
+    border-left-color: rgb(88, 166, 255);
+}
+
+.roster-player-row__cell {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    height: 100%;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.roster-player-row__col {
+    color: var(--text-primary);
     font-size: 13px;
-    -unity-font-style: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
+}
+
+.roster-player-row__text {
+    width: 100%;
+    -unity-text-align: middle-left;
+    color: rgb(233, 237, 242);
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.roster-player-row__text--muted {
+    color: rgb(141, 151, 163);
+}
+
+.roster-player-row__col--status {
+    width: var(--roster-col-status);
+    min-width: var(--roster-col-status);
+}
+
+.roster-player-row__col--pos {
+    width: var(--roster-col-pos);
+    min-width: var(--roster-col-pos);
+}
+
+.roster-player-row__col--name {
+    width: var(--roster-col-name);
+    min-width: var(--roster-col-name);
+}
+
+.roster-player-row__col--age {
+    width: var(--roster-col-age);
+    min-width: var(--roster-col-age);
+}
+
+.roster-player-row__col--salary {
+    width: var(--roster-col-salary);
+    min-width: var(--roster-col-salary);
+}
+
+.roster-player-row__col--role {
+    width: var(--roster-col-role);
+    min-width: var(--roster-col-role);
+}
+
+.roster-player-row__col--games {
+    width: var(--roster-col-games);
+    min-width: var(--roster-col-games);
+}
+
+.roster-player-row__col--stat {
+    width: var(--roster-col-stat);
+    min-width: var(--roster-col-stat);
+}
+
+.roster-player-row__col--ovr,
+.roster-player-row__col--pot {
+    width: var(--roster-col-ovr);
+    min-width: var(--roster-col-ovr);
+}
+
+.roster-player-row__col--age .roster-player-row__text,
+.roster-player-row__col--games .roster-player-row__text {
+    -unity-text-align: middle-center;
+}
+
+.roster-player-row__col--salary .roster-player-row__text,
+.roster-player-row__col--stat .roster-player-row__text,
+.roster-player-row__col--ovr .roster-player-row__text,
+.roster-player-row__col--pot .roster-player-row__text {
     -unity-text-align: middle-right;
-    margin-right: 8px;
+}
+
+.roster-player-row__col--salary .roster-player-row__text {
+    color: rgb(74, 222, 128);
+    -unity-font-style: bold;
+}
+
+.roster-player-row__col--pos .roster-player-row__text {
+    color: rgb(198, 208, 220);
+    -unity-font-style: bold;
+}
+
+.roster-player-row__name-stack {
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
 }
 
 .roster-player-row__name {
-    flex-grow: 1;
-    color: var(--text-primary);
-    font-size: 14px;
+    font-size: 15px;
+    -unity-font-style: bold;
+    color: rgb(245, 247, 250);
 }
 
-.roster-player-row__pos {
-    width: 36px;
-    color: var(--text-secondary);
-    font-size: 12px;
-    -unity-text-align: middle-right;
+.roster-player-row__meta {
+    margin-top: 3px;
+    font-size: 11px;
+    color: rgb(122, 133, 147);
 }
 
-/* ===== 右侧 ===== */
+.roster-status-badge {
+    min-width: 58px;
+    padding-top: 5px;
+    padding-right: 8px;
+    padding-bottom: 5px;
+    padding-left: 8px;
+    border-top-left-radius: 999px;
+    border-top-right-radius: 999px;
+    border-bottom-left-radius: 999px;
+    border-bottom-right-radius: 999px;
+    font-size: 11px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.roster-status-badge--active {
+    background-color: rgba(34, 197, 94, 0.16);
+    color: rgb(74, 222, 128);
+}
+
+.roster-status-badge--injured {
+    background-color: rgba(239, 68, 68, 0.16);
+    color: rgb(248, 113, 113);
+}
+
+.roster-status-badge--historical {
+    background-color: rgba(148, 163, 184, 0.14);
+    color: rgb(191, 201, 214);
+}
+
+.roster-role-chip {
+    min-width: 56px;
+    padding-top: 5px;
+    padding-right: 8px;
+    padding-bottom: 5px;
+    padding-left: 8px;
+    border-top-left-radius: 999px;
+    border-top-right-radius: 999px;
+    border-bottom-left-radius: 999px;
+    border-bottom-right-radius: 999px;
+    font-size: 11px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.roster-role-chip--core {
+    background-color: rgba(245, 158, 11, 0.16);
+    color: rgb(251, 191, 36);
+}
+
+.roster-role-chip--starter {
+    background-color: rgba(59, 130, 246, 0.16);
+    color: rgb(96, 165, 250);
+}
+
+.roster-role-chip--rotation {
+    background-color: rgba(16, 185, 129, 0.16);
+    color: rgb(52, 211, 153);
+}
+
+.roster-role-chip--bench {
+    background-color: rgba(148, 163, 184, 0.16);
+    color: rgb(203, 213, 225);
+}
+
+.roster-role-chip--prospect {
+    background-color: rgba(168, 85, 247, 0.16);
+    color: rgb(196, 181, 253);
+}
+
+.rating-value {
+    -unity-font-style: bold;
+}
+
+.rating-value--elite {
+    color: rgb(251, 191, 36);
+}
+
+.rating-value--plus {
+    color: rgb(52, 211, 153);
+}
+
+.rating-value--solid {
+    color: rgb(96, 165, 250);
+}
+
+.rating-value--low {
+    color: rgb(156, 163, 175);
+}
+
 .roster-right {
     flex-grow: 1;
     flex-direction: column;
+    min-height: 0;
 }
 
-/* ===== Hero 头 ===== */
+.roster-detail__header {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.roster-detail__title-block {
+    flex-direction: column;
+    flex-grow: 1;
+    margin-right: 12px;
+}
+
+.roster-detail-page .tab-content {
+    flex-grow: 1;
+    min-height: 0;
+}
+
 .player-hero {
     flex-direction: row;
     align-items: center;
@@ -248,7 +804,6 @@
     color: var(--accent);
 }
 
-/* ===== Tabs（沿用 SeasonScreen 已建的视觉，独立写一份） ===== */
 .roster-screen .tabs {
     flex-direction: row;
     align-items: center;
@@ -323,7 +878,6 @@
     display: none;
 }
 
-/* ===== 基础信息：两列网格 ===== */
 .roster-fields__row {
     flex-direction: row;
     margin-bottom: 8px;
@@ -335,7 +889,7 @@
     margin-right: 12px;
 }
 
-.roster-fields__row > .roster-field:last-child {
+.roster-field--last {
     margin-right: 0;
 }
 
@@ -345,9 +899,6 @@
     padding-top: 4px;
 }
 
-/* ===== 能力 & 倾向：双列 =====
- * 注意：.roster-screen .tab-page 把 flex-direction 设为 column（specificity 0,0,2,0），
- * 必须用同等或更高 specificity 的选择器把这两页强制改回 row。 */
 .roster-screen .tab-page.roster-stats {
     flex-direction: row;
     align-items: flex-start;
@@ -360,7 +911,7 @@
     flex-direction: column;
 }
 
-.roster-stats__col:first-child {
+.roster-stats__col--left {
     margin-right: 16px;
 }
 
@@ -368,7 +919,6 @@
     margin-bottom: 6px;
 }
 
-/* ===== 特性页 ===== */
 .traits-header {
     flex-direction: row;
     align-items: center;
@@ -461,7 +1011,6 @@
     color: rgb(239, 68, 68);
 }
 
-/* 特性选择浮层 */
 .trait-picker-overlay {
     position: absolute;
     top: 0;
@@ -545,7 +1094,6 @@
     color: var(--text-secondary);
 }
 
-/* ===== 投篮图 ===== */
 .zone-chart__title {
     font-size: 13px;
     margin-bottom: 12px;
